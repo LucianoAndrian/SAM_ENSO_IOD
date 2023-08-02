@@ -21,7 +21,7 @@ os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 w_dir = '/home/luciano.andrian/doc/salidas/'
 out_dir = '/home/luciano.andrian/doc/salidas/SAM_IOD/Scatter/'
 file_dir = '/datos/luciano.andrian/ncfiles/'
-pwd = '/datos/luciano.andrian/ncfiles/'
+pwd = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_obs_viejo/'
 
 
 
@@ -74,11 +74,11 @@ def PlotEnso_Iod(dmi, sam, dmi_or, sam_or, title, fig_name = 'fig_enso_iod', out
 
 
 end = 2020
-i = 1920
+i = 1940
 # indices: ----------------------------------------------------------------------------------------------------#
 dmi = DMI(filter_bwa=False, start_per=str(i), end_per=str(end))[2]
 dmi = dmi.sel(time=slice(str(i) + '-01-01', str(end) + '-12-01'))
-aux = xr.open_dataset('/datos/luciano.andrian/ncfiles/psl.nc')
+aux = xr.open_dataset(pwd + 'psl.nc')
 sam = SamDetrend(aux)
 sam = sam.sel(time=slice(str(i) + '-01-01', str(end) + '-12-01'))
 
@@ -94,12 +94,12 @@ sam_or=None
 aux = dmi.sel(time=is_months(month=dmi['time.month'], mmin=9, mmax=11))
 aux2 = sam.sel(time=is_months(month=sam['time.month'], mmin=9, mmax=11))
 
-PlotEnso_Iod(None, None, aux, aux2, 'SON', fig_name='SAM_IOD_SON_Scatter', alpha=0.8, save=True)
+PlotEnso_Iod(None, None, aux, aux2, 'SON', fig_name='SAM_IOD_SON_Scatter', alpha=0.8, save=False)
 
 aux = aux.groupby('time.year').mean()
 aux2 = aux2.groupby('time.year').mean()
 
-PlotEnso_Iod(None, None, aux, aux2, 'SON average', fig_name='SAM_IOD_SON-AV_Scatter', alpha=0.8, save=True)
+PlotEnso_Iod(None, None, aux, aux2, 'SON average', fig_name='SAM_IOD_SON-AV_Scatter', alpha=0.8, save=False)
 
 
 
@@ -107,21 +107,21 @@ PlotEnso_Iod(None, None, aux, aux2, 'SON average', fig_name='SAM_IOD_SON-AV_Scat
 aux = dmi.sel(time=is_months(month=dmi['time.month'], mmin=6, mmax=8))
 aux2 = sam.sel(time=is_months(month=sam['time.month'], mmin=6, mmax=8))
 
-PlotEnso_Iod(None, None, aux, aux2, 'JJA', fig_name='SAM_IOD_JJA_Scatter', alpha=0.8, save=True)
+PlotEnso_Iod(None, None, aux, aux2, 'JJA', fig_name='SAM_IOD_JJA_Scatter', alpha=0.8, save=False)
 
 aux = aux.groupby('time.year').mean()
 aux2 = aux2.groupby('time.year').mean()
 
-PlotEnso_Iod(None, None, aux, aux2, 'JJA average', fig_name='SAM_IOD_JJA-AV_Scatter', alpha=0.8, save=True)
+PlotEnso_Iod(None, None, aux, aux2, 'JJA average', fig_name='SAM_IOD_JJA-AV_Scatter', alpha=0.8, save=False)
 
 
 # JASON
 aux = dmi.sel(time=is_months(month=dmi['time.month'], mmin=7, mmax=11))
 aux2 = sam.sel(time=is_months(month=sam['time.month'], mmin=7, mmax=11))
 
-PlotEnso_Iod(None, None, aux, aux2, 'JASON', fig_name='SAM_IOD_JASON_Scatter', alpha=0.8, save=True)
+PlotEnso_Iod(None, None, aux, aux2, 'JASON', fig_name='SAM_IOD_JASON_Scatter', alpha=0.8, save=False)
 
 aux = aux.groupby('time.year').mean()
 aux2 = aux2.groupby('time.year').mean()
 
-PlotEnso_Iod(None, None, aux, aux2, 'JASON average', fig_name='SAM_IOD_JASON-AV_Scatter', alpha=0.8, save=True)
+PlotEnso_Iod(None, None, aux, aux2, 'JASON average', fig_name='SAM_IOD_JASON-AV_Scatter', alpha=0.8, save=False)
