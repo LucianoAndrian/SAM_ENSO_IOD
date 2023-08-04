@@ -2584,3 +2584,12 @@ def PlotComposite_wWAF(comp, levels, cmap, step1, contour1=True,
         plt.show()
 ########################################################################################################################
 
+def SameDateAs(data, datadate):
+    """
+    En data selecciona las mismas fechas que datadate
+    :param data:
+    :param datadate:
+    :return:
+    """
+    return data.sel(time=datadate.time.values)
+########################################################################################################################
