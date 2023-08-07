@@ -1641,6 +1641,8 @@ def PlotReg(data, data_cor, levels=np.linspace(-100,100,2), cmap='RdBu_r'
 
     im = ax.contourf(data.lon[::step], data.lat[::step], data[::step,::step],levels=levels,
                      transform=crs_latlon, cmap=cmap, extend='both')
+    ax.contour(data.lon[::step], data.lat[::step], data[::step, ::step], linewidths=.5, alpha=0.5,
+               levels=levels_contour, transform=crs_latlon, colors='black')
     if sig:
         if sig_point:
             colors_l = [color_sig, color_sig]
@@ -1764,7 +1766,10 @@ def ComputeWithEffect(data=None, data2=None, n34=None, dmi=None,
         aux_corr_n34_2 = Corr(datos=data2, index=n34, time_original=time_original, m=m)
         aux_corr_dmi_2 = Corr(datos=data2, index=dmi, time_original=time_original, m=m)
 
-    return aux_n34, aux_corr_n34, aux_dmi, aux_corr_dmi, aux_n34_2, aux_corr_n34_2, aux_dmi_2, aux_corr_dmi_2
+    if full_season:
+        return aux_n34, aux_corr_n34, aux_dmi, aux_corr_dmi, aux_n34_2, aux_corr_n34_2, aux_dmi_2, aux_corr_dmi_2
+    else:
+        return aux_n34, aux_corr_n34, aux_dmi, aux_corr_dmi
 
 def ComputeWithoutEffect(data, n34, dmi, m, time_original):
     # -- Without influence --#
@@ -1786,7 +1791,7 @@ def ComputeWithoutEffect(data, n34, dmi, m, time_original):
     aux_corr_n34 = Corr(datos=data_n34_wodmi, index=n34_wo_dmi, time_original=time_original,m=m)
     aux_corr_dmi = Corr(datos=data_dmi_won34, index=dmi_wo_n34, time_original=time_original,m=m)
 
-    return aux_n34_wodmi, aux_corr_n34, aux_dmi_won34, aux_corr_dmi
+    return aux_n34_wodmi, aux_corr_n34, aux_dmi_won34, aux_corr_dmi, n34_wo_dmi, dmi_wo_n34
 ########################################################################################################################
 # CFSv2 ################################################################################################################
 def SelectNMMEFiles(model_name, variable, dir, anio='0', in_month='0', by_r=False, r='0',  All=False):
