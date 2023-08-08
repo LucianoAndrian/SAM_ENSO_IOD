@@ -9,11 +9,13 @@ out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/scatter/'
 ################################################################################
 import xarray as xr
 import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
+import numpy as np
 from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 ################################################################################
-save = False
+save = True
 seasons = ['JJA', 'SON']
 mmonth = [7, 10]
 
@@ -54,8 +56,6 @@ dmi = DMI(filter_bwa=False, start_per='1920', end_per='2020')[2]
 n34 = Nino34CPC( xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc"),
                  start=1920, end=2020)[0]
 
-#dmi = SameDateAs(dmi, sam)
-#n34 = SameDateAs(n34, sam)
 sam = sam.rolling(time=3, center=True).mean()
 sam = NormSD(sam)
 dmi = NormSD(SameDateAs(dmi, sam))
@@ -70,16 +70,22 @@ for s, mm in zip(seasons, mmonth):
     aux_sam = sam.sel(time=sam.time.dt.month.isin([mm]))
 
     # DMI vs N34
+    aux_r = np.round(pearsonr(aux_dmi, aux_n34), 3)
     ScatterPlot(aux_dmi, aux_n34, 'DMI', 'N34',
-                'DMI vs N34 - ' + s, 'DMI_N34_' + s, dpi, save)
+                'DMI vs N34 - ' + s + ' - r = ' + str(aux_r[0]) +
+                ' pvalue =' + str(aux_r[1]), 'DMI_N34_' + s, dpi, save)
 
     # SAM vs N34
+    aux_r = np.round(pearsonr(aux_sam, aux_n34), 3)
     ScatterPlot(aux_sam, aux_n34, 'SAM', 'N34',
-                'SAM vs N34 - ' + s, 'SAM_N34_' + s, dpi, save)
+                'SAM vs N34 - ' + s + ' - r = ' + str(aux_r[0]) +
+                ' pvalue =' + str(aux_r[1]),  'SAM_N34_' + s, dpi, save)
 
     # SAM vs DMI
+    aux_r = np.round(pearsonr(aux_sam, aux_dmi), 3)
     ScatterPlot(aux_sam, aux_dmi, 'SAM', 'DMI',
-                'SAM vs DMI - ' + s, 'SAM_DMI_' + s, dpi, save)
+                'SAM vs DMI - ' + s + ' - r = ' + str(aux_r[0]) +
+                ' pvalue = ' + str(aux_r[1]), 'SAM_DMI_' + s, dpi, save)
 
 # Full
 # DMI vs N34
