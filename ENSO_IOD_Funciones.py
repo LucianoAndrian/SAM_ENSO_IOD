@@ -75,7 +75,7 @@ def Nino34CPC(data, start=1920, end=2020):
     ninio34_filtered = np.convolve(ninio34, np.ones((3,)) / 3, mode='same')  #
     ninio34_f = xr.DataArray(ninio34_filtered, coords=[ninio34.time.values], dims=['time'])
 
-    aux = abs(ninio34_f) > 0.5
+    aux = abs(np.round(ninio34_f, 1)) >= 0.5
     results = []
     for k, g in groupby(enumerate(aux.values), key=lambda x: x[1]):
         if k:
@@ -97,7 +97,7 @@ def Nino34CPC(data, start=1920, end=2020):
                 if l < (len_true):
                     main_month_num = results[m][0] + l
                     if main_month_num != 1210:
-                        n34_df = n34_df.append({'N34': np.around(ninio34_f[main_month_num].values, 2),
+                        n34_df = n34_df.append({'N34': np.around(ninio34_f[main_month_num].values, 1),
                                             'Años': np.around(ninio34_f[main_month_num]['time.year'].values),
                                             'Mes': np.around(ninio34_f[main_month_num]['time.month'].values)},
                                            ignore_index=True)
