@@ -4,11 +4,13 @@ Scatter IOD-SAM identificando los IOD según su ocurrencia con el ENSO
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/scatter/'
+out_dir_dataframe = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 
 ################################################################################
 import xarray as xr
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
+import pandas as pd
 import numpy as np
 from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs, DMI2
 import os
@@ -99,6 +101,18 @@ def auxScatter(n34, n34_3, dmi, dmi_3, sam, s):
            dmi_sim_neg, dmi_sim_neg_sam_values, n34_sim_neg_sam_values,\
            dmi_todos, sam_todos, \
            dmi_pos_n34_neg, dmi_neg_n34_pos
+
+def ToCombinedDataframe(dmi, sam, out_dir, name):
+    dmi_df = dmi.to_dataframe(name='dmi')
+    sam_df = sam.to_dataframe(name='sam')
+
+    combined_df = pd.concat([dmi_df, sam_df], axis=1)
+    # Hay valores con NaN x como se calculan en auxScatter()
+    combined_df = combined_df.dropna(subset=['dmi'])
+
+    output_file = f"{out_dir}/{name}.txt"
+    combined_df.to_csv(output_file, sep='\t')
+
 ################################################################################
 # indices
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
@@ -127,6 +141,20 @@ for s, mm in zip(seasons, mmonth):
     dmi_sim_neg, dmi_sim_neg_sam_values, n34_sim_neg_sam_values, \
     dmi_todos, sam_todos, dmi_pos_n34_neg, dmi_neg_n34_pos = \
         auxScatter(n34, n34_3, dmi, dmi_3, sam, mm)
+
+    # Dataframe de fechas -----------------------------------------------------#
+    ToCombinedDataframe(dmi_un_neg, dmi_un_neg_sam_values, out_dir_dataframe,
+                        'dmi_un_neg_vs_sam_' + s)
+
+    ToCombinedDataframe(dmi_un_pos, dmi_un_pos_sam_values, out_dir_dataframe,
+                        'dmi_un_pos_vs_sam_' + s)
+
+    ToCombinedDataframe(dmi_sim_pos, dmi_sim_pos_sam_values, out_dir_dataframe,
+                        'dmi_sim_pos_vs_sam_' + s)
+
+    ToCombinedDataframe(dmi_sim_neg, dmi_sim_neg_sam_values, out_dir_dataframe,
+                        'dmi_sim_neg_vs_sam_' + s)
+    # -------------------------------------------------------------------------#
 
     print('plot...')
     fig, ax = plt.subplots(dpi=dpi)
@@ -179,7 +207,7 @@ for s, mm in zip(seasons, mmonth):
     plt.text(-.5, -4.9, 'IOD-', dict(size=15))
     plt.text(-4.8, -4.9, ' IOD-/SAM-', dict(size=15))
     plt.text(-4.8, -.1, 'SAM-', dict(size=15))
-    plt.title('SON' + ' - ' + 'OBS')
+    plt.title(s + ' - ' + 'OBS')
     plt.tight_layout()
     if save:
         plt.savefig(
@@ -189,4 +217,5 @@ for s, mm in zip(seasons, mmonth):
 #------------------------------------------------------------------------------#
 print('#######################################################################')
 print('done')
+print('#######################################################################')
 ################################################################################

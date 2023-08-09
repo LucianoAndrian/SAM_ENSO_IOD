@@ -94,8 +94,8 @@ def Nino34CPC(data, start=1920, end=2020):
             n34.append([np.arange(a, a + results[m][1]), ninio34_f[np.arange(a, a + results[m][1])].values])
 
             for l in range(0, len_true):
-                if l < (len_true - 2):
-                    main_month_num = results[m][0] + 1 + l
+                if l < (len_true):
+                    main_month_num = results[m][0] + l
                     if main_month_num != 1210:
                         n34_df = n34_df.append({'N34': np.around(ninio34_f[main_month_num].values, 2),
                                             'Años': np.around(ninio34_f[main_month_num]['time.year'].values),
