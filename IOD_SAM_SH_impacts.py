@@ -1,11 +1,11 @@
 """
-Impactos en pp y t en SA de eventos SAM-ENSO-IOD, individuales y por signo del
+Impactos en HGT en SH de eventos SAM-ENSO-IOD, individuales y por signo del
 SAM
 """
 ################################################################################
 dates_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/pp_t_anoms/'
-
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/hgt_anoms/'
+era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
 nc_date_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/' \
               'nc_composites_dates_no_ind_sst_anom/'
 ################################################################################
@@ -56,10 +56,10 @@ def OpenObsDataSet(name, sa=True,
 
 def Plot(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
 
-    fig_size = (5, 6)
-    extent= [270, 330, -60, 20]
-    xticks = np.arange(270, 330, 10)
-    yticks = np.arange(-60, 40, 20)
+    fig_size =(9, 3.5)
+    extent= [0, 359, -80, 20]
+    xticks = np.arange(0, 360, 30)
+    yticks = np.arange(-80, 20, 10)
 
     comp_var = comp['var']
 
@@ -97,7 +97,7 @@ def Plot(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
 
 def Subplots(data_array, level, cmap, title, save, dpi, name_fig, out_dir):
 
-    extent= [270, 330, -60, 20]
+    extent= [0, 359, -80, 20]
     crs_latlon = ccrs.PlateCarree()
 
     time_values = data_array.time.values
@@ -106,8 +106,9 @@ def Subplots(data_array, level, cmap, title, save, dpi, name_fig, out_dir):
     # cantidad de filas necesarias
     num_rows = np.ceil(time_steps/num_cols).astype(int)
 
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(18, 6*num_rows),
-                             subplot_kw={'projection': crs_latlon })
+    fig, axes = plt.subplots(
+        num_rows, num_cols, figsize=(20, 3*num_rows),
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)})
 
     for i, (ax, time_val) in enumerate(zip(axes.flatten(), time_values)):
 
@@ -128,7 +129,7 @@ def Subplots(data_array, level, cmap, title, save, dpi, name_fig, out_dir):
     for i in range(time_steps, num_rows * num_cols):
         fig.delaxes(axes.flatten()[i])
 
-    pos = fig.add_axes([0.2, 0.05, 0.6, 0.01])
+    pos = fig.add_axes([0.2, 0.05, 0.6, 0.03])
     cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='horizontal')
     cb.ax.tick_params(labelsize=8)
 
@@ -144,7 +145,7 @@ def CreateDirectory(out_dir, s, v, sam_component):
     if not os.path.exists(out_dir + s):
         os.mkdir(out_dir + s)
 
-    sub_dir1 = out_dir + s + '/' + v.split('_')[0]
+    sub_dir1 = out_dir + s + '/' + v
     if not os.path.exists(sub_dir1):
         os.mkdir(sub_dir1)
 
@@ -160,22 +161,16 @@ cbar = colors.ListedColormap(['#9B1C00', '#B9391B', '#CD4838', '#E25E55',
 cbar.set_over('#641B00')
 cbar.set_under('#012A52')
 cbar.set_bad(color='white')
-
-cbar_pp = colors.ListedColormap(['#003C30', '#004C42', '#0C7169', '#79C8BC',
-                                 '#B4E2DB',
-                                 'white',
-                                 '#F1DFB3', '#DCBC75', '#995D13','#6A3D07',
-                                 '#543005'][::-1])
-cbar_pp.set_under('#3F2404')
-cbar_pp.set_over('#00221A')
-cbar_pp.set_bad(color='white')
 ################################################################################
 
 cases = ['dmi_un_pos', 'dmi_sim_pos', 'dmi_un_neg', 'dmi_sim_neg']
-variables_tpp = ['ppgpcc_w_c_d_1', 'tcru_w_c_d_0.25']
-scales = [np.linspace(-45, 45, 13),# pp
-          np.linspace(-1, 1 ,17)]  # t
-cmap= [cbar_pp, cbar]
+variables = ['HGT200', 'HGT750']
+scale_comp = [-300, -250, -200, -150, -100, -50, -25,
+          0, 25, 50, 100, 150, 200, 250, 300]
+
+scale = [-400, -350, -300, -250, -200, -150, -100, -50,
+          0, 50, 100, 150, 200, 250, 300, 350, 400]
+cmap = cbar
 # for test
 s = 'SON'
 c = 'dmi_un_neg'
@@ -199,10 +194,11 @@ for s in seasons:
                                s + '.txt', sep='\t', parse_dates=['time'])
 
             # by variables ----------------------------------------------------#
-            for v_count, v in enumerate(variables_tpp):
+            for v_count, v in enumerate(variables):
                 print(v)
 
-                variable = OpenObsDataSet(v + '_' + s)
+                variable = xr.open_dataset(era5_dir + v + '_' + s +
+                                           '_mer_d_w.nc')
 
                 # carpetas para guardar cada cosa por separado
                 CreateDirectory(out_dir, s, v, sam_component)
@@ -241,18 +237,18 @@ for s in seasons:
                     title = 'Composite - ' + c + ' with ' + sam_title.upper() +\
                             '\n' + v + ' - ' + s
                     name_fig = v + '_comp_' + c + '_w_' + sam_title + '_' + s
-                    Plot(comp, scales[v_count], cmap[v_count], title, name_fig,
+                    Plot(comp, scale_comp, cmap, title, name_fig,
                          dpi,
                          save, out_dir + s + '/' +
-                         v.split('_')[0] + '/' + sam_component + '/')
+                         v + '/' + sam_component + '/')
 
                     print('Multiple individual plots...')
                     title = 'Events: ' + c + ' with ' + sam_title.upper() +\
                             ' - ' + v +' - ' + s
                     name_fig = v + '_Events_' + c + '_w_' + sam_title + '_' + s
-                    Subplots(variable_selected, scales[v_count], cmap[v_count],
+                    Subplots(variable_selected, scale, cmap,
                              title, save, dpi, name_fig, out_dir + s + '/' +
-                         v.split('_')[0] + '/' + sam_component + '/')
+                         v + '/' + sam_component + '/')
 
 #------------------------------------------------------------------------------#
 print('#######################################################################')

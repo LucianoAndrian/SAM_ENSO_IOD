@@ -115,6 +115,7 @@ def ToCombinedDataframe(dmi, sam, out_dir, name):
 
 ################################################################################
 # indices
+
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 #
 # dmi = DMI(filter_bwa=False, start_per='1920', end_per='2020')[2]
@@ -126,96 +127,112 @@ dmi, dmi_2, dmi_3 = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
 
 aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34, n34_2, n34_3 = Nino34CPC(aux, start=1920, end=2020)
-
 del n34_2, dmi_2 # no importan
 
 sam = sam.rolling(time=3, center=True).mean()
-sam = NormSD(sam)
 dmi_3 = NormSD(SameDateAs(dmi_3, sam))
 n34 = NormSD(SameDateAs(n34, sam))
 #------------------------------------------------------------------------------#
-for s, mm in zip(seasons, mmonth):
-    print(s + ' auxScatter...')
-    dmi_un_pos, dmi_un_pos_sam_values, dmi_un_neg, dmi_un_neg_sam_values, \
-    dmi_sim_pos, dmi_sim_pos_sam_values, n34_sim_pos_sam_values, \
-    dmi_sim_neg, dmi_sim_neg_sam_values, n34_sim_neg_sam_values, \
-    dmi_todos, sam_todos, dmi_pos_n34_neg, dmi_neg_n34_pos = \
-        auxScatter(n34, n34_3, dmi, dmi_3, sam, mm)
+for sam_component in ['sam', 'asam', 'ssam']:
+    print('###################################################################')
+    print(sam_component)
+    print('###################################################################')
 
-    # Dataframe de fechas -----------------------------------------------------#
-    ToCombinedDataframe(dmi_un_neg, dmi_un_neg_sam_values, out_dir_dataframe,
-                        'dmi_un_neg_vs_sam_' + s)
+    sam = xr.open_dataset(sam_dir + sam_component +'_700.nc')['mean_estimate']
+    sam = sam.rolling(time=3, center=True).mean()
+    sam = NormSD(sam)
 
-    ToCombinedDataframe(dmi_un_pos, dmi_un_pos_sam_values, out_dir_dataframe,
-                        'dmi_un_pos_vs_sam_' + s)
+    for s, mm in zip(seasons, mmonth):
 
-    ToCombinedDataframe(dmi_sim_pos, dmi_sim_pos_sam_values, out_dir_dataframe,
-                        'dmi_sim_pos_vs_sam_' + s)
+        print(s + ' auxScatter...')
+        dmi_un_pos, dmi_un_pos_sam_values, dmi_un_neg, dmi_un_neg_sam_values, \
+        dmi_sim_pos, dmi_sim_pos_sam_values, n34_sim_pos_sam_values, \
+        dmi_sim_neg, dmi_sim_neg_sam_values, n34_sim_neg_sam_values, \
+        dmi_todos, sam_todos, dmi_pos_n34_neg, dmi_neg_n34_pos = \
+            auxScatter(n34, n34_3, dmi, dmi_3, sam, mm)
 
-    ToCombinedDataframe(dmi_sim_neg, dmi_sim_neg_sam_values, out_dir_dataframe,
-                        'dmi_sim_neg_vs_sam_' + s)
-    # -------------------------------------------------------------------------#
+        # Dataframe de fechas -------------------------------------------------#
+        ToCombinedDataframe(dmi_un_neg, dmi_un_neg_sam_values,
+                            out_dir_dataframe,
+                            'dmi_un_neg_vs_' + sam_component + '_' + s)
 
-    print('plot...')
-    fig, ax = plt.subplots(dpi=dpi)
-    # todos
-    plt.scatter(x=sam_todos, y=dmi_todos, marker='.', label='SAM vs DMI',
-                s=20, edgecolor='k', color='dimgray', alpha=1)
-    # dmi puros
-    plt.scatter(x=dmi_un_pos_sam_values.values, y=dmi_un_pos.values, marker='>',
-                s=70, edgecolor='firebrick', facecolor='firebrick', alpha=1,
-                label='IOD puro +')
+        ToCombinedDataframe(dmi_un_pos, dmi_un_pos_sam_values,
+                            out_dir_dataframe,
+                            'dmi_un_pos_vs_' + sam_component + '_'  + s)
 
-    plt.scatter(y=dmi_un_neg.values, x=dmi_un_neg_sam_values.values, marker='<',
-                s=70, facecolor='limegreen', edgecolor='limegreen', alpha=1,
-                label='IOD puro -')
+        ToCombinedDataframe(dmi_sim_pos, dmi_sim_pos_sam_values,
+                            out_dir_dataframe,
+                            'dmi_sim_pos_vs_' + sam_component + '_'  + s)
 
-    # sim
-    plt.scatter(y=dmi_sim_pos.values, x=n34_sim_pos_sam_values.values,
-                marker='s', s=50,
-                edgecolor='red', color='red', alpha=1, label='Niño & IOD+')
-    plt.scatter(y=dmi_sim_neg.values, x=n34_sim_neg_sam_values.values,
-                marker='s', s=50,
-                edgecolor='deepskyblue', color='deepskyblue', alpha=1,
-                label='Niña & IOD-')
+        ToCombinedDataframe(dmi_sim_neg, dmi_sim_neg_sam_values,
+                            out_dir_dataframe,
+                            'dmi_sim_neg_vs_' + sam_component + '_'  + s)
+        # ---------------------------------------------------------------------#
 
-    # sim opp. sing
-    plt.scatter(x=dmi_pos_n34_neg.values, y=n34_sim_neg_sam_values.values,
-                marker='s', s=50,
-                edgecolor='orange', color='orange', alpha=1,
-                label='Niña & IOD+')
-    plt.scatter(x=dmi_neg_n34_pos.values, y=n34_sim_neg_sam_values.values,
-                marker='s', s=50,
-                edgecolor='gold', color='gold', alpha=1, label='Niño & IOD-')
+        print('plot...')
+        fig, ax = plt.subplots(dpi=dpi)
+        # todos
+        plt.scatter(x=sam_todos, y=dmi_todos, marker='.', label='SAM vs DMI',
+                    s=20, edgecolor='k', color='dimgray', alpha=1)
+        # dmi puros
+        plt.scatter(x=dmi_un_pos_sam_values.values, y=dmi_un_pos.values,
+                    marker='>',
+                    s=70, edgecolor='firebrick', facecolor='firebrick', alpha=1,
+                    label='IOD puro +')
 
-    plt.legend(loc=(.7, .60))
+        plt.scatter(y=dmi_un_neg.values, x=dmi_un_neg_sam_values.values,
+                    marker='<',
+                    s=70, facecolor='limegreen', edgecolor='limegreen', alpha=1,
+                    label='IOD puro -')
 
-    plt.ylim((-5, 5))
-    plt.xlim((-5, 5))
-    plt.axhspan(-.5, .5, alpha=0.2, color='black', zorder=0)
-    plt.axvspan(-.5, .5, alpha=0.2, color='black', zorder=0)
-    ax.grid(True)
-    fig.set_size_inches(6, 6)
-    plt.xlabel('SAM', size=15)
-    plt.ylabel('DMI', size=15)
+        # sim
+        plt.scatter(y=dmi_sim_pos.values, x=n34_sim_pos_sam_values.values,
+                    marker='s', s=50,
+                    edgecolor='red', color='red', alpha=1, label='Niño & IOD+')
+        plt.scatter(y=dmi_sim_neg.values, x=n34_sim_neg_sam_values.values,
+                    marker='s', s=50,
+                    edgecolor='deepskyblue', color='deepskyblue', alpha=1,
+                    label='Niña & IOD-')
 
-    plt.text(-4.8, 4.6, 'SAM-/IOD+', dict(size=15))
-    plt.text(-.5, 4.6, 'IOD+', dict(size=15))
-    plt.text(+2.5, 4.6, 'SAM+/IOD+', dict(size=15))
-    plt.text(+3.5, -.1, 'SAM+', dict(size=15))
-    plt.text(+2.5, -4.9, 'IOD-/SAM+', dict(size=15))
-    plt.text(-.5, -4.9, 'IOD-', dict(size=15))
-    plt.text(-4.8, -4.9, ' IOD-/SAM-', dict(size=15))
-    plt.text(-4.8, -.1, 'SAM-', dict(size=15))
-    plt.title(s + ' - ' + 'OBS')
-    plt.tight_layout()
-    if save:
-        plt.savefig(
-            out_dir + 'IOD_SAM_scatter' + s + '_OBS.jpg')
-    else:
-        plt.show()
-#------------------------------------------------------------------------------#
+        # sim opp. sing
+        plt.scatter(x=dmi_pos_n34_neg.values, y=n34_sim_neg_sam_values.values,
+                    marker='s', s=50,
+                    edgecolor='orange', color='orange', alpha=1,
+                    label='Niña & IOD+')
+        plt.scatter(x=dmi_neg_n34_pos.values, y=n34_sim_neg_sam_values.values,
+                    marker='s', s=50,
+                    edgecolor='gold', color='gold', alpha=1,
+                    label='Niño & IOD-')
+
+        plt.legend(loc=(.7, .60))
+
+        plt.ylim((-5, 5))
+        plt.xlim((-5, 5))
+        plt.axhspan(-.5, .5, alpha=0.2, color='black', zorder=0)
+        plt.axvspan(-.5, .5, alpha=0.2, color='black', zorder=0)
+        ax.grid(True)
+        fig.set_size_inches(6, 6)
+        plt.xlabel('SAM', size=15)
+        plt.ylabel('DMI', size=15)
+        sname = sam_component.upper()
+        plt.text(-4.8, 4.6, sname + '-/IOD+', dict(size=15))
+        plt.text(-.5, 4.6, 'IOD+', dict(size=15))
+        plt.text(+2.5, 4.6, sname + '+/IOD+', dict(size=15))
+        plt.text(+3.5, -.1, sname + '+', dict(size=15))
+        plt.text(+2.5, -4.9, 'IOD-/' + sname + '+', dict(size=15))
+        plt.text(-.5, -4.9, 'IOD-', dict(size=15))
+        plt.text(-4.8, -4.9, ' IOD-/' + sname + '-', dict(size=15))
+        plt.text(-4.8, -.1, sname + '-', dict(size=15))
+        plt.title(sname + ' vs DMI - ' + s)
+        plt.tight_layout()
+        if save:
+            plt.savefig(
+                out_dir + 'IOD_' + sam_component +'_scatter' + s + '_OBS.jpg')
+        else:
+            plt.show()
+# -----------------------------------------------------------------------------#
 print('#######################################################################')
 print('done')
+print('out_dir = ' + out_dir)
 print('#######################################################################')
 ################################################################################

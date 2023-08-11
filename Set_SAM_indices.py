@@ -16,7 +16,7 @@ import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 ################################################################################
 level = 700 #
-sam_component_name = ['sam']#, 'ssam', 'asam']
+sam_component_name = ['sam', 'ssam', 'asam']
 test = False
 ################################################################################
 try:
