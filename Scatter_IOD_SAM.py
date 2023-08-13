@@ -16,7 +16,7 @@ from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs, DMI2
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 ################################################################################
-save = True
+save = False
 seasons = ['JJA', 'SON']
 mmonth = [7, 10]
 
@@ -28,6 +28,10 @@ else:
 def NormSD(serie):
     return serie / serie.std('time')
 
+
+def RemoveYear(data1, data2):
+    return data1.sel(
+        time=data2.time[xr.ufuncs.isnan(data2.values)])
 def auxScatter(n34, n34_3, dmi, dmi_3, sam, s):
     """
     Hace lo mismo que en ENSO_IOD_Satter_OBS.py pero ahora devuelve los valores
@@ -72,6 +76,16 @@ def auxScatter(n34, n34_3, dmi, dmi_3, sam, s):
 
     dmi_pos_n34_neg = dmi_sim_pos.where(~np.isnan(n34_sim_neg.values))
     dmi_neg_n34_pos = dmi_sim_neg.where(~np.isnan(n34_sim_pos.values))
+
+    try:
+        dmi_sim_pos =RemoveYear(dmi_sim_pos, dmi_pos_n34_neg)
+        dmi_sim_pos_sam_values = RemoveYear(dmi_sim_pos_sam_values, dmi_pos_n34_neg)
+
+        dmi_sim_neg =RemoveYear(dmi_sim_neg, dmi_neg_n34_pos)
+        dmi_sim_neg_sam_values = RemoveYear(dmi_sim_neg_sam_values, dmi_neg_n34_pos)
+
+    except:
+        pass
 
     dmi_dates_ref = dmi_todos.time.dt.year
     mask = np.in1d(dmi_dates_ref, dmi_criteria_y)
@@ -186,10 +200,10 @@ for sam_component in ['sam', 'asam', 'ssam']:
                     label='IOD puro -')
 
         # sim
-        plt.scatter(y=dmi_sim_pos.values, x=n34_sim_pos_sam_values.values,
+        plt.scatter(y=dmi_sim_pos.values, x=dmi_sim_pos_sam_values.values,
                     marker='s', s=50,
                     edgecolor='red', color='red', alpha=1, label='Niño & IOD+')
-        plt.scatter(y=dmi_sim_neg.values, x=n34_sim_neg_sam_values.values,
+        plt.scatter(y=dmi_sim_neg.values, x=dmi_sim_neg_sam_values.values,
                     marker='s', s=50,
                     edgecolor='deepskyblue', color='deepskyblue', alpha=1,
                     label='Niña & IOD-')
