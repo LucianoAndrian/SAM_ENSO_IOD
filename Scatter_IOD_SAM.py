@@ -3,23 +3,28 @@ Scatter IOD-SAM identificando los IOD según su ocurrencia con el ENSO
 """
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/scatter/'
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 out_dir_dataframe = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-
+dir_results = 'scatter'
 ################################################################################
 import xarray as xr
 import matplotlib.pyplot as plt
-from scipy.stats import pearsonr
 import pandas as pd
 import numpy as np
-from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs, DMI2
+from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2, CreateDirectory, \
+    DirAndFile
+
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
+import warnings
+from shapely.errors import ShapelyDeprecationWarning
+warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 ################################################################################
-save = False
+save = True
+dataframes = True
 seasons = ['JJA', 'SON']
 mmonth = [7, 10]
-
+CreateDirectory(out_dir, dir_results)
 if save:
     dpi = 300
 else:
@@ -28,10 +33,10 @@ else:
 def NormSD(serie):
     return serie / serie.std('time')
 
-
 def RemoveYear(data1, data2):
     return data1.sel(
         time=data2.time[xr.ufuncs.isnan(data2.values)])
+
 def auxScatter(n34, n34_3, dmi, dmi_3, sam, s):
     """
     Hace lo mismo que en ENSO_IOD_Satter_OBS.py pero ahora devuelve los valores
@@ -166,21 +171,23 @@ for sam_component in ['sam', 'asam', 'ssam']:
             auxScatter(n34, n34_3, dmi, dmi_3, sam, mm)
 
         # Dataframe de fechas -------------------------------------------------#
-        ToCombinedDataframe(dmi_un_neg, dmi_un_neg_sam_values,
-                            out_dir_dataframe,
-                            'dmi_un_neg_vs_' + sam_component + '_' + s)
+        if dataframes:
+            ToCombinedDataframe(dmi_un_neg, dmi_un_neg_sam_values,
+                                out_dir_dataframe,
+                                'dmi_un_neg_vs_' + sam_component + '_' + s)
 
-        ToCombinedDataframe(dmi_un_pos, dmi_un_pos_sam_values,
-                            out_dir_dataframe,
-                            'dmi_un_pos_vs_' + sam_component + '_'  + s)
+            ToCombinedDataframe(dmi_un_pos, dmi_un_pos_sam_values,
+                                out_dir_dataframe,
+                                'dmi_un_pos_vs_' + sam_component + '_' + s)
 
-        ToCombinedDataframe(dmi_sim_pos, dmi_sim_pos_sam_values,
-                            out_dir_dataframe,
-                            'dmi_sim_pos_vs_' + sam_component + '_'  + s)
+            ToCombinedDataframe(dmi_sim_pos, dmi_sim_pos_sam_values,
+                                out_dir_dataframe,
+                                'dmi_sim_pos_vs_' + sam_component + '_' + s)
 
-        ToCombinedDataframe(dmi_sim_neg, dmi_sim_neg_sam_values,
-                            out_dir_dataframe,
-                            'dmi_sim_neg_vs_' + sam_component + '_'  + s)
+            ToCombinedDataframe(dmi_sim_neg, dmi_sim_neg_sam_values,
+                                out_dir_dataframe,
+                                'dmi_sim_neg_vs_' + sam_component + '_' + s)
+
         # ---------------------------------------------------------------------#
 
         print('plot...')
@@ -240,8 +247,8 @@ for sam_component in ['sam', 'asam', 'ssam']:
         plt.title(sname + ' vs DMI - ' + s)
         plt.tight_layout()
         if save:
-            plt.savefig(
-                out_dir + 'IOD_' + sam_component +'_scatter' + s + '_OBS.jpg')
+            plt.savefig(DirAndFile(out_dir, dir_results, s,
+                                   ['IOD', sam_component]))
         else:
             plt.show()
 # -----------------------------------------------------------------------------#
