@@ -2598,3 +2598,13 @@ def SameDateAs(data, datadate):
     """
     return data.sel(time=datadate.time.values)
 ########################################################################################################################
+def CreateDirectory(out_dir, *args):
+    for arg in args:
+        if arg is not None:
+            if not os.path.exists(os.path.join(out_dir, str(arg))):
+                os.mkdir(os.path.join(out_dir, str(arg)))
+
+def DirAndFile(out_dir, dir_results, common_name, names):
+    file_name = f"{'_'.join(names)}_{common_name}.jpg"
+    path = os.path.join(out_dir, dir_results, file_name)
+    return path

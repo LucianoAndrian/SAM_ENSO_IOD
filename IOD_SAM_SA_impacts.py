@@ -4,10 +4,11 @@ SAM
 """
 ################################################################################
 dates_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/pp_t_anoms/'
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 
 nc_date_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/' \
               'nc_composites_dates_no_ind_sst_anom/'
+dir_results = 'pp_t_anoms'
 ################################################################################
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -18,7 +19,8 @@ import numpy as np
 import cartopy.feature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import cartopy.crs as ccrs
-from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs, DMI2
+from ENSO_IOD_Funciones import CreateDirectory
+
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 import warnings
@@ -32,6 +34,7 @@ climatology_neutro = True
 # sino va tomar la media de todos los años
 seasons = ['JJA', 'SON']
 mmonth = [7, 10]
+CreateDirectory(out_dir, dir_results)
 
 if save:
     dpi = 300
