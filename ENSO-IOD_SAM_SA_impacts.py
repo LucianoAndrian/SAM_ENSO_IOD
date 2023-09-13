@@ -1,11 +1,11 @@
 """
-Impactos en HGT en SH de eventos SAM-ENSO-IOD, individuales y por signo del
-SAM
+Impactos en pp y t en SA de eventos SAM-ENSO-IOD, individuales y por signo del
+SAM y categoria del IOD
 """
 ################################################################################
 dates_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/hgt_anoms/'
-era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/pp_t_anoms/'
+
 nc_date_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/' \
               'nc_composites_dates_no_ind_sst_anom/'
 ################################################################################
@@ -18,7 +18,7 @@ import numpy as np
 import cartopy.feature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import cartopy.crs as ccrs
-from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs, DMI2
+
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 import warnings
@@ -30,8 +30,8 @@ save = True
 climatology_neutro = True
 # sirve para comparar con los resultados de ENSO_IOD
 # sino va tomar la media de todos los años
-seasons = ['JJA', 'SON']
-mmonth = [7, 10]
+seasons = ['SON']
+mmonth = [10]
 
 if save:
     dpi = 300
@@ -56,10 +56,10 @@ def OpenObsDataSet(name, sa=True,
 
 def Plot(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
 
-    fig_size =(9, 3.5)
-    extent= [0, 359, -80, 20]
-    xticks = np.arange(0, 360, 30)
-    yticks = np.arange(-80, 20, 10)
+    fig_size = (5, 6)
+    extent= [270, 330, -60, 20]
+    xticks = np.arange(270, 330, 10)
+    yticks = np.arange(-60, 40, 20)
 
     comp_var = comp['var']
 
@@ -97,7 +97,7 @@ def Plot(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
 
 def Subplots(data_array, level, cmap, title, save, dpi, name_fig, out_dir):
 
-    extent= [0, 359, -80, 20]
+    extent= [270, 330, -60, 20]
     crs_latlon = ccrs.PlateCarree()
 
     time_values = data_array.time.values
@@ -106,9 +106,8 @@ def Subplots(data_array, level, cmap, title, save, dpi, name_fig, out_dir):
     # cantidad de filas necesarias
     num_rows = np.ceil(time_steps/num_cols).astype(int)
 
-    fig, axes = plt.subplots(
-        num_rows, num_cols, figsize=(20, 3*num_rows),
-        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)})
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(18, 6*num_rows),
+                             subplot_kw={'projection': crs_latlon })
 
     for i, (ax, time_val) in enumerate(zip(axes.flatten(), time_values)):
 
@@ -129,7 +128,7 @@ def Subplots(data_array, level, cmap, title, save, dpi, name_fig, out_dir):
     for i in range(time_steps, num_rows * num_cols):
         fig.delaxes(axes.flatten()[i])
 
-    pos = fig.add_axes([0.2, 0.05, 0.6, 0.03])
+    pos = fig.add_axes([0.2, 0.05, 0.6, 0.01])
     cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='horizontal')
     cb.ax.tick_params(labelsize=8)
 
@@ -145,7 +144,7 @@ def CreateDirectory(out_dir, s, v, sam_component):
     if not os.path.exists(out_dir + s):
         os.mkdir(out_dir + s)
 
-    sub_dir1 = out_dir + s + '/' + v
+    sub_dir1 = out_dir + s + '/' + v.split('_')[0]
     if not os.path.exists(sub_dir1):
         os.mkdir(sub_dir1)
 
@@ -161,16 +160,24 @@ cbar = colors.ListedColormap(['#9B1C00', '#B9391B', '#CD4838', '#E25E55',
 cbar.set_over('#641B00')
 cbar.set_under('#012A52')
 cbar.set_bad(color='white')
+
+cbar_pp = colors.ListedColormap(['#003C30', '#004C42', '#0C7169', '#79C8BC',
+                                 '#B4E2DB',
+                                 'white',
+                                 '#F1DFB3', '#DCBC75', '#995D13','#6A3D07',
+                                 '#543005'][::-1])
+cbar_pp.set_under('#3F2404')
+cbar_pp.set_over('#00221A')
+cbar_pp.set_bad(color='white')
 ################################################################################
 
-cases = ['dmi_un_pos', 'dmi_sim_pos', 'dmi_un_neg', 'dmi_sim_neg']
-variables = ['HGT200', 'HGT750']
-scale_comp = [-300, -250, -200, -150, -100, -50, -25,
-          0, 25, 50, 100, 150, 200, 250, 300]
+cases_dmi = ['dmi_un_pos', 'dmi_sim_pos', 'dmi_un_neg', 'dmi_sim_neg']
+cases_n34 = ['n34_un_pos', 'n34_sim_pos', 'n34_un_neg', 'n34_sim_neg']
 
-scale = [-400, -350, -300, -250, -200, -150, -100, -50,
-          0, 50, 100, 150, 200, 250, 300, 350, 400]
-cmap = cbar
+variables_tpp = ['ppgpcc_w_c_d_1', 'tcru_w_c_d_0.25']
+scales = [np.linspace(-45, 45, 13),# pp
+          np.linspace(-1, 1 ,17)]  # t
+cmap= [cbar_pp, cbar]
 # for test
 s = 'SON'
 c = 'dmi_un_neg'
@@ -178,77 +185,83 @@ v = 'ppgpcc_w_c_d_1'
 v_count = 0
 sam_component = 'sam'
 
-for s in seasons:
-    print(s)
+for cases in [cases_dmi, cases_n34]:
+    for s in seasons:
+        print(s)
 
-    # by cases ----------------------------------------------------------------#
-    for c_count, c in enumerate(cases):
-        print(c)
+        # by cases ----------------------------------------------------------------#
+        for c_count, c in enumerate(cases):
+            print(c)
 
-        #for sam_component in ['sam', 'ssam', 'asam']:
-        for sam_component in ['sam', 'asam']:
+            # for sam_component in ['sam', 'ssam', 'asam']:
+            for sam_component in ['sam', 'asam']:
 
+                # dataframe con las fechas, dmi y sam para cada iod case
+                data = pd.read_csv(
+                    dates_dir + c + '_vs_' + sam_component + '_' +
+                    s + '.txt', sep='\t', parse_dates=['time'])
 
-            # dataframe con las fechas, dmi y sam para cada iod case
-            data = pd.read_csv(dates_dir + c + '_vs_' + sam_component + '_' +
-                               s + '.txt', sep='\t', parse_dates=['time'])
+                # by variables ----------------------------------------------------#
+                for v_count, v in enumerate(variables_tpp):
+                    print(v)
 
-            # by variables ----------------------------------------------------#
-            for v_count, v in enumerate(variables):
-                print(v)
+                    variable = OpenObsDataSet(v + '_' + s)
 
-                variable = xr.open_dataset(era5_dir + v + '_' + s +
-                                           '_mer_d_w.nc')
+                    # carpetas para guardar cada cosa por separado
+                    CreateDirectory(out_dir, s, v, sam_component)
 
-                # carpetas para guardar cada cosa por separado
-                CreateDirectory(out_dir, s, v, sam_component)
+                    if climatology_neutro:
+                        aux = xr.open_dataset(
+                            nc_date_dir + '1920_2020' + '_' + s + '.nc')
+                        variable_mean = variable.sel(
+                            time=variable.time.dt.year.isin(aux.Neutral)).mean(
+                            'time')
+                    else:
+                        variable_mean = variable.mean('time')
 
-                if climatology_neutro:
-                    aux = xr.open_dataset(
-                        nc_date_dir + '1920_2020' + '_' + s + '.nc')
-                    variable_mean = variable.sel(
-                        time=variable.time.dt.year.isin(aux.Neutral)).mean(
-                        'time')
-                else:
-                    variable_mean = variable.mean('time')
+                    # Selección de IOD según el signo del SAM
+                    sam_pos = data.loc[data['sam'] > 0]
+                    sam_neg = data.loc[data['sam'] < 0]
 
-                # Selección de IOD según el signo del SAM
-                sam_pos = data.loc[data['sam'] > 0]
-                sam_neg = data.loc[data['sam'] < 0]
+                    # by sam sign -------------------------------------------------#
+                    for sam, sam_title in zip([sam_pos, sam_neg],
+                                              [sam_component + '>0',
+                                               sam_component + '<0']):
+                        print(sam_title)
+                        if len(sam) == 0:
+                            continue
 
-                # by sam sign -------------------------------------------------#
-                for sam, sam_title in zip([sam_pos, sam_neg],
-                                          [sam_component + '>0',
-                                           sam_component + '<0']):
-                    print(sam_title)
-                    if len(sam) == 0:
-                        continue
+                        years = sam.time.dt.year
+                        variable_selected = variable.sel(
+                            time=variable.time.dt.year.isin(years))
 
-                    years = sam.time.dt.year
-                    variable_selected = variable.sel(
-                        time=variable.time.dt.year.isin(years))
+                        # Comp e individual
+                        comp = variable_selected.mean('time') - variable_mean
+                        variable_selected = variable_selected - variable_mean
 
-                    # Comp e individual
-                    comp = variable_selected.mean('time') - variable_mean
-                    variable_selected = variable_selected - variable_mean
+                        print(
+                            'Plots ---------------------------------------------')
+                        print('Plot comp')
+                        title = 'Composite - ' + c + ' with ' + \
+                                sam_title.upper() + '\n' + v + ' - ' + s
+                        name_fig = v + '_comp_' + c + '_w_' + sam_title \
+                                   + '_' + s
+                        Plot(comp, scales[v_count], cmap[v_count], title,
+                             name_fig,
+                             dpi,
+                             save, out_dir + s + '/' +
+                             v.split('_')[0] + '/' + sam_component + '/')
 
-                    print('Plots ---------------------------------------------')
-                    print('Plot comp')
-                    title = 'Composite - ' + c + ' with ' + sam_title.upper() +\
-                            '\n' + v + ' - ' + s
-                    name_fig = v + '_comp_' + c + '_w_' + sam_title + '_' + s
-                    Plot(comp, scale_comp, cmap, title, name_fig,
-                         dpi,
-                         save, out_dir + s + '/' +
-                         v + '/' + sam_component + '/')
+                        print('Multiple individual plots...')
+                        title = 'Events: ' + c + ' with ' + \
+                                sam_title.upper() + ' - ' + v + ' - ' + s
+                        name_fig = v + '_Events_' + c + '_w_' + sam_title +\
+                                   '_' + s
+                        Subplots(variable_selected, scales[v_count],
+                                 cmap[v_count],
+                                 title, save, dpi, name_fig, out_dir + s + '/' +
+                                 v.split('_')[0] + '/' + sam_component + '/')
 
-                    print('Multiple individual plots...')
-                    title = 'Events: ' + c + ' with ' + sam_title.upper() +\
-                            ' - ' + v +' - ' + s
-                    name_fig = v + '_Events_' + c + '_w_' + sam_title + '_' + s
-                    Subplots(variable_selected, scale, cmap,
-                             title, save, dpi, name_fig, out_dir + s + '/' +
-                         v + '/' + sam_component + '/')
 
 #------------------------------------------------------------------------------#
 print('#######################################################################')
