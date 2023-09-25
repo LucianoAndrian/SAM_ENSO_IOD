@@ -53,9 +53,9 @@ n34, n34_2, n34_3 = Nino34CPC(aux, start=1920, end=2020)
 del n34_2, dmi_2 # no importan
 
 sam = sam.rolling(time=3, center=True).mean()
-sam = sam.sel(time=sam.time.dt.month.isin(10))[1:-1]
-dmi = SameDateAs(dmi_3, sam)
-n34 = SameDateAs(n34, sam)
+sam = NormSD(sam.sel(time=sam.time.dt.month.isin(10))[1:-1])
+dmi = NormSD(SameDateAs(dmi_3, sam))
+n34 = NormSD(SameDateAs(n34, sam))
 
 #------------------------------------------------------------------------------#
 era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
@@ -64,20 +64,28 @@ import xarray as xr
 import numpy as np
 import statsmodels.api as sm
 
+aux_hgt = hgt.sel(lon=slice(270, 330), lat=slice(-20, -90))
+
 def regression_func(target_values, *predictor_values):
     predictors_list = list(predictor_values)
-    predictors_list.append(np.ones_like(target_values))
-    predictors_with_const = np.column_stack(predictors_list)
-    model = sm.OLS(target_values, predictors_with_const)
+    predictors = np.column_stack(predictors_list)
+    model = sm.OLS(target_values, predictors)
     results = model.fit()
-    return results.params[:-1]
+    return results.params, results.pvalues
 
-coef_dataset = xr.apply_ufunc(
+def compute_regression(variable, *index):
+    input_core_dims = [['time']] + [['time']] * len(index)
+
+    coef_dataset, pvalues = xr.apply_ufunc(
         regression_func,
-        hgt, dmi, sam,
-        input_core_dims=[['time'], ['time'], ['time']],
-        output_core_dims=[['coefficients']],
-        output_dtypes=[float],
+        variable, *index,
+        input_core_dims=input_core_dims,
+        output_core_dims=[['coefficients'], ['pvalues']],
+        output_dtypes=[float, float],
         vectorize=True
     )
+
+    return coef_dataset, pvalues
+
+coef_dataset, pvalues = compute_regression(hgt, n34, dmi, sam)
 ################################################################################
