@@ -76,40 +76,78 @@ n34 = NormSD(SameDateAs(n34, sam))
 #------------------------------------------------------------------------------#
 hgt = SameDateAs(xr.open_dataset(era5_dir + 'HGT200_SON_mer_d_w.nc'), sam)
 ################################################################################
-print('Correlaciones ---------------------------------------------------------')
-r_dmi_n34, pv_dmi_n34 = pearsonr(dmi, n34)
-r_dmi_sam, pv_dmi_sam = pearsonr(dmi, sam)
-r_sam_n34, pv_sam_n34 = pearsonr(sam, n34)
 
-print('dmi vs n34 r = ' + str(np.round(r_dmi_n34, 2)) +
-      ', p-value = ' + str(np.round(pv_dmi_n34, 3)))
-print('dmi vs sam r = ' + str(np.round(r_dmi_sam, 2)) +
-      ', p-value = ' + str(np.round(pv_dmi_sam, 3)))
-print('sam vs n34 r = ' + str(np.round(r_sam_n34, 2)) +
-      ', p-value = ' + str(np.round(pv_sam_n34, 3)))
+periodos = [[1940, 2020], [1970, 1979], [1980, 1989], [1990, 1999],
+            [2000, 2009], [2010, 2020]]
 
-print('-----------------------------------------------------------------------')
-print('Correlaciones sin el 3er indice ---------------------------------------')
-n34_wo_dmi, dmi_wo_n34 = LinearReg1_D(dmi, n34)
-sam_wo_dmi, dmi_wo_sam = LinearReg1_D(dmi, sam)
-sam_wo_n34, n34_wo_sam = LinearReg1_D(n34, sam)
+for p in periodos:
 
-r_dmi_n34_wosam, pv_dmi_n34_wosam = pearsonr(dmi_wo_sam, n34_wo_sam)
-r_dmi_sam_won34, pv_dmi_sam_won34 = pearsonr(dmi_wo_n34, sam_wo_n34)
-r_sam_n34_wodmi, pv_sam_n34_wodmi = pearsonr(sam_wo_dmi, n34_wo_dmi)
+    print('###################################################################')
+    print('Period: '+ str(p[0]) + ' - ' + str(p[1]))
+    print('###################################################################')
 
-print('dmi vs n34 sin sam r = ' + str(np.round(r_dmi_n34_wosam, 2)) +
-      ', p-value = ' + str(np.round(pv_dmi_n34_wosam, 3)))
-print('dmi vs sam sin n34 r = ' + str(np.round(r_dmi_sam_won34, 2)) +
-      ', p-value = ' + str(np.round(pv_dmi_sam_won34, 3)))
-print('sam vs n34 sin dmi r = ' + str(np.round(r_sam_n34_wodmi, 2)) +
-      ', p-value = ' + str(np.round(pv_sam_n34_wodmi, 3)))
+    aux_sam = sam.sel(time=slice(str(p[0])+'-10-01', str(p[1])+'-10-01'))
+    aux_n34 = SameDateAs(n34, aux_sam)
+    aux_dmi = SameDateAs(dmi, aux_sam)
 
-print('-----------------------------------------------------------------------')
-predictor_values = [sam]
-reg = sm.OLS(dmi.values, np.column_stack(list(predictor_values))).fit()
-print(reg.params)
-plt.plot(sam, label='sam')
-plt.plot(reg.predict(), label='predict')
-plt.legend()
-plt.show()
+    print('Correlaciones -----------------------------------------------------')
+    r_dmi_n34, pv_dmi_n34 = pearsonr(aux_dmi, aux_n34)
+    r_dmi_sam, pv_dmi_sam = pearsonr(aux_dmi, aux_sam)
+    r_sam_n34, pv_sam_n34 = pearsonr(aux_sam, aux_n34)
+
+    print('dmi vs n34 r = ' + str(np.round(r_dmi_n34, 2)) +
+          ', p-value = ' + str(np.round(pv_dmi_n34, 3)))
+    print('dmi vs sam r = ' + str(np.round(r_dmi_sam, 2)) +
+          ', p-value = ' + str(np.round(pv_dmi_sam, 3)))
+    print('sam vs n34 r = ' + str(np.round(r_sam_n34, 2)) +
+          ', p-value = ' + str(np.round(pv_sam_n34, 3)))
+
+    print('-------------------------------------------------------------------')
+    print('Correlaciones sin el 3er indice------------------------------------')
+    n34_wo_dmi, dmi_wo_n34 = LinearReg1_D(aux_dmi, aux_n34)
+    sam_wo_dmi, dmi_wo_sam = LinearReg1_D(aux_dmi, aux_sam)
+    sam_wo_n34, n34_wo_sam = LinearReg1_D(aux_n34, aux_sam)
+
+    r_dmi_n34_wosam, pv_dmi_n34_wosam = pearsonr(dmi_wo_sam, n34_wo_sam)
+    r_dmi_sam_won34, pv_dmi_sam_won34 = pearsonr(dmi_wo_n34, sam_wo_n34)
+    r_sam_n34_wodmi, pv_sam_n34_wodmi = pearsonr(sam_wo_dmi, n34_wo_dmi)
+
+    print('dmi vs n34 sin sam r = ' + str(np.round(r_dmi_n34_wosam, 2)) +
+          ', p-value = ' + str(np.round(pv_dmi_n34_wosam, 3)))
+    print('dmi vs sam sin n34 r = ' + str(np.round(r_dmi_sam_won34, 2)) +
+          ', p-value = ' + str(np.round(pv_dmi_sam_won34, 3)))
+    print('sam vs n34 sin dmi r = ' + str(np.round(r_sam_n34_wodmi, 2)) +
+          ', p-value = ' + str(np.round(pv_sam_n34_wodmi, 3)))
+
+    print(' MLR --------------------------------------------------------------')
+    predictor_values = [aux_n34, aux_dmi]
+    reg = sm.OLS(aux_sam.values, np.column_stack(list(predictor_values))).fit()
+    print('SAM = ' + str(np.round(reg.params[0], 3)) + '* N34 ' +
+          str(np.round(reg.params[1], 3)) + '* DMI')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
