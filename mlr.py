@@ -21,7 +21,7 @@ import warnings
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 ################################################################################
-save = False
+save = True
 CreateDirectory(out_dir, dir_results)
 if save:
     dpi = 300
@@ -95,36 +95,54 @@ aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34, n34_2, n34_3 = Nino34CPC(aux, start=1920, end=2020)
 del n34_2, dmi_2 # no importan
 
-sam = NormSD(sam.sel(time=sam.time.dt.month.isin(10))[1:-1])
-dmi = NormSD(SameDateAs(dmi_3, sam))
-n34 = NormSD(SameDateAs(n34, sam))
+sam_or = NormSD(sam.sel(time=sam.time.dt.month.isin(10))[1:-1])
+dmi_or = NormSD(SameDateAs(dmi_3, sam))
+n34_or = NormSD(SameDateAs(n34, sam))
 #------------------------------------------------------------------------------#
-hgt = SameDateAs(xr.open_dataset(era5_dir + 'HGT200_SON_mer_d_w.nc'), sam)
+hgt_or = xr.open_dataset(era5_dir + 'HGT200_SON_mer_d_w.nc')
 ################################################################################
-print('Regression ------------------------------------------------------------')
-print('Solo N34--------------------')
-n34_reg, n34_reg_pv = compute_regression(hgt, n34)
-Plot(n34_reg, n34_reg_pv, 0.1, 'z200 - N34', 'z200_N34_full', dpi, save)
+periodos = [[1940, 2020], [1970, 1989], [1990, 2009], [2010, 2020],
+            [1958, 1978], [1983, 2004]]
 
-print('Solo DMI--------------------')
-dmi_reg, dmi_reg_pv = compute_regression(hgt, dmi)
-Plot(dmi_reg, dmi_reg_pv, 0.1, 'z200 - DMI', 'z200_DMI_full', dpi, save)
+for p in periodos:
+    print('###################################################################')
+    print('Period: '+ str(p[0]) + ' - ' + str(p[1]))
+    print('###################################################################')
 
-print('Solo SAM--------------------')
-sam_reg, sam_reg_pv = compute_regression(hgt, sam)
-Plot(sam_reg, sam_reg_pv, 0.1, 'z200 - SAM', 'z200_SAM_full', dpi, save)
+    sam = sam_or.sel(time=slice(str(p[0])+'-10-01', str(p[1])+'-10-01'))
+    n34 = SameDateAs(n34_or, sam)
+    dmi = SameDateAs(dmi_or, sam)
+    hgt = SameDateAs(hgt_or, sam)
 
-print('MLR ------------------------')
-mlr_reg, mlr_reg_pv = compute_regression(hgt, n34, dmi, sam)
-Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - N34|dmi_sam', 'z200_N34_wo_dmi_sam',
-     dpi, save, i=0)
-Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - DMI|n34_sam', 'z200_DMI_wo_n34_sam',
-     dpi, save, i=1)
-Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - SAM|dmi_n34', 'z200_SAM_wo_dmi_n34',
-     dpi, save, i=2)
-print('-----------------------------------------------------------------------')
-print('done')
-print('-----------------------------------------------------------------------')
+    print('Regression --------------------------------------------------------')
+    print('Solo N34--------------------')
+    n34_reg, n34_reg_pv = compute_regression(hgt, n34)
+    Plot(n34_reg, n34_reg_pv, 0.1, 'z200 - N34 - ' + str(p), 
+         'z200_N34_full_' + str(p[0]) + '-' + str(p[1]), dpi, save)
+
+    print('Solo DMI--------------------')
+    dmi_reg, dmi_reg_pv = compute_regression(hgt, dmi)
+    Plot(dmi_reg, dmi_reg_pv, 0.1, 'z200 - DMI - ' + str(p), 
+         'z200_DMI_full_' + str(p[0]) + '-' + str(p[1]), dpi, save)
+
+    print('Solo SAM--------------------')
+    sam_reg, sam_reg_pv = compute_regression(hgt, sam)
+    Plot(sam_reg, sam_reg_pv, 0.1, 'z200 - SAM - ' + str(p), 
+         'z200_SAM_full_' + str(p[0]) + '-' + str(p[1]), dpi, save)
+
+    print('MLR ------------------------')
+    mlr_reg, mlr_reg_pv = compute_regression(hgt, n34, dmi, sam)
+    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - N34|dmi_sam - ' + str(p),
+         'z200_N34_wo_dmi_sam_' + str(p[0]) + '-' + str(p[1]), dpi, save, i=0)
+    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - DMI|n34_sam - ' + str(p),
+         'z200_DMI_wo_n34_sam_' + str(p[0]) + '-' + str(p[1]), dpi, save, i=1)
+    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - SAM|dmi_n34 - ' + str(p),
+         'z200_SAM_wo_dmi_n34_' + str(p[0]) + '-' + str(p[1]), dpi, save, i=2)
+
+    print('-------------------------------------------------------------------')
+    print('done')
+    print('-------------------------------------------------------------------')
+
 
 
 

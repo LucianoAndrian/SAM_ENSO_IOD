@@ -58,6 +58,9 @@ def compute_regression(variable, *index):
         vectorize=True
     )
     return coef_dataset, pvalues
+
+def Count(index):
+    return len(np.where(index>0)[0]), len(np.where(index<0)[0])
 ################################################################################
 # indices
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
@@ -78,8 +81,9 @@ hgt = SameDateAs(xr.open_dataset(era5_dir + 'HGT200_SON_mer_d_w.nc'), sam)
 ################################################################################
 
 periodos = [[1940, 2020], [1970, 1979], [1980, 1989], [1990, 1999],
-            [2000, 2009], [2010, 2020]]
+            [2000, 2009], [2010, 2020], [1958, 1978], [1983, 2004]]
 
+#periodos = [[1958, 1978], [1983, 2004]]
 for p in periodos:
 
     print('###################################################################')
@@ -89,6 +93,22 @@ for p in periodos:
     aux_sam = sam.sel(time=slice(str(p[0])+'-10-01', str(p[1])+'-10-01'))
     aux_n34 = SameDateAs(n34, aux_sam)
     aux_dmi = SameDateAs(dmi, aux_sam)
+
+    plt.plot(aux_sam, label = 'sam')
+    plt.plot(aux_n34, label= 'n34', color='firebrick')
+    plt.plot(aux_dmi, label='dmi', color='forestgreen')
+    plt.legend()
+    plt.title(str(p))
+    plt.show()
+
+    sam_pos, sam_neg = Count(aux_sam)
+    n34_pos, n34_neg = Count(aux_n34)
+    dmi_pos, dmi_neg = Count(aux_dmi)
+
+    print('Distribución del índice -------------------------------------------')
+    print('SAM > 0: ' + str(sam_pos) + ' | SAM <0: ' + str(sam_neg))
+    print('N34 > 0: ' + str(n34_pos) + ' | N34 <0: ' + str(n34_neg))
+    print('DMI > 0: ' + str(dmi_pos) + ' | DMI <0: ' + str(dmi_neg))
 
     print('Correlaciones -----------------------------------------------------')
     r_dmi_n34, pv_dmi_n34 = pearsonr(aux_dmi, aux_n34)
