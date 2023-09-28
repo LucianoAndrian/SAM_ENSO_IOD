@@ -5,8 +5,7 @@ Scatter IOD-SAM identificando los IOD según su ocurrencia con el ENSO
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
-out_dir_dataframe = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-dir_results = 'mlr'
+out_dir_dataframe = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/mlr/'
 ################################################################################
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -22,7 +21,6 @@ from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 ################################################################################
 save = True
-CreateDirectory(out_dir, dir_results)
 if save:
     dpi = 300
 else:
