@@ -178,18 +178,18 @@ def CorrReg(periodos, sam, dmi, n34, mm, plot, *args):
                save)
 
         PlotLt(n34_sam_corr, n34_sam_corr_wo_dmi, 'DMI',
-               'Correlación Niño3.4 vs SAM por decadas' + '\n' + index_lagged +
+               'Correlación Niño3.4 vs asam por decadas' + '\n' + index_lagged +
                'Lag = ' + str(mm_lag),
-               'lt_r_n34_sam_lag' + index_lagged + str(mm_lag), dpi,
+               'lt_r_n34_asam_lag' + index_lagged + str(mm_lag), dpi,
                save)
 
         PlotLt(sam_dmi_corr, sam_dmi_corr_wo_n34, 'Niño 3.4',
-               'Correlación SAM vs DMI por decadas' + '\n' + index_lagged +
+               'Correlación asam vs DMI por decadas' + '\n' + index_lagged +
                'Lag = ' + str(mm_lag),
-               'lt_r_sam_dmi_lag' + index_lagged + str(mm_lag), dpi, save)
+               'lt_r_asam_dmi_lag' + index_lagged + str(mm_lag), dpi, save)
 ################################################################################
 # indices
-sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
+sam = xr.open_dataset(sam_dir + 'asam_700.nc')['mean_estimate']
 sam = sam.rolling(time=3, center=True).mean()
 
 dmi, dmi_2, dmi_3 = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
@@ -206,36 +206,7 @@ periodos = [[1940, 2020], [1958, 1978], [1983, 2004], [1970, 1989],
 periodos_dec = [[1940, 1949], [1950, 1959], [1960, 1969], [1970, 1979],
                 [1980, 1989], [1990, 1999], [2000, 2009], [2010, 2020]]
 
-
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'sam_-1')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'sam_-2')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'sam_-3')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'sam_1')
 CorrReg(periodos_dec, sam, dmi, n34, 10, True)
-
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'dmi_-1')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'dmi_-2')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'dmi_-3')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'dmi_1')
-
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'n34_-1')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'n34_-2')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'n34_-3')
-CorrReg(periodos_dec, sam, dmi, n34, 10, True, 'n34_1')
-
-
-CorrReg(periodos, sam, dmi, n34, 10, False, 'sam_-1')
-CorrReg(periodos, sam, dmi, n34, 10, False, 'sam_-2')
-CorrReg(periodos, sam, dmi, n34, 10, False, 'sam_1')
-
-CorrReg(periodos, sam, dmi, n34, 10, False, 'dmi_-1')
-CorrReg(periodos, sam, dmi, n34, 10, False, 'dmi_-2')
-CorrReg(periodos, sam, dmi, n34, 10, False, 'dmi_1')
-
-CorrReg(periodos, sam, dmi, n34, 10, False, 'n34_-1')
-CorrReg(periodos, sam, dmi, n34, 10, False, 'n34_-2')
-CorrReg(periodos, sam, dmi, n34, 10, False, 'n34_1')
-
 print('-----------------------------------------------------------------------')
 print('done')
 print('-----------------------------------------------------------------------')

@@ -3,9 +3,8 @@ Scatter IOD-SAM identificando los IOD según su ocurrencia con el ENSO
 """
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/mlr/'
 era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
-out_dir_dataframe = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/mlr/'
 ################################################################################
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -93,14 +92,15 @@ aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34, n34_2, n34_3 = Nino34CPC(aux, start=1920, end=2020)
 del n34_2, dmi_2 # no importan
 
-sam_or = NormSD(sam.sel(time=sam.time.dt.month.isin(10))[1:-1])
+sam_or = NormSD(sam.sel(time=sam.time.dt.month.isin(10)))
 dmi_or = NormSD(SameDateAs(dmi_3, sam))
 n34_or = NormSD(SameDateAs(n34, sam))
 #------------------------------------------------------------------------------#
 hgt_or = xr.open_dataset(era5_dir + 'HGT200_SON_mer_d_w.nc')
 ################################################################################
-periodos = [[1940, 2020], [1970, 1989], [1990, 2009], [2010, 2020],
-            [1958, 1978], [1983, 2004]]
+periodos = [[1940, 2020],[1958, 1978], [1983, 2004], [1970, 1989], [1990, 2009],
+            [1990,2020]]
+periodos = [[1990,2020]]
 
 for p in periodos:
     print('###################################################################')
@@ -115,7 +115,7 @@ for p in periodos:
     print('Regression --------------------------------------------------------')
     print('Solo N34--------------------')
     n34_reg, n34_reg_pv = compute_regression(hgt, n34)
-    Plot(n34_reg, n34_reg_pv, 0.1, 'z200 - N34 - ' + str(p), 
+    Plot(n34_reg, n34_reg_pv, 0.1, 'z200 - N34 - ' + str(p),
          'z200_N34_full_' + str(p[0]) + '-' + str(p[1]), dpi, save)
 
     print('Solo DMI--------------------')
@@ -125,17 +125,20 @@ for p in periodos:
 
     print('Solo SAM--------------------')
     sam_reg, sam_reg_pv = compute_regression(hgt, sam)
-    Plot(sam_reg, sam_reg_pv, 0.1, 'z200 - SAM - ' + str(p), 
+    Plot(sam_reg, sam_reg_pv, 0.1, 'z200 - ASAM - ' + str(p),
          'z200_SAM_full_' + str(p[0]) + '-' + str(p[1]), dpi, save)
 
     print('MLR ------------------------')
     mlr_reg, mlr_reg_pv = compute_regression(hgt, n34, dmi, sam)
-    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - N34|dmi_sam - ' + str(p),
-         'z200_N34_wo_dmi_sam_' + str(p[0]) + '-' + str(p[1]), dpi, save, i=0)
-    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - DMI|n34_sam - ' + str(p),
-         'z200_DMI_wo_n34_sam_' + str(p[0]) + '-' + str(p[1]), dpi, save, i=1)
-    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - SAM|dmi_n34 - ' + str(p),
-         'z200_SAM_wo_dmi_n34_' + str(p[0]) + '-' + str(p[1]), dpi, save, i=2)
+    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - N34|dmi_asam - ' + str(p),
+         'z200_N34_wo_dmi_sam_' + str(p[0]) + '-' + str(p[1]), dpi, save,
+         i=0)
+    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - DMI|n34_asam - ' + str(p),
+         'z200_DMI_wo_n34_sam_' + str(p[0]) + '-' + str(p[1]), dpi, save,
+         i=1)
+    Plot(mlr_reg, mlr_reg_pv, 0.1, 'z200 - ASAM|dmi_n34 - ' + str(p),
+         'z200_SAM_wo_dmi_n34_' + str(p[0]) + '-' + str(p[1]), dpi, save,
+         i=2)
 
     print('-------------------------------------------------------------------')
     print('done')
