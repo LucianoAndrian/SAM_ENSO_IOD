@@ -1646,7 +1646,7 @@ def PlotReg(data, data_cor, levels=np.linspace(-100,100,2), cmap='RdBu_r'
     if sig:
         if sig_point:
             colors_l = [color_sig, color_sig]
-            cs = ax.contourf(data_cor.lon, data_cor.lat, data_cor.where(np.abs(data_cor) > np.abs(r_crit)),
+            cs = ax.contourf(data_cor.lon, data_cor.lat, data_cor.where(np.abs(data_cor) < np.abs(r_crit))['var'][:,:,0],
                              transform=crs_latlon, colors='none', hatches=["...", "..."],
                              extend='lower')
             for i, collection in enumerate(cs.collections):
@@ -1702,7 +1702,7 @@ def PlotReg(data, data_cor, levels=np.linspace(-100,100,2), cmap='RdBu_r'
     cb.ax.tick_params(labelsize=8)
     ax.add_feature(cartopy.feature.LAND, facecolor='white', edgecolor=color_map)
     #ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.5)
-    # ax.add_feature(cartopy.feature.BORDERS, linestyle='-', alpha=.5)
+
     if SA:
         ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.5, zorder=17)
         #ax.add_feature(cartopy.feature.COASTLINE)
@@ -1714,6 +1714,7 @@ def PlotReg(data, data_cor, levels=np.linspace(-100,100,2), cmap='RdBu_r'
 
         ax2 = ax.twinx()
         ax2.set_yticks([])
+        ax.add_feature(cartopy.feature.BORDERS, linestyle='-', alpha=.5)
         #ax2.set_xticks([])
 
     else:
