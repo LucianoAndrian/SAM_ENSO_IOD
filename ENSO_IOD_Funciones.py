@@ -1646,7 +1646,7 @@ def PlotReg(data, data_cor, levels=np.linspace(-100,100,2), cmap='RdBu_r'
     if sig:
         if sig_point:
             colors_l = [color_sig, color_sig]
-            cs = ax.contourf(data_cor.lon, data_cor.lat, data_cor.where(np.abs(data_cor) < np.abs(r_crit))['var'][:,:,0],
+            cs = ax.contourf(data_cor.lon, data_cor.lat, data_cor.where(np.abs(data_cor) < np.abs(r_crit))['var'],
                              transform=crs_latlon, colors='none', hatches=["...", "..."],
                              extend='lower')
             for i, collection in enumerate(cs.collections):

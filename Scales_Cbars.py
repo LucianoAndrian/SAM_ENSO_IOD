@@ -59,6 +59,6 @@ def get_scales(VarName):
 
 ################################################################################
 if __name__ == "__main__":
-    cbar_hgt, cbar_pp, cbar_t = get_cbars(VarName)
-    scale_reg_hgt, scale_reg_pp, scale_reg_t = get_scales(VarName)
+    cbar = get_cbars(VarName)
+    scale = get_scales(VarName)
 ################################################################################

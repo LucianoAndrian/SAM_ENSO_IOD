@@ -80,7 +80,7 @@ def Plot(data, data_pv, pvalue, title, name_fig, dpi, save, i=0,
     scale = Scales_Cbars.get_scales(VarName)
 
     PlotReg(data=aux,
-            data_cor=data_pv, SA=SA_map,
+            data_cor=data_pv.sel(pvalues=i), SA=SA_map,
             levels=scale, sig=sig,
             two_variables=two_variables, data2=aux2, sig2=False,
             levels2=scale, title=title, name_fig=name_fig,
@@ -127,8 +127,10 @@ aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 
 ################################################################################
-periodos = [[1940, 2020],[1958, 1978], [1983, 2004], [1970, 1989], [1990, 2009],
-            [1990,2020]]
+# periodos = [[1940, 2020],[1958, 1978], [1983, 2004], [1970, 1989], [1990, 2009],
+#             [1990,2020]]
+periodos = [[1940, 2020],[1970, 1989], [1990, 2009], [1990,2020]]
+
 for VarName in ['hgt200', 'pp', 't']:
     for mm, s_name in zip([7, 10], ['JJA', 'SON']):
         for p in periodos:
@@ -163,31 +165,31 @@ for VarName in ['hgt200', 'pp', 't']:
             Plot(dmi_reg, dmi_reg_pv, 0.1,
                  VarName +' - DMI - ' + s_name + ' - ' + str(p),
                  VarName + '_DMI_full_' + s_name + '_' + str(p[0]) + '-'
-                 + str(p[1]), dpi, save)
+                 + str(p[1]), dpi, save, 0, VarName)
 
             print('Solo SAM--------------------')
             sam_reg, sam_reg_pv = compute_regression(var_p, sam_p)
             Plot(sam_reg, sam_reg_pv, 0.1,
                  VarName +' - SAM - ' + s_name + ' - ' + str(p),
                  VarName + '_SAM_full_' + s_name + '_' + str(p[0]) + '-' +
-                 str(p[1]), dpi, save)
+                 str(p[1]), dpi, save, 0, VarName)
 
             print('MLR ------------------------')
             mlr_reg, mlr_reg_pv = compute_regression(var_p, n34_p, dmi_p, sam_p)
             Plot(mlr_reg, mlr_reg_pv, 0.1,
                  VarName +' - N34|dmi_sam - ' + s_name + ' - ' + str(p),
                  VarName + '_N34_wo_dmi_sam_' + s_name + '_' + str(p[0]) + '-' +
-                 str(p[1]), dpi, save, i=0)
+                 str(p[1]), dpi, save, 0, VarName)
 
             Plot(mlr_reg, mlr_reg_pv, 0.1,
                  VarName +' DMI|n34_sam - ' + s_name + ' - ' + str(p),
                  VarName + '_DMI_wo_n34_sam_' + s_name + '_' + str(p[0]) + '-' +
-                 str(p[1]), dpi, save, i=1)
+                 str(p[1]), dpi, save, 1, VarName)
 
             Plot(mlr_reg, mlr_reg_pv, 0.1,
                  VarName +' SAM|dmi_n34 - ' + s_name + ' - ' + str(p),
                  VarName + '_SAM_wo_dmi_n34_' + s_name + '_' + str(p[0]) + '-' +
-                 str(p[1]), dpi, save, i=2)
+                 str(p[1]), dpi, save, 2, VarName)
 
             print('-----------------------------------------------------------')
             print('done')
