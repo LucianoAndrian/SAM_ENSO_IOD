@@ -132,8 +132,7 @@ data = data.sel(lat=slice(-90, -20), P=200)
 data = data.drop('P')
 #data = data.drop('Z')
 
-# ESTO AHORA NO, SAM mensual luego la media mensual.
-#media movil de 3 meses para separar en estaciones
+# test con SEASONS
 #data = data.rolling(time=3, center=True).mean()
 
 # 1982-1998, 1999-2011
@@ -168,20 +167,20 @@ data = xr.decode_cf(fix_calendar(data)) # corrigiendo fechas
 data = data.sel(lat=slice(-90, -20), P=200)
 data = data.drop('P')
 data = data.drop('Z')
-
-#media movil de 3 meses para separar en estaciones
+# test
 #data = data.rolling(time=3, center=True).mean()
 
-#- Anomalias detrend por seasons --------------------------------------------------------------------------------------#
-#----------------------------------------------------------------------------------------------------------------------#
+
+#- Anomalias detrend por seasons ------------------------------------------- --#
+#------------------------------------------------------------------------------#
 realtime_detrend = MonthlyAnom_Detrend_RealTime(data, clim_99_11)
 
 
 hgt_f = xr.concat([hindcast_detrend, realtime_detrend], dim='time')
 
-# save ----------------------------------------------------------------------------------------------------------------#
+# save ------------------------------------------------------------------------#
 # jja_f.to_netcdf(out_dir + 'hgt_jja.nc')
 # jas_f.to_netcdf(out_dir + 'hgt_jas.nc')
 # aso_f.to_netcdf(out_dir + 'hgt_aso.nc')
 hgt_f.to_netcdf(out_dir + 'hgt_mon_anom_d.nc')
-########################################################################################################################
+################################################################################

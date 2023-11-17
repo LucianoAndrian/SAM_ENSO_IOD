@@ -87,7 +87,9 @@ weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom.lat))))
 hgt_anom = hgt_anom * weights
 
 hgt_anom = hgt_anom.sel(lat=slice(None, -20))
-#hgt_anom = Detrend(hgt_anom, 'time')
+# test eof seaons
+hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
+hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin(10))
 
 # ---------------------------------------------------------------------------- #
 solver = Eof(xr.DataArray(hgt_anom['var']))
