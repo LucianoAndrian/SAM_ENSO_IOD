@@ -72,7 +72,7 @@ def plot_stereo(dataarray, variance, n):
 
     plt.show()
 ################################################################################
-hgt = xr.open_dataset(ruta + 'ERA5_HGT750_40-20.nc')
+hgt = xr.open_dataset(ruta + 'ERA5_HGT200_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
 # Interp --------------------------------------------------------------------- #
 hgt = hgt.sel(lat=slice(-20, -90))

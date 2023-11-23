@@ -2,21 +2,25 @@
 TEST
 Calculo SAM en CFSv2
 """
+save = True
 # ---------------------------------------------------------------------------- #
 path = '/pikachu/datos/luciano.andrian/cases_fields/'
-# ---------------------------------------------------------------------------- #
-import xarray as xr
-from eofs.xarray import Eof
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
 
+if save:
+    dpi=300
+else:
+    dpi=100
+# ---------------------------------------------------------------------------- #
+from eofs.xarray import Eof
 import xarray as xr
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.path as mpath
 
-def plot_stereo(dataarray, variance, n):
+def plot_stereo(dataarray, variance, n, lead, save, dpi, aux_name):
     import Scales_Cbars
     cbar = Scales_Cbars.get_cbars('hgt200')
     scale = Scales_Cbars.get_scales('hgt200')
@@ -61,25 +65,98 @@ def plot_stereo(dataarray, variance, n):
     ax.set_boundary(circle_path)
     ax.set_frame_on(False)
     plt.draw()
-    plt.title('EOF '+ str(n) +' - ' + str(variance[n-1]) + '%')
+    plt.title('EOF '+ str(n) + ' - ' + str(variance[n-1]) + '%' + ' Lead: ' +
+              str(lead))
+    name_fig = aux_name + 'z200_EOF_' + str(n) + '_Lead_' + str(l)
+    if save:
+        print('save: ' + out_dir + name_fig + '.jpg')
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
 
-    plt.show()
+    else:
+        plt.show()
+
 # ---------------------------------------------------------------------------- #
 hgt = xr.open_dataset(path + 'hgt_mon_anom_d.nc')
-
-hgt = hgt.sel(time=hgt.time.dt.month.isin(10))
 weights = np.sqrt(np.abs(np.cos(np.radians(hgt.lat))))
-hgt = hgt * weights
-#hgt = hgt.compute()
-aux_hgt = hgt.rename({'time':'time2'})
-hgt_st = aux_hgt.stack(time=('r', 'time2'))
-solver = Eof(xr.DataArray(hgt['hgt']))
-eof = solver.eofsAsCovariance(neofs=3)
-pcs = solver.pcs()
 
-var_per = np.around(solver.varianceFraction(neigs=3).values*100,1)
-for n in [0,1,2]:
-    aux = eof[n]
-    plot_stereo(aux.mean('r'), var_per, n+1)
+# por leads ------------------------------------------------------------------ #
+for l in [0, 1,2,3]:
+    print('L:' + str(l))
+    # Todos las runs --------------------------------------------------------- #
 
-sam_test = -1*pcs[:,0]/pcs[:,0].std()
+    aux = hgt.sel(time=hgt['L']==l) * weights #.mean('r')
+
+    # r y time a a una misma variable para Eof
+    aux_st = aux.rename({'time': 'time2'})
+    aux_st = aux_st.stack(time=('r', 'time2'))
+    aux_st = aux_st.transpose('time', 'lat', 'lon')
+
+    # eof ------------------------------------#
+    try:
+        solver = Eof(aux_st['hgt'])
+
+    except ValueError as ve:
+        if str(ve) == 'all input data is missing':
+            print('Lead ' + str(l) + ' con campos faltantes')
+            aux_st = aux_st.where(~np.isnan(aux_st), drop=True)
+            solver = Eof(aux_st['hgt'])
+
+    eof_L_r = solver.eofsAsCovariance(neofs=3)
+    pcs = solver.pcs()
+
+    # SAM index -------------------------------#
+    sam_L_r = -1 * pcs[:, 0] / pcs[:, 0].std()
+    sam_L_r = sam_L_r.unstack('time')
+
+    # Plot Eof
+    var_per = np.around(solver.varianceFraction(neigs=3).values*100,1)
+    for n in [0,1,2]:
+        plot_stereo(eof_L_r[n], var_per, n+1, l, save, dpi, 'mon_r_')
+
+    print('Done EOF r')
+    del aux_st
+    del solver
+
+    # Media del ensamble ------------------------------------------------------#
+    aux = aux.mean('r')
+
+    # eof ------------------------------------#
+    solver = Eof(xr.DataArray(aux['hgt']))
+    eof_L_em = solver.eofsAsCovariance(neofs=3)
+    pcs = solver.pcs()
+
+    # SAM index -------------------------------#
+    sam_L_em = -1 * pcs[:, 0] / pcs[:, 0].std()
+
+    # Plot Eof
+    var_per = np.around(solver.varianceFraction(neigs=3).values*100,1)
+    for n in [0,1,2]:
+        plot_stereo(eof_L_em[n], var_per, n+1, l, save, dpi, 'mon_em_')
+    print('Done EOF em')
+
+    # para guardar...
+    if l == 0:
+        sam_r = sam_L_r.drop('L')
+        eof_r = eof_L_em
+
+        sam_em = sam_L_em.drop('L')
+        eof_em = eof_L_em
+    else:
+        eof_r = xr.concat([eof_r, eof_L_r], dim='time')
+        sam_r = xr.concat([sam_r, sam_L_r.drop('L')], dim='L')
+
+        eof_em = xr.concat([eof_em, eof_L_em], dim='time')
+        sam_em = xr.concat([sam_em, sam_L_em.drop('L')], dim='L')
+
+    print('Done concat')
+
+#------------------------------------------------------------------------------#
+if save:
+    eof_r.to_netcdf(out_dir + 'eof_r_z200.nc')
+    sam_r.to_netcdf(out_dir + 'sam_r_z200.nc')
+
+    eof_em.to_netcdf(out_dir + 'eof_em_z200.nc')
+    sam_em.to_netcdf(out_dir + 'sam_em_z200.nc')
+#------------------------------------------------------------------------------#
+
