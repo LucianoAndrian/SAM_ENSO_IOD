@@ -59,7 +59,6 @@ def TwoClim_MonthlyAnom(data_1982_1998, data_1999_2011):
     return months_clim_1982_1998, months_clim_1999_2011, \
            months_anom_1982_1998, months_anom_1999_2011
 
-
 def Detrend_Seasons(anom_82_98, anom_99_11):
     for l in [0, 1, 2, 3]:
         # 1982-1998 -----------------------------------------------------------#
@@ -91,7 +90,6 @@ def Detrend_Seasons(anom_82_98, anom_99_11):
 
     return anom_1982_1998_detrened, anom_1999_2011_detrend
 
-
 def MonthlyAnom_Detrend_RealTime(data_realtime, clim_1999_2011):
 
     for l in [0,1,2,3]:
@@ -112,7 +110,6 @@ def MonthlyAnom_Detrend_RealTime(data_realtime, clim_1999_2011):
             anom_detrend = xr.concat([anom_detrend, aux_detrend],  dim='time')
 
     return anom_detrend
-
 ################################################################################
 # usando SelectNMMEFiles con All=True,
 # abre TODOS los archivos .nc de la ruta en dir
@@ -132,14 +129,19 @@ data = data.sel(lat=slice(-90, -20), P=200)
 data = data.drop('P')
 #data = data.drop('Z')
 
-# test con SEASONS
-#data = data.rolling(time=3, center=True).mean()
+# Seasons
+data_r = data.rolling(time=3, center=True).mean()
 
 # 1982-1998, 1999-2011
 data_1982_1998 = data.sel(
     time=data.time.dt.year.isin(np.linspace(1982,1998,17)))
 data_1999_2011 = data.sel(
     time=data.time.dt.year.isin(np.linspace(1999,2011,13)))
+
+data_r_1982_1998 = data_r.sel(
+    time=data_r.time.dt.year.isin(np.linspace(1982,1998,17)))
+data_r_1999_2011 = data_r.sel(
+    time=data_r.time.dt.year.isin(np.linspace(1999,2011,13)))
 
 # Climatologias y anomalias detrend -------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -168,19 +170,38 @@ data = data.sel(lat=slice(-90, -20), P=200)
 data = data.drop('P')
 data = data.drop('Z')
 # test
-#data = data.rolling(time=3, center=True).mean()
-
+data_r_rt = data.rolling(time=3, center=True).mean()
 
 #- Anomalias detrend por seasons ------------------------------------------- --#
 #------------------------------------------------------------------------------#
 realtime_detrend = MonthlyAnom_Detrend_RealTime(data, clim_99_11)
 
+hgt_f = xr.concat([hindcast_detrend, realtime_detrend], dim='time')
+
+# save ------------------------------------------------------------------------#
+hgt_f.to_netcdf(out_dir + 'hgt_mon_anom_d.nc')
+
+################################################################################
+# Seasonal --------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+# Climatologias y anomalias detrend -------------------------------------------#
+#------------------------------------------------------------------------------#
+clim_82_98, clim_99_11, anom_82_98, anom_99_11 = \
+    TwoClim_MonthlyAnom(data_r_1982_1998, data_r_1999_2011)
+
+anom_82_98, anom_99_11 = Detrend_Seasons(anom_82_98, anom_99_11)
+
+hindcast_detrend = xr.concat([anom_82_98, anom_99_11], dim='time')
+
+clim_99_11 = clim_99_11.load()
+
+#- Anomalias detrend por seasons ------------------------------------------- --#
+#------------------------------------------------------------------------------#
+realtime_detrend = MonthlyAnom_Detrend_RealTime(data_r_rt, clim_99_11)
 
 hgt_f = xr.concat([hindcast_detrend, realtime_detrend], dim='time')
 
 # save ------------------------------------------------------------------------#
-# jja_f.to_netcdf(out_dir + 'hgt_jja.nc')
-# jas_f.to_netcdf(out_dir + 'hgt_jas.nc')
-# aso_f.to_netcdf(out_dir + 'hgt_aso.nc')
-hgt_f.to_netcdf(out_dir + 'hgt_mon_anom_d.nc')
+hgt_f.to_netcdf(out_dir + 'hgt_seas_anom_d.nc')
 ################################################################################
