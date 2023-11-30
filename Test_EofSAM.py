@@ -75,8 +75,8 @@ def plot_stereo(dataarray, variance, n):
 hgt = xr.open_dataset(ruta + 'ERA5_HGT200_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
 # Interp --------------------------------------------------------------------- #
+hgt = hgt.interp(lon=np.arange(0,360,.5), lat=np.arange(-90, 90, .5)[::-1])
 hgt = hgt.sel(lat=slice(-20, -90))
-hgt = hgt.interp(lon=np.arange(0,360,.5), lat=np.arange(-90, 90, .5))
 
 # ---------------------------------------------------------------------------- #
 hgt_clim = hgt.sel(time=slice('1979-01-01', '2000-12-01'))
@@ -86,12 +86,12 @@ hgt_anom = hgt.groupby('time.month') - \
 weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom.lat))))
 hgt_anom = hgt_anom * weights
 
-hgt_anom = hgt_anom.sel(lat=slice(None, -20))
 # test eof seaons
-hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
-hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin(10))
+# hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
+# hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin(10))
 
 # ---------------------------------------------------------------------------- #
+
 solver = Eof(xr.DataArray(hgt_anom['var']))
 eof = solver.eofsAsCovariance(neofs=3)
 pcs = solver.pcs()
