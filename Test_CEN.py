@@ -85,48 +85,130 @@ def IdentifyTau(ns):
 
     return t
 
-def SetTaus(df, n, n_sp, t, t_sp):
-    c = df['c'].tolist()
-    i_n = df[n][:t].tolist()
-    i_n_sp = df[n_sp][:t_sp].tolist()
-
-    t_aux0 = np.abs(t_sp-0)
-    if(len(c)>len(i_n_sp)):
-        c = c[t_aux0:]
-
-    c_df = pd.DataFrame({'c':c, n_sp:i_n_sp})
-
+def NoneToZero(t):
     if t is None:
-        t_aux1 = np.abs(t_sp)
-    elif t_sp is None:
-        t_aux1 = np.abs(t)
-    elif (t_sp is None) and (t is None):
-        t_aux1 = 0
+        return 0
     else:
-        t_aux1 = np.abs(t_sp-t)
+        return t
 
-    if (len(i_n)>len(i_n_sp)):
-        i_n = i_n[t_aux1:]
-    elif (len(i_n)<len(i_n_sp)):
-        i_n_sp = i_n_sp[t_aux1:]
+def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
+    t = NoneToZero(t)
+    t_sp1 = NoneToZero(t_sp1)
+    t_sp2 = NoneToZero(t_sp2)
 
-    if n == n_sp:
-        n_sp_aux = n_sp + '_sp'
-    else:
-        n_sp_aux = n_sp
+    # c ---------------------------------------------------------------------- #
+    c = c[np.abs(t_sp1):]
+    rc = pd.DataFrame({'c': c, 'sp1': sp1})
 
-    i_n_df = pd.DataFrame({n:i_n, n_sp_aux:i_n_sp})
+    # 1 ---------------------------------------------------------------------- #
+    rc = RegRes(rc, 'sp1', 'c')
 
-    t_aux = 0 if (len(c_df)==len(i_n_df)) else t_aux1
+    # 2 ---------------------------------------------------------------------- #
+    if mode_single is False:
+        if np.abs(t_sp1) > np.abs(t_sp2):
+            t_prima = np.abs(t_sp1) - np.abs(t_sp2)
+            sp2aux = sp2[t_prima:]
+            rrc = pd.DataFrame({'rc': rc, 'sp2': sp2aux})
 
-    return c_df, i_n_df, t_aux
+        elif np.abs(t_sp1) < np.abs(t_sp2):
+            t_prima = np.abs(t_sp2) - np.abs(t_sp1)
+            rc = rc[t_prima:]
+            rrc = pd.DataFrame({'rc': rc, 'sp2': sp2})
+
+        elif np.abs(t_sp1) == np.abs(t_sp2):
+
+            rrc = pd.DataFrame({'rc': rc, 'sp2': sp2})
+
+        rrc = RegRes(rrc, 'sp2', 'rc')
+
+    # ------------------------------------------------------------------------ #
+    # i
+    # 1 ---------------------------------------------------------------------- #
+    a = False
+    b = False
+    c = False
+
+    if np.abs(t) > np.abs(t_sp1):
+        t_prima = np.abs(t) - np.abs(t_sp1)
+        sp1 = sp1[t_prima:]
+        ri = pd.DataFrame({'i': i, 'sp1': sp1})
+
+        a = True
+        t_prima_a = np.abs(t) - np.abs(t_sp1)
+
+    elif np.abs(t) < np.abs(t_sp1):
+        t_prima = np.abs(t_sp1) - np.abs(t)
+        i = i[t_prima:]
+        ri = pd.DataFrame({'i': i, 'sp1': sp1})
+        b = True
+
+    elif np.abs(t) == np.abs(t_sp1):
+        ri = pd.DataFrame({'i': i, 'sp1': sp1})
+        c = True
+
+    ri = RegRes(ri, 'sp1', 'i')
+
+    if mode_single:
+        if a:
+            if t_sp1 != 0:
+                rc = rc[t_prima_a:]
+        return rc, ri
+    # 2 ---------------------------------------------------------------------- #
+    d = False
+    e = False
+    f = False
+    if a or c:
+        if np.abs(t_sp2) > np.abs(t):
+            t_prima = np.abs(t_sp2) - np.abs(t)
+            ri = ri[t_prima:]
+            rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
+            d = True
+
+        elif np.abs(t_sp2) < np.abs(t):
+            t_prima = np.abs(t) - np.abs(t_sp2)
+            sp2aux2 = sp2[t_prima:]
+            rri = pd.DataFrame({'ri': ri, 'sp2': sp2aux2})
+
+            e = True
+            t_prima_sp2mt = np.abs(t) - np.abs(t_sp2)
+
+        elif np.abs(t_sp2) == np.abs(t):
+
+            rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
+
+    elif b:
+        if np.abs(t_sp2) > np.abs(t_sp1):
+            t_prima = np.abs(t_sp2) - np.abs(t_sp1)
+            ri = ri[t_prima:]
+            rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
+
+        elif np.abs(t_sp2) < np.abs(t_sp1):
+            t_prima = np.abs(t_sp1) - np.abs(t_sp2)
+            sp2aux3 = sp2[t_prima:]
+            rri = pd.DataFrame({'ri': ri, 'sp2': sp2aux3})
+
+        elif np.abs(t_sp2) == np.abs(t_sp1):
+
+            rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
+
+    rri = RegRes(rri, 'sp2', 'ri')
+
+    if a and e:
+        if t_sp1 != 0:
+            rrc = rrc[t_prima_a:]
+    # if e:
+    #     if t_sp2 !=0:
+    #         rrc = rrc[t_prima_sp2mt:]
+
+    if control:
+        print('Done SetLag_and_Reg')
+    return rrc, rri
 
 ################################################################################
-c = hgt_anom.sel(lon=270, lat=-60)
+c = hgt_anom.sel(lon=290, lat=-25)
 dmi = SameDateAs(dmi, c)
 n34 = SameDateAs(n34, c)
 #------------------------------------------------------------------------------#
-
 df = pd.DataFrame({'indice1' : n34.values,
                    'indice2': dmi.values,
                    'c': c['var'].values})
@@ -146,7 +228,6 @@ for i in ['indice1', 'indice2', 'c']:
                                         df[i][:t], i + str(t_aux),
                                         corrs_1)
 
-
 parents0 = corrs_1[corrs_1['pv'] < 0.05]
 
 if len(parents0)>2:
@@ -163,116 +244,76 @@ for n in parents0['name']:
     n_sp = strong_parents[1] if n == strong_parents[0] else strong_parents[0]
 
     ns = n.split('-')
-    ns_sp = n_sp.split('-')
-
     t = IdentifyTau(ns)
+
+    ns_sp = n_sp.split('-')
     t_sp = IdentifyTau(ns_sp)
 
     n = ns[0]
-    n_sp = ns_sp[0]
+    n1 = ns_sp[0]
 
-    c_df, i_n_df, t_aux = SetTaus(df, n, n_sp, t, t_sp)
+    c = df['c'].tolist()
+    i = df[n].tolist()[:t]
+    sp = df[n1].tolist()[:t_sp]
 
-    c_wo_n_sp = RegRes(c_df, n_sp, 'c')
-    i_wo_n_sp = RegRes(i_n_df, i_n_df.columns[1], n)
+    rc, ri = SetLags_and_Reg(c, i, sp, None, t, t_sp, None, True, True)
 
-
+    t_sp = '' if t == None else t
+    t = '' if t == None else t
     if first:
         first = False
-        corrs_2 = ComputeAndAdd(c_wo_n_sp[t_aux:], i_wo_n_sp,
-                                n+str(t)+'_wo_'+n_sp+str(t_sp))
+        corrs_2 = ComputeAndAdd(rc, ri, n+str(t)+'_wo_'+n_sp+str(t_sp))
     else:
-        t_sp = '' if t == None else t
-        t = '' if t == None else t
-        corrs_2 =ComputeAndAdd(c_wo_n_sp[t_aux:], i_wo_n_sp,
-                                n+str(t)+'_wo_'+n_sp+str(t_sp), corrs_2)
+        corrs_2 = ComputeAndAdd(rc, ri, n+str(t)+'_wo_'+n_sp+str(t_sp), corrs_2)
 
 #------------------------------------------------------------------------------#
+# 2
 #------------------------------------------------------------------------------#
 
 parents1 = corrs_2[corrs_2['pv'] < 0.05]
 if len(parents1)>3:
     parents1 = parents1.iloc[parents1['r'].abs().argsort()[::-1]]
-strong_parents = parents1['name'].head(3).tolist()
+    strong_parents = parents1['name'].head(3).tolist()
 
-# REVEER #######################################################################
-def SetTaus_Nphase(r, df, n, n_sp2, t_sp1, t_sp2):
-    i_n_sp2 = df[n_sp2][:t_sp2].tolist()
+    first = True
+    globals().pop('corrs_3', None) if 'corrs_3' in globals() else None
+    for n in parents1['name']:
 
-    if t_sp1 is None:
-        t_aux1 = np.abs(t_sp2)
-    elif t_sp2 is None:
-        t_aux1 = np.abs(t_sp1)
-    elif (t_sp2 is None) and (t_sp1 is None):
-        t_aux1 = 0
-    else:
-        print('test')
-        t_aux1 = np.abs(t_sp2-t_sp1)
+        aux_strong_parents = strong_parents[:2] if \
+            all(parent != n for parent in strong_parents) else \
+            [parent for parent in strong_parents if parent != n]
 
-    if (len(r)>len(i_n_sp2)):
-        r = r[t_aux1:]
-    elif (len(r)<len(i_n_sp2)):
-        i_n_sp = i_n_sp2[t_aux1:]
+        n_sp1 = aux_strong_parents[0]
+        n_sp2 = aux_strong_parents[1]
 
-    if n == n_sp:
-        n_sp_aux = n_sp + '_spN'
-    else:
-        n_sp_aux = n_sp
+        ns = n.split('_wo_')[0].split('-')
+        t = IdentifyTau(ns)
 
-    print(t_aux1)
-    print(len(r))
-    print(len(i_n_sp))
+        ns_sp1 = n_sp1.split('_wo_')[0].split('-')
+        t_sp1 = IdentifyTau(ns_sp1)
 
-    i_n_df = pd.DataFrame({n:r, n_sp_aux:i_n_sp})
+        ns_sp2 = n_sp2.split('_wo_')[0].split('-')
+        t_sp2 = IdentifyTau(ns_sp2)
 
-    t_aux = 0 if (len(c_df)==len(i_n_df)) else t_aux1
+        n = ns[0]
+        n1 = ns_sp1[0]
+        n2 = ns_sp2[0]
 
-    return i_n_df, t_aux
-first = True
-globals().pop('corrs_3', None) if 'corrs_3' in globals() else None
-for n in parents1['name']:
+        c = df['c'].tolist()
+        i = df[n].tolist()[:t]
+        sp1 = df[n1].tolist()[:t_sp1]
+        sp2 = df[n2].tolist()[:t_sp2]
 
-    aux_strong_parents = strong_parents[:2] if \
-        all(parent != n for parent in strong_parents) else \
-        [parent for parent in strong_parents if parent != n]
+        rrc, rri = SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, True, False)
 
-    n_sp = aux_strong_parents[0]
-
-    ns = n.split('_wo_')[0].split('-')
-    t = IdentifyTau(ns)
-
-    ns_sp = n_sp.split('_wo_')[0].split('-')
-    t_sp1 = IdentifyTau(ns_sp)
-
-    n = ns[0]
-    n_sp = ns_sp[0]
-
-    c_df, i_n_df, t_aux = SetTaus(df, n, n_sp, t, t_sp1)
-
-    c_wo_n_sp = RegRes(c_df, n_sp, 'c')
-    i_wo_n_sp = RegRes(i_n_df, i_n_df.columns[1], n)
-
-    n_sp2 = aux_strong_parents[1]
-    ns_sp2 = n_sp2.split('_wo_')[0].split('-')
-    t_sp2 = IdentifyTau(ns_sp2)
-    ns_sp2  = ns_sp2[0]
-
-    i_n_df, t_aux = SetTaus_Nphase(c_wo_n_sp.tolist(),
-                                    df, n, ns_sp2, t_sp1, t_sp2)
-    c_wo_n_sp2 = RegRes(i_n_df, i_n_df.columns[1], i_n_df.columns[0])
-
-    i_n_df, t_aux = SetTaus_Nphase(i_wo_n_sp.tolist(),
-                                    df, n, ns_sp2, t_sp1, t_sp2)
-    i_wo_n_sp2 = RegRes(i_n_df, i_n_df.columns[1], i_n_df.columns[0])
+        t = '' if t == None else t
+        if first:
+            first = False
+            corrs_3 = ComputeAndAdd(rrc, rri, n + str(t) + '_wo_2p')
+        else:
+            corrs_3 = ComputeAndAdd(rrc, rri, n + str(t) + '_wo_2p', corrs_3)
 
 
-    if first:
-        first = False
-        corrs_3 = ComputeAndAdd(c_wo_n_sp2[t_aux:], i_wo_n_sp2,
-                                n+str(t)+'_wo_2p')
-    else:
-        corrs_3 =ComputeAndAdd(c_wo_n_sp2[t_aux:], i_wo_n_sp2,
-                                n+str(t)+'_wo_2p', corrs_2)
-
+    parents2 = corrs_3[corrs_3['pv'] < 0.05]
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
