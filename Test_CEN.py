@@ -105,19 +105,24 @@ def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
 
     # 2 ---------------------------------------------------------------------- #
     if mode_single is False:
+        c1 = False
+        c2 = False
         if np.abs(t_sp1) > np.abs(t_sp2):
             t_prima = np.abs(t_sp1) - np.abs(t_sp2)
             sp2aux = sp2[t_prima:]
             rrc = pd.DataFrame({'rc': rc, 'sp2': sp2aux})
+            c1 = True
 
         elif np.abs(t_sp1) < np.abs(t_sp2):
             t_prima = np.abs(t_sp2) - np.abs(t_sp1)
             rc = rc[t_prima:]
             rrc = pd.DataFrame({'rc': rc, 'sp2': sp2})
+            c2 = True
 
         elif np.abs(t_sp1) == np.abs(t_sp2):
 
             rrc = pd.DataFrame({'rc': rc, 'sp2': sp2})
+            c1 = True
 
         rrc = RegRes(rrc, 'sp2', 'rc')
 
@@ -126,15 +131,12 @@ def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
     # 1 ---------------------------------------------------------------------- #
     a = False
     b = False
-    c = False
 
     if np.abs(t) > np.abs(t_sp1):
         t_prima = np.abs(t) - np.abs(t_sp1)
         sp1 = sp1[t_prima:]
         ri = pd.DataFrame({'i': i, 'sp1': sp1})
-
         a = True
-        t_prima_a = np.abs(t) - np.abs(t_sp1)
 
     elif np.abs(t) < np.abs(t_sp1):
         t_prima = np.abs(t_sp1) - np.abs(t)
@@ -144,68 +146,73 @@ def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
 
     elif np.abs(t) == np.abs(t_sp1):
         ri = pd.DataFrame({'i': i, 'sp1': sp1})
-        c = True
+        a = True
 
     ri = RegRes(ri, 'sp1', 'i')
 
     if mode_single:
         if a:
-            if t_sp1 != 0:
-                rc = rc[t_prima_a:]
+            t_control = np.abs(t) - np.abs(t_sp1)
+            if t_control !=0:
+                rc = rc[t_control:]
         return rc, ri
     # 2 ---------------------------------------------------------------------- #
-    d = False
-    e = False
-    f = False
-    if a or c:
+    i = False
+    ii = False
+    iii = False
+    if a:
         if np.abs(t_sp2) > np.abs(t):
             t_prima = np.abs(t_sp2) - np.abs(t)
             ri = ri[t_prima:]
             rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
-            d = True
+            i = True
 
         elif np.abs(t_sp2) < np.abs(t):
             t_prima = np.abs(t) - np.abs(t_sp2)
             sp2aux2 = sp2[t_prima:]
             rri = pd.DataFrame({'ri': ri, 'sp2': sp2aux2})
-
-            e = True
-            t_prima_sp2mt = np.abs(t) - np.abs(t_sp2)
+            ii = True
 
         elif np.abs(t_sp2) == np.abs(t):
 
             rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
+            i = True
 
     elif b:
         if np.abs(t_sp2) > np.abs(t_sp1):
+            i = True
             t_prima = np.abs(t_sp2) - np.abs(t_sp1)
             ri = ri[t_prima:]
             rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
 
         elif np.abs(t_sp2) < np.abs(t_sp1):
+            iii = True
             t_prima = np.abs(t_sp1) - np.abs(t_sp2)
             sp2aux3 = sp2[t_prima:]
             rri = pd.DataFrame({'ri': ri, 'sp2': sp2aux3})
 
         elif np.abs(t_sp2) == np.abs(t_sp1):
-
+            i = True
             rri = pd.DataFrame({'ri': ri, 'sp2': sp2})
+
 
     rri = RegRes(rri, 'sp2', 'ri')
 
-    if a and e:
-        if t_sp1 != 0:
-            rrc = rrc[t_prima_a:]
-    # if e:
-    #     if t_sp2 !=0:
-    #         rrc = rrc[t_prima_sp2mt:]
+    if c1 and a and ii:
+        t_control = np.abs(t) - np.abs(t_sp1)
+        if t_control !=0:
+            rrc = rrc[t_control:]
+    elif c2 and a and ii:
+        t_control = np.abs(t) - np.abs(t_sp2)
+        if t_control !=0:
+            rrc = rrc[t_control:]
 
     if control:
         print('Done SetLag_and_Reg')
     return rrc, rri
 
 ################################################################################
-c = hgt_anom.sel(lon=290, lat=-25)
+c = hgt_anom.sel(lon=250, lat=-50)
 dmi = SameDateAs(dmi, c)
 n34 = SameDateAs(n34, c)
 #------------------------------------------------------------------------------#
@@ -271,6 +278,7 @@ for n in parents0['name']:
 #------------------------------------------------------------------------------#
 
 parents1 = corrs_2[corrs_2['pv'] < 0.05]
+globals().pop('parents2', None) if 'parents2' in globals() else None
 if len(parents1)>3:
     parents1 = parents1.iloc[parents1['r'].abs().argsort()[::-1]]
     strong_parents = parents1['name'].head(3).tolist()
@@ -316,4 +324,5 @@ if len(parents1)>3:
 
     parents2 = corrs_3[corrs_3['pv'] < 0.05]
 #------------------------------------------------------------------------------#
+# MCI step
 #------------------------------------------------------------------------------#
