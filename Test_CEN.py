@@ -215,114 +215,212 @@ def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
 c = hgt_anom.sel(lon=250, lat=-50)
 dmi = SameDateAs(dmi, c)
 n34 = SameDateAs(n34, c)
-#------------------------------------------------------------------------------#
-df = pd.DataFrame({'indice1' : n34.values,
-                   'indice2': dmi.values,
-                   'c': c['var'].values})
 
-taus = [None, -1, -2]
-taus0 = [None, 1, 2]
-first = True
-for i in ['indice1', 'indice2', 'c']:
-    for t, t0 in zip(taus, taus0):
-        if (i!='c' or t!=None):
+#------------------------------------------------------------------------------#
+def Phase1(indice1, indice2, indice3, mode=1):
+    if mode==1:
+        indices = [indice1, indice2, indice3]
+    elif mode==2:
+        indices = [indice2, indice3, indice1]
+    elif mode==3:
+        indices = [indice3, indice1, indice2]
+
+    df = pd.DataFrame({'indice1' : indices[0],
+                       'indice2': indices[1],
+                       'indice3': indices[2]})
+    control = False
+    # globals().pop('parents1', None) if 'parents1' in globals() else None
+    # globals().pop('corrs_2', None) if 'corrs_2' in globals() else None
+    # globals().pop('parents2', None) if 'parents2' in globals() else None
+    # globals().pop('corrs_3', None) if 'corrs_3' in globals() else None
+
+    taus = [None, -1, -2]
+    taus0 = [None, 1, 2]
+    first = True
+    for i in ['indice1', 'indice2', 'indice3']:
+        for t, t0 in zip(taus, taus0):
+            if (i != 'indice3' or t != None):
+                if first:
+                    first = False
+                    corrs_1 = ComputeAndAdd(df['indice3'], df[i], i)
+                else:
+                    t_aux = '' if t == None else t
+                    corrs_1 = ComputeAndAdd(df['indice3'][t0:],
+                                            df[i][:t], i + str(t_aux),
+                                            corrs_1)
+
+    parents0 = corrs_1[corrs_1['pv'] < 0.05]
+    parents = parents0
+    # ------------------------------------------------------------------------ #
+    if len(parents0) > 2:
+
+        parents0 = parents0.iloc[parents0['r'].abs().argsort()[::-1]]
+
+        strong_parents0 = parents0['name'].head(2).tolist()
+        first = True
+
+        for n in parents0['name']:
+
+            n_sp = strong_parents0[1] if n == strong_parents0[0] else \
+            strong_parents0[0]
+
+            ns = n.split('-')
+            t = IdentifyTau(ns)
+
+            ns_sp = n_sp.split('-')
+            t_sp = IdentifyTau(ns_sp)
+
+            n = ns[0]
+            n1 = ns_sp[0]
+
+            c = df['indice3'].tolist()
+            i = df[n].tolist()[:t]
+            sp = df[n1].tolist()[:t_sp]
+
+            rc, ri = SetLags_and_Reg(c, i, sp, None, t, t_sp, None, control,
+                                     True)
+
+            t_sp = '' if t == None else t
+            t = '' if t == None else t
             if first:
                 first = False
-                corrs_1 = ComputeAndAdd(df['c'], df[i], i)
+                corrs_2 = ComputeAndAdd(rc, ri,
+                                        n + str(t) + '_wo_' + n_sp + str(t_sp))
             else:
-                t_aux = '' if t == None else t
-                corrs_1 = ComputeAndAdd(df['c'][t0:],
-                                        df[i][:t], i + str(t_aux),
-                                        corrs_1)
+                corrs_2 = ComputeAndAdd(rc, ri,
+                                        n + str(t) + '_wo_' + n_sp + str(t_sp),
+                                        corrs_2)
 
-parents0 = corrs_1[corrs_1['pv'] < 0.05]
+        parents1 = corrs_2[corrs_2['pv'] < 0.05]
+        parents = parents1
+        # -------------------------------------------------------------------- #
 
-if len(parents0)>2:
-    parents0 = parents0.iloc[parents0['r'].abs().argsort()[::-1]]
+        if len(parents1) > 3:
+            parents1 = parents1.iloc[parents1['r'].abs().argsort()[::-1]]
+            strong_parents = parents1['name'].head(3).tolist()
 
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-strong_parents = parents0['name'].head(2).tolist()
-# partial correlation
-first=True
-globals().pop('corrs_2', None) if 'corrs_2' in globals() else None
-for n in parents0['name']:
+            first = True
+            for n in parents1['name']:
 
-    n_sp = strong_parents[1] if n == strong_parents[0] else strong_parents[0]
+                aux_strong_parents = strong_parents[:2] if \
+                    all(parent != n for parent in strong_parents) else \
+                    [parent for parent in strong_parents if parent != n]
 
-    ns = n.split('-')
-    t = IdentifyTau(ns)
+                n_sp1 = aux_strong_parents[0]
+                n_sp2 = aux_strong_parents[1]
 
-    ns_sp = n_sp.split('-')
-    t_sp = IdentifyTau(ns_sp)
+                ns = n.split('_wo_')[0].split('-')
+                t = IdentifyTau(ns)
 
-    n = ns[0]
-    n1 = ns_sp[0]
+                ns_sp1 = n_sp1.split('_wo_')[0].split('-')
+                t_sp1 = IdentifyTau(ns_sp1)
 
-    c = df['c'].tolist()
-    i = df[n].tolist()[:t]
-    sp = df[n1].tolist()[:t_sp]
+                ns_sp2 = n_sp2.split('_wo_')[0].split('-')
+                t_sp2 = IdentifyTau(ns_sp2)
 
-    rc, ri = SetLags_and_Reg(c, i, sp, None, t, t_sp, None, True, True)
+                n = ns[0]
+                n1 = ns_sp1[0]
+                n2 = ns_sp2[0]
 
-    t_sp = '' if t == None else t
-    t = '' if t == None else t
-    if first:
-        first = False
-        corrs_2 = ComputeAndAdd(rc, ri, n+str(t)+'_wo_'+n_sp+str(t_sp))
-    else:
-        corrs_2 = ComputeAndAdd(rc, ri, n+str(t)+'_wo_'+n_sp+str(t_sp), corrs_2)
+                c = df['indice3'].tolist()
+                i = df[n].tolist()[:t]
+                sp1 = df[n1].tolist()[:t_sp1]
+                sp2 = df[n2].tolist()[:t_sp2]
 
-#------------------------------------------------------------------------------#
+                rrc, rri = SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2,
+                                           control, False)
+
+                t = '' if t == None else t
+                if first:
+                    first = False
+                    corrs_3 = ComputeAndAdd(rrc, rri, n + str(t) + '_wo_2p')
+                else:
+                    corrs_3 = ComputeAndAdd(rrc, rri, n + str(t) + '_wo_2p',
+                                            corrs_3)
+
+            parents2 = corrs_3[corrs_3['pv'] < 0.05]
+            parents = parents2
+
+    return parents, df
 # 2
+
+def Phase2(x,y, px, py, x_df, y_df):
+    # control
+    if x is not None:
+        t = 0
+        t_max = 0
+    elif y is not None:
+        print('test')
+        t = 1
+        x = y
+        x = x[:-t]
+        t_max = t
+    elif x is not None and y is not None:
+        print('x or y must by None')
+        print('return')
+    elif x is None and y is None:
+        print('x or y must by not None')
+        print('return')
+
+
+    for parents, p_df in zip([px, py], [x_df, y_df]):
+        for n in parents['name']:
+            # set t
+            aux = n.split('_wo_')[0].split('-')
+            n_indice = aux[0]
+
+            try:
+                t_p = int(aux[1])
+                p = p_df[n_indice].tolist()[:-t_p]
+            except:
+                t_p = 0
+                p = p_df[n_indice].tolist()
+
+            if t_p == t_max:
+                pass
+            elif t_p > t_max:
+                t_prima = t_p - t_max
+                x = x[t_prima:]
+
+            elif t_p < t_max:
+                t_prima = t_max - t_p
+                p = p[t_prima:]
+
+            t_max = t_p if t_p > t_max else t_max
+
+            df = pd.DataFrame({'x': x, 'p': p})
+
+            x = RegRes(df, 'p', 'x')
+
+    return x
 #------------------------------------------------------------------------------#
+c_parents, c_df = Phase1(c['var'].values, dmi.values, n34.values, mode=1)
+dmi_parents, dmi_df = Phase1(c['var'].values, dmi.values, n34.values, mode=2)
+n34_parents, n34_df = Phase1(c['var'].values, dmi.values, n34.values, mode=3)
 
-parents1 = corrs_2[corrs_2['pv'] < 0.05]
-globals().pop('parents2', None) if 'parents2' in globals() else None
-if len(parents1)>3:
-    parents1 = parents1.iloc[parents1['r'].abs().argsort()[::-1]]
-    strong_parents = parents1['name'].head(3).tolist()
+# todos contra c
+c_f = Phase2(c['var'].values, None, c_parents, dmi_parents, c_df, dmi_df)
+dmi_f = Phase2(None, dmi.values, dmi_parents, c_parents, dmi_df, c_df)
 
-    first = True
-    globals().pop('corrs_3', None) if 'corrs_3' in globals() else None
-    for n in parents1['name']:
+# parents final
 
-        aux_strong_parents = strong_parents[:2] if \
-            all(parent != n for parent in strong_parents) else \
-            [parent for parent in strong_parents if parent != n]
+################################################################################
+# Testeo #######################################################################
+c1 = hgt_anom.sel(lon=250, lat=-50, time=hgt_anom.time.dt.year.isin([2019,2020]))
+c2 = SameDateAs(dmi, c1)
+c3 = SameDateAs(n34, c1)
+c1 = c1['var'].values
+c2 = c2.values
+c3 = c3.values
 
-        n_sp1 = aux_strong_parents[0]
-        n_sp2 = aux_strong_parents[1]
+c1_parents, c1_df = Phase1(c1, c2, c3, mode=1)
+c2_parents, c2_df = Phase1(c1, c2, c3, mode=2)
 
-        ns = n.split('_wo_')[0].split('-')
-        t = IdentifyTau(ns)
+c1_f = Phase2(c1, None, c1_parents, c2_parents, c1_df, c2_df)
+c2_f = Phase2(None, c2, c2_parents, c1_parents, c2_df, c1_df)
 
-        ns_sp1 = n_sp1.split('_wo_')[0].split('-')
-        t_sp1 = IdentifyTau(ns_sp1)
-
-        ns_sp2 = n_sp2.split('_wo_')[0].split('-')
-        t_sp2 = IdentifyTau(ns_sp2)
-
-        n = ns[0]
-        n1 = ns_sp1[0]
-        n2 = ns_sp2[0]
-
-        c = df['c'].tolist()
-        i = df[n].tolist()[:t]
-        sp1 = df[n1].tolist()[:t_sp1]
-        sp2 = df[n2].tolist()[:t_sp2]
-
-        rrc, rri = SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, True, False)
-
-        t = '' if t == None else t
-        if first:
-            first = False
-            corrs_3 = ComputeAndAdd(rrc, rri, n + str(t) + '_wo_2p')
-        else:
-            corrs_3 = ComputeAndAdd(rrc, rri, n + str(t) + '_wo_2p', corrs_3)
-
-
-    parents2 = corrs_3[corrs_3['pv'] < 0.05]
-#------------------------------------------------------------------------------#
-# MCI step
-#------------------------------------------------------------------------------#
+import matplotlib.pyplot as plt
+plt.plot(c1[2:]);plt.plot(c1_f.tolist());plt.show()
+plt.plot(c2[1:-1]);plt.plot(c2_f.tolist());plt.show()
+# ok
+################################################################################
