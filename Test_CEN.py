@@ -212,7 +212,8 @@ def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
     return rrc, rri
 
 ################################################################################
-c = hgt_anom.sel(lon=250, lat=-50)
+c = hgt_anom.sel(lon=270, lat=-60)
+#sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 dmi = SameDateAs(dmi, c)
 n34 = SameDateAs(n34, c)
 
@@ -344,17 +345,20 @@ def Phase1(indice1, indice2, indice3, mode=1):
     return parents, df
 # 2
 
-def Phase2(x,y, px, py, x_df, y_df):
+def Phase2(x,y, px, py, x_df, y_df, t):
     # control
     if x is not None:
         t = 0
         t_max = 0
     elif y is not None:
         print('test')
-        t = 1
+        t = t
         x = y
-        x = x[:-t]
-        t_max = t
+        if t !=0:
+            x = x[:-t]
+            t_max = t
+        else:
+            t_max = 0
     elif x is not None and y is not None:
         print('x or y must by None')
         print('return')
@@ -399,14 +403,45 @@ dmi_parents, dmi_df = Phase1(c['var'].values, dmi.values, n34.values, mode=2)
 n34_parents, n34_df = Phase1(c['var'].values, dmi.values, n34.values, mode=3)
 
 # todos contra c
-c_f = Phase2(c['var'].values, None, c_parents, dmi_parents, c_df, dmi_df)
-dmi_f = Phase2(None, dmi.values, dmi_parents, c_parents, dmi_df, c_df)
+def ComputePhase2(c_name, c, c_parents, c_df, *args):
+    # estructura a_name, a, a_parents, a_df
+    first = True
 
-# parents final
+    for n in args:
+
+        index_name = n[0]
+        index_values = n[1]
+        index_parents = n[2]
+        index_df = n[3]
+
+        c_f = Phase2(c, None, c_parents, index_parents, c_df,
+                            index_df, 0)
+        for t in [0, 1, 2]:
+            index_f = Phase2(None, index_values, index_parents, c_parents,
+                             index_df, c_df, t)
+            if first:
+                first = False
+                corrs = ComputeAndAdd(c_f, index_f,
+                                        c_name + '_w_' + index_name + '_' +
+                                        str(t))
+            else:
+                corrs = ComputeAndAdd(c_f, index_f,
+                                        c_name + '_w_' + index_name + '_' +
+                                        str(t), corrs)
+    corrs = corrs[corrs['pv'] < 0.05]
+    corrs = corrs.iloc[corrs['r'].abs().argsort()[::-1]]
+    corrs = corrs.query('r < 0.999')
+
+    return corrs
+
+corrs = ComputePhase2('c', c['var'].values, c_parents, c_df,
+              ['dmi', dmi.values, dmi_parents, dmi_df],
+              ['n34', n34.values, n34_parents, n34_df])
+
 
 ################################################################################
 # Testeo #######################################################################
-c1 = hgt_anom.sel(lon=250, lat=-50, time=hgt_anom.time.dt.year.isin([2019,2020]))
+c1 = hgt_anom.sel(lon=250, lat=-50, time=hgt_anom.time.dt.year.isin([2018,2020]))
 c2 = SameDateAs(dmi, c1)
 c3 = SameDateAs(n34, c1)
 c1 = c1['var'].values
@@ -415,12 +450,10 @@ c3 = c3.values
 
 c1_parents, c1_df = Phase1(c1, c2, c3, mode=1)
 c2_parents, c2_df = Phase1(c1, c2, c3, mode=2)
+c3_parents, c3_df = Phase1(c1, c2, c3, mode=3)
 
-c1_f = Phase2(c1, None, c1_parents, c2_parents, c1_df, c2_df)
-c2_f = Phase2(None, c2, c2_parents, c1_parents, c2_df, c1_df)
-
-import matplotlib.pyplot as plt
-plt.plot(c1[2:]);plt.plot(c1_f.tolist());plt.show()
-plt.plot(c2[1:-1]);plt.plot(c2_f.tolist());plt.show()
+ComputePhase2('c1', c1, c1_parents, c1_df,
+              ['dmi', c2, c2_parents, c2_df],
+              ['n34', c3, c3_parents, c3_df])
 # ok
 ################################################################################
