@@ -54,14 +54,17 @@ dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
 aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 ################################################################################
-c = hgt_anom.sel(lon=180, lat=-70)
+c = hgt_anom.sel(lon=270, lat=-60).sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
+#c = c.sel(time=c.time.dt.year.isin([np.arange(2010,2018)]))
 #c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 dmi2 = SameDateAs(dmi, c)
 n342 = SameDateAs(n34, c)
+sam2 = SameDateAs(sam, c)
 
 c = c/c.std()
-dmi = dmi2/dmi2.std()
-n34 = n342/n342.std()
+dmi3 = dmi2/dmi2.std()
+n343 = n342/n342.std()
+sam3 = sam2/sam2.std()
 #------------------------------------------------------------------------------#
 ################################################################################
 # Funciones ####################################################################
@@ -104,7 +107,8 @@ def Test_PartialCorrelation(x, y, z=None, z2=None, ty=0, tz=0, tz2=0,
         models = smf.ols(formula='y~z', data=df).fit()
         y_pred_by_z = models.params[1] * z[tzaux:-tz] + models.params[0]
         y_res = y[tyaux:-ty] - y_pred_by_z
-
+        # if ty>tz:
+        #     y_res = -1*y_res
         # -------------------------------------------------------------------- #
         # Re test: 2nd step PC
         if z2 is not None and retestmode:
@@ -140,7 +144,7 @@ def Test_PartialCorrelation(x, y, z=None, z2=None, ty=0, tz=0, tz2=0,
 
 def SetParents(parents, pc_alpha):
     parents = parents[parents['pval'] < pc_alpha]
-    parents = parents.query('r < 0.9999')
+    parents = parents.query('r < 0.99')
     parents = parents.iloc[parents['r'].abs().argsort()[::-1]]
     parents['r'] = parents['r'].round(3)
     parents['pval'] = parents['pval'].round(3)
@@ -157,7 +161,6 @@ def PC(series, target, tau_max, pc_alpha):
         for t in taus:
             r, pv = Test_PartialCorrelation(series[target][t:],
                                             series[k][:len_series - t])
-
             d = {'pparents': k + '_lag_' + str(t), 'r': [r], 'pval': [pv]}
 
             if first:
@@ -167,7 +170,6 @@ def PC(series, target, tau_max, pc_alpha):
                 parents0 = pd.concat([parents0, pd.DataFrame(d)], axis=0)
 
     parents = SetParents(parents0, pc_alpha)
-
     # ------------------------------------------------------------------------ #
     # Partial correlation
     if len(parents) > 2:
@@ -186,14 +188,13 @@ def PC(series, target, tau_max, pc_alpha):
             serie_sp = sp.split('_lag_')[0]
             t_sp = np.int(sp.split('_lag_')[1])
 
-            r, pv = Test_PartialCorrelation(series[target],
-                                            series[serie_p],
+            r, pv = Test_PartialCorrelation(x=series[target],
+                                            y=series[serie_p],
                                             z=series[serie_sp],
                                             ty=t_p, tz=t_sp)
 
             d = {'pparents': serie_p + '_lag_' + str(t_p),
                  'r': [r], 'pval': [pv]}
-
             if first:
                 first = False
                 parents1 = pd.DataFrame(d)
@@ -201,7 +202,6 @@ def PC(series, target, tau_max, pc_alpha):
                 parents1 = pd.concat([parents1, pd.DataFrame(d)], axis=0)
 
         parents = SetParents(parents1, pc_alpha)
-
         # -------------------------------------------------------------------- #
         # Partial correlation
         # 2nd step PC
@@ -226,8 +226,8 @@ def PC(series, target, tau_max, pc_alpha):
                 serie_sp2 = sp2.split('_lag_')[0]
                 t_sp2 = np.int(sp2.split('_lag_')[1])
 
-                r, pv = Test_PartialCorrelation(series[target],
-                                                series[serie_p],
+                r, pv = Test_PartialCorrelation(x=series[target],
+                                                y=series[serie_p],
                                                 z=series[serie_sp1],
                                                 z2=series[serie_sp2],
                                                 ty=t_p, tz=t_sp1, tz2=t_sp2,
@@ -243,30 +243,21 @@ def PC(series, target, tau_max, pc_alpha):
 
             parents = SetParents(parents2, pc_alpha)
 
+    print(parents)
     return parents
 ################################################################################
 # argumentos de una posible funcion
 tau_max = 2
-series = {'c':c['var'].values, 'dmi':dmi.values, 'n34':n34.values}
-target = 'dmi' #incluida en "series"
+series = {'c':c['var'].values, 'dmi':dmi3.values, 'n34':n343.values}
 pc_alpha = 0.05
+
+# sam = sam.sel(time=slice('1941-02-01', '2020-11-01'))
+# n34 = SameDateAs(n34, sam)
+# c = SameDateAs(c, sam)
+# series = {'c':c['var'].values, 'sam':sam.values, 'n34':n34.values}
 
 PC(series, 'c', tau_max, pc_alpha)
 PC(series, 'dmi', tau_max, pc_alpha)
 PC(series, 'n34', tau_max, pc_alpha)
-
-# #PC(series, 'c', tau_max, pc_alpha)
-#     pparents      r   pval
-# 0    c_lag_1  0.159  0.000
-# 0    c_lag_2  0.098  0.002
-# 0  dmi_lag_1  0.082  0.010
-# PC(series, 'dmi', tau_max, pc_alpha)
-#     pparents      r  pval
-# 0  dmi_lag_1  0.887   0.0
-# 0  dmi_lag_2 -0.651   0.0
-# PC(series, 'n34', tau_max, pc_alpha)
-#     pparents      r   pval
-# 0  n34_lag_1  0.941  0.000
-# 0  n34_lag_2 -0.790  0.000
-# 0  dmi_lag_1  0.198  0.000
-# 0  dmi_lag_2  0.100  0.002
+################################################################################
+################################################################################
