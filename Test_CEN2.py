@@ -54,7 +54,7 @@ dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
 aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 ################################################################################
-c = hgt_anom.sel(lon=270, lat=-60).sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
+c = hgt_anom.sel(lon=270, lat=-60)#.sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
 #c = c.sel(time=c.time.dt.year.isin([np.arange(2010,2018)]))
 #c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 dmi2 = SameDateAs(dmi, c)
@@ -68,54 +68,58 @@ sam3 = sam2/sam2.std()
 #------------------------------------------------------------------------------#
 ################################################################################
 # Funciones ####################################################################
-def Test_PartialCorrelation(x, y, z=None, z2=None, ty=0, tz=0, tz2=0,
-                            res=False, retestmode=False):
+def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
+                            retestmode=False):
 
     if len(x) != len(y):
-        print('Test_PartialCorrelation: len(x) != len(y)')
+        print('Test_PartialCorrelation Error: len(x) != len(y)')
         return
+    if parents is None:
+        print('Test_PartialCorrelation Error: parents is None')
+        return
+    if type(ylag)!=np.int:
+        print('Test_PartialCorrelation Error: ylag must be int')
+        return
+    len_series = len(x)
+    ty = ylag
+    # ------------------------------------------------------------------------ #
+    # first iter
+    z = series[parents[0].split('_lag_')[0]]
+    tz = np.int(parents[0].split('_lag_')[1])
+
+    df = pd.DataFrame({'x':x[tz:], 'z':z[:-tz]})
+    models = smf.ols(formula='x~z', data=df).fit()
+    x_pred_by_z = models.params[1] * z[:-tz] + models.params[0]
+    x_res = x[tz:] - x_pred_by_z
+
+    if tz>ty:
+        tyaux = tz - ty
+        tzaux = 0
+    elif ty>tz:
+        tzaux = ty - tz
+        tyaux=0
     else:
-        if z is not None:
-            if len(x) != len(z):
-                print('Test_PartialCorrelation: len(x) != len(z)')
-                return
-    # ------------------------------------------------------------------------ #
-    # Only Correlation
-    if z is None:
-        return pearsonr(x, y)
+        tyaux=0
+        tzaux=0
 
-    # ------------------------------------------------------------------------ #
-    # Partial Correlation
-    elif z is not None and ty>0 and tz>0:
+    df = pd.DataFrame({'y': y[tyaux:len_series-ty], 'z': z[tzaux:-tz]})
+    models = smf.ols(formula='y~z', data=df).fit()
+    y_pred_by_z = models.params[1] * z[tzaux:-tz] + models.params[0]
+    y_res = y[tyaux:len_series-ty] - y_pred_by_z
 
-        df = pd.DataFrame({'x':x[tz:], 'z':z[:-tz]})
-        models = smf.ols(formula='x~z', data=df).fit()
-        x_pred_by_z = models.params[1] * z[:-tz] + models.params[0]
-        x_res = x[tz:] - x_pred_by_z
+    if retestmode==False:
+        return pearsonr(x_res[tzaux:], y_res)
 
-        if tz>ty:
-            tyaux = tz - ty
-            tzaux = 0
-        elif ty>tz:
-            tzaux = ty - tz
-            tyaux=0
-        else:
-            tyaux=0
-            tzaux=0
-
-        df = pd.DataFrame({'y': y[tyaux:-ty], 'z': z[tzaux:-tz]})
-        models = smf.ols(formula='y~z', data=df).fit()
-        y_pred_by_z = models.params[1] * z[tzaux:-tz] + models.params[0]
-        y_res = y[tyaux:-ty] - y_pred_by_z
-        # if ty>tz:
-        #     y_res = -1*y_res
-        # -------------------------------------------------------------------- #
-        # Re test: 2nd step PC
-        if z2 is not None and retestmode:
-            # Re-test: 2nd step PC
+    for i in range(1 , len(parents)):
+        # N step PC
+        if i==1:
+            print('i=1')
             t_prima = max([ty, tz])
             x = x_res[tzaux:]
             y = y_res
+
+            z2 = series[parents[i].split('_lag_')[0]]
+            tz2 = np.int(parents[i].split('_lag_')[1])
             z = z2[t_prima:]
 
             df = pd.DataFrame({'x': x[tz2:], 'z': z[:-tz2]})
@@ -127,20 +131,70 @@ def Test_PartialCorrelation(x, y, z=None, z2=None, ty=0, tz=0, tz2=0,
             models = smf.ols(formula='y~z', data=df).fit()
             y_pred_by_z = models.params[1] * z[:-tz2] + models.params[0]
             y_res = y[tz2:] - y_pred_by_z
+            print(pearsonr(x_res, y_res))
 
+        elif retestmode==True:
+
+            print('n iter')
+            x = x_res
+            y = y_res
+
+            if len(x)==0:
+                print('xerror')
+            if len(y)==0:
+                print('yerror')
             try:
-                return pearsonr(x_res, y_res)
+                zn = series[parents[i].split('_lag_')[0]]
+                tzn = np.int(parents[i].split('_lag_')[1])
+                z = zn[:-tzn]
             except:
-                print('error lenght')
-        # -------------------------------------------------------------------- #
-        if res:
-            return pearsonr(x_res[tzaux:], y_res), \
-                   x_res[tzaux:], y_res
-        else:
-            return pearsonr(x_res[tzaux:], y_res)
-        # -------------------------------------------------------------------- #
-    else:
-        print('Error en TestPartialCorrelation')
+                pass
+
+            print('len z:')
+            print(len(z))
+            print('len x:')
+            print(len(x))
+
+            if len(z)==0:
+                return print('zerror')
+
+            taux=1
+            while(len(x)!=len(z)):
+                if len(z)>len(x):
+                    z = z[taux:]
+                else:
+                    x = x[taux:]
+
+                if len(x)==0:
+                    print('xerror2')
+                if len(z) == 0:
+                    print('zerror2')
+                    return z
+
+            while (len(y) != len(z)):
+                if len(z)>len(y):
+                    z = z[taux:]
+                else:
+                    y = y[taux:]
+
+                if len(z) == 0:
+                    print('zerror2a')
+                    return z
+
+            df = pd.DataFrame({'x': x, 'z': z})
+            models = smf.ols(formula='x~z', data=df).fit()
+            x_pred_by_z = models.params[1] * z + models.params[0]
+            x_res = x - x_pred_by_z
+
+            df = pd.DataFrame({'y': y, 'z': z})
+            models = smf.ols(formula='y~z', data=df).fit()
+            y_pred_by_z = models.params[1] * z + models.params[0]
+            y_res = y - y_pred_by_z
+
+    try:
+        return pearsonr(x_res, y_res)
+    except:
+        print('error lenght')
 
 def SetParents(parents, pc_alpha):
     parents = parents[parents['pval'] < pc_alpha]
@@ -159,8 +213,7 @@ def PC(series, target, tau_max, pc_alpha):
     first = True
     for k in series.keys():
         for t in taus:
-            r, pv = Test_PartialCorrelation(series[target][t:],
-                                            series[k][:len_series - t])
+            r, pv = pearsonr(series[target][t:], series[k][:len_series - t])
             d = {'pparents': k + '_lag_' + str(t), 'r': [r], 'pval': [pv]}
 
             if first:
@@ -185,13 +238,13 @@ def PC(series, target, tau_max, pc_alpha):
 
             serie_p = p.split('_lag_')[0]
             t_p = np.int(p.split('_lag_')[1])
-            serie_sp = sp.split('_lag_')[0]
-            t_sp = np.int(sp.split('_lag_')[1])
 
-            r, pv = Test_PartialCorrelation(x=series[target],
-                                            y=series[serie_p],
-                                            z=series[serie_sp],
-                                            ty=t_p, tz=t_sp)
+            r,pv = Test_PartialCorrelation(x=series[target],
+                                    y=series[serie_p],
+                                    ylag=t_p,
+                                    series=series,
+                                    parents=[sp],
+                                    retestmode=False)
 
             d = {'pparents': serie_p + '_lag_' + str(t_p),
                  'r': [r], 'pval': [pv]}
@@ -202,6 +255,8 @@ def PC(series, target, tau_max, pc_alpha):
                 parents1 = pd.concat([parents1, pd.DataFrame(d)], axis=0)
 
         parents = SetParents(parents1, pc_alpha)
+        print('parents1')
+        print(parents)
         # -------------------------------------------------------------------- #
         # Partial correlation
         # 2nd step PC
@@ -221,17 +276,13 @@ def PC(series, target, tau_max, pc_alpha):
 
                 serie_p = p.split('_lag_')[0]
                 t_p = np.int(p.split('_lag_')[1])
-                serie_sp1 = sp1.split('_lag_')[0]
-                t_sp1 = np.int(sp1.split('_lag_')[1])
-                serie_sp2 = sp2.split('_lag_')[0]
-                t_sp2 = np.int(sp2.split('_lag_')[1])
 
                 r, pv = Test_PartialCorrelation(x=series[target],
-                                                y=series[serie_p],
-                                                z=series[serie_sp1],
-                                                z2=series[serie_sp2],
-                                                ty=t_p, tz=t_sp1, tz2=t_sp2,
-                                                res=False, retestmode=True)
+                                                 y=series[serie_p],
+                                                 ylag=t_p,
+                                                 series=series,
+                                                 parents=aux_strong_parents,
+                                                 retestmode=True)
 
                 d = {'pparents': serie_p + '_lag_' + str(t_p), 'r': [r],
                      'pval': [pv]}
@@ -244,20 +295,44 @@ def PC(series, target, tau_max, pc_alpha):
             parents = SetParents(parents2, pc_alpha)
 
     print(parents)
-    return parents
+    parents_name = []
+    for p in parents['pparents']:
+        parents_name.append(p)
+
+    return parents_name
+
+def add_lag(parents, plus_lag=1):
+    parents_add_lag = []
+    for p in parents:
+        pre, lag = p.split('_lag_')
+        lag = int(lag) + plus_lag
+        parents_add_lag.append(pre + '_lag_' + str(lag))
+
+    return parents_add_lag
 ################################################################################
 # argumentos de una posible funcion
 tau_max = 2
 series = {'c':c['var'].values, 'dmi':dmi3.values, 'n34':n343.values}
 pc_alpha = 0.05
 
-# sam = sam.sel(time=slice('1941-02-01', '2020-11-01'))
-# n34 = SameDateAs(n34, sam)
-# c = SameDateAs(c, sam)
-# series = {'c':c['var'].values, 'sam':sam.values, 'n34':n34.values}
+################################################################################
+# mci step
+c_parents = PC(series, 'c', tau_max, pc_alpha)
+dmi_parents = PC(series, 'dmi', tau_max, pc_alpha)
+n34_parents = PC(series, 'n34', tau_max, pc_alpha)
+# ---------------------------------------------------------------------------- #
 
-PC(series, 'c', tau_max, pc_alpha)
-PC(series, 'dmi', tau_max, pc_alpha)
-PC(series, 'n34', tau_max, pc_alpha)
 ################################################################################
-################################################################################
+# probar
+Test_PartialCorrelation(x=series['n34'], y=series['dmi'],
+                        ylag=0, series=series,
+                        parents=n34_parents[0:2] + n34_parents[3:] +
+                                add_lag(dmi_parents,0),
+                        retestmode=True)
+x = series['n34']
+y = series['dmi']
+ylag = 1
+series = series
+parents = n34_parents + add_lag(dmi_parents, 1)
+retestmode = True
+
