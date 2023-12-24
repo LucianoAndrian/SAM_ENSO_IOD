@@ -91,6 +91,7 @@ def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
     models = smf.ols(formula='x~z', data=df).fit()
     x_pred_by_z = models.params[1] * z[:-tz] + models.params[0]
     x_res = x[tz:] - x_pred_by_z
+    del models
 
     if tz>ty:
         tyaux = tz - ty
@@ -106,6 +107,7 @@ def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
     models = smf.ols(formula='y~z', data=df).fit()
     y_pred_by_z = models.params[1] * z[tzaux:-tz] + models.params[0]
     y_res = y[tyaux:len_series-ty] - y_pred_by_z
+    del models
 
     if retestmode==False:
         return pearsonr(x_res[tzaux:], y_res)
@@ -113,7 +115,7 @@ def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
     for i in range(1 , len(parents)):
         # N step PC
         if i==1:
-            print('i=1')
+            #print('i=1')
             t_prima = max([ty, tz])
             x = x_res[tzaux:]
             y = y_res
@@ -126,16 +128,17 @@ def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
             models = smf.ols(formula='x~z', data=df).fit()
             x_pred_by_z = models.params[1] * z[:-tz2] + models.params[0]
             x_res = x[tz2:] - x_pred_by_z
+            del models
 
             df = pd.DataFrame({'y': y[tz2:], 'z': z[:-tz2]})
             models = smf.ols(formula='y~z', data=df).fit()
             y_pred_by_z = models.params[1] * z[:-tz2] + models.params[0]
             y_res = y[tz2:] - y_pred_by_z
-            print(pearsonr(x_res, y_res))
+            del models
+            #print(pearsonr(x_res, y_res))
 
         elif retestmode==True:
-
-            print('n iter')
+            #print('i=n')
             x = x_res
             y = y_res
 
@@ -149,12 +152,6 @@ def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
                 z = zn[:-tzn]
             except:
                 pass
-
-            print('len z:')
-            print(len(z))
-            print('len x:')
-            print(len(x))
-
             if len(z)==0:
                 return print('zerror')
 
@@ -185,21 +182,28 @@ def Test_PartialCorrelation(x, y, ylag=0, parents=None, series=None,
             models = smf.ols(formula='x~z', data=df).fit()
             x_pred_by_z = models.params[1] * z + models.params[0]
             x_res = x - x_pred_by_z
+            del models
 
             df = pd.DataFrame({'y': y, 'z': z})
             models = smf.ols(formula='y~z', data=df).fit()
             y_pred_by_z = models.params[1] * z + models.params[0]
             y_res = y - y_pred_by_z
+            del models
 
     try:
         return pearsonr(x_res, y_res)
     except:
         print('error lenght')
 
-def SetParents(parents, pc_alpha):
+def SetParents(parents, pc_alpha, withtarget=False):
     parents = parents[parents['pval'] < pc_alpha]
     parents = parents.query('r < 0.99')
-    parents = parents.iloc[parents['r'].abs().argsort()[::-1]]
+    if withtarget:
+        parents = parents.assign(abs_r=parents['r'].abs()).sort_values(
+            by=['Target', 'abs_r'], ascending=[True, False])
+        parents = parents.drop(columns=['abs_r'])
+    else:
+        parents = parents.iloc[parents['r'].abs().argsort()[::-1]]
     parents['r'] = parents['r'].round(3)
     parents['pval'] = parents['pval'].round(3)
     return parents
@@ -271,9 +275,6 @@ def PC(series, target, tau_max, pc_alpha):
                     all(parent != p for parent in strong_parents) else \
                     [parent for parent in strong_parents if parent != p]
 
-                sp1 = aux_strong_parents[0]
-                sp2 = aux_strong_parents[1]
-
                 serie_p = p.split('_lag_')[0]
                 t_p = np.int(p.split('_lag_')[1])
 
@@ -294,7 +295,6 @@ def PC(series, target, tau_max, pc_alpha):
 
             parents = SetParents(parents2, pc_alpha)
 
-    print(parents)
     parents_name = []
     for p in parents['pparents']:
         parents_name.append(p)
@@ -324,11 +324,69 @@ n34_parents = PC(series, 'n34', tau_max, pc_alpha)
 
 ################################################################################
 # probar
-Test_PartialCorrelation(x=series['n34'], y=series['dmi'],
-                        ylag=0, series=series,
-                        parents=n34_parents[0:2] + n34_parents[3:] +
-                                add_lag(dmi_parents,0),
-                        retestmode=True)
+targets = ['n34', 'dmi', 'c']
+lags = [0, 1, 2]
+parents = {'c':c_parents, 'dmi':dmi_parents, 'n34':n34_parents}
+
+first = True
+for target in targets:
+    print('target:' + target)
+    for l in lags:
+        print('Lag:' + str(l))
+        target_parents = parents[target].copy()
+
+        for a in targets:
+            print(a)
+            actor_parents = parents[a].copy()
+
+            actor_as_parent = a + '_lag_' + str(l)
+
+            if actor_as_parent in target_parents:
+                target_parents.remove(actor_as_parent)
+
+            target_actor_parents = target_parents + add_lag(actor_parents, l)
+            # unique_target_actor_parents = list(set(target_actor_parents))
+            unique_set = set()
+            unique_target_actor_parents = []
+
+            for item in target_actor_parents:
+                if item not in unique_set:
+                    unique_set.add(item)
+                    unique_target_actor_parents.append(item)
+            if l == 0:
+                print(unique_target_actor_parents)
+           # target_actor_parents = list(set(target_actor_parents))
+            r, pv = Test_PartialCorrelation(x=series[target],
+                                    y=series[a],
+                                    ylag=l, series=series,
+                                    parents=unique_target_actor_parents,
+                                    retestmode=True)
+
+            d = {'Target': target, 'Actor': a + '_lag_' + str(l),
+                 'r': [r], 'pval': [pv]}
+
+            if first:
+                first = False
+                parents_f = pd.DataFrame(d)
+            else:
+                parents_f = pd.concat([parents_f, pd.DataFrame(d)], axis=0)
+
+print(SetParents(parents_f, 0.5, True))
+
+c_parents
+dmi_parents
+rpv, dmi_res = Test_PartialCorrelation(x=series['n34'],
+                                y=series['dmi'],
+                                ylag=1, series=series,
+                                parents=n34_parents[:2]+add_lag(dmi_parents,1),
+                                retestmode=True)
+
+rpv, n34_res = Test_PartialCorrelation(x=series['dmi'],
+                                y=series['n34'],
+                                ylag=0, series=series,
+                                parents=dmi_parents+n34_parents[:2],
+                                retestmode=True)
+
 x = series['n34']
 y = series['dmi']
 ylag = 1
@@ -336,3 +394,92 @@ series = series
 parents = n34_parents + add_lag(dmi_parents, 1)
 retestmode = True
 
+parents_f.sort_values(by=['Target', 'r'], ascending=[True, False])
+
+import numpy as np
+import pandas as pd
+from scipy.stats import pearsonr
+import statsmodels.api as sm
+import itertools
+import matplotlib.pyplot as plt
+
+def partial_correlation(x, y, parents):
+    # Inicializar los residuos de x e y
+    x_resid = x.copy()
+    y_resid = y.copy()
+
+    # Calcular la correlación parcial entre x e y quitando el efecto de los parents
+    partial_corr, _ = pearsonr(x_resid, y_resid)
+
+    return partial_corr
+
+def average_partial_correlation(x, y, parents):
+    # Obtener todas las permutaciones posibles de los parents
+    parent_permutations = list(itertools.permutations(parents))
+
+    # Calcular la correlación parcial para cada permutación y tomar el promedio
+    avg_partial_corr = np.max([
+        partial_correlation(x, y, list(permutation))
+        for permutation in parent_permutations])
+
+    return avg_partial_corr
+
+# Generar datos de ejemplo
+np.random.seed(42)
+n = 100
+time = np.arange(971)
+
+
+# Generar parents
+num_parents = 3
+parents = [series['dmi'][:-1], series['n34'][:-1]]
+
+# Calcular la correlación parcial promedio
+avg_partial_corr = average_partial_correlation(x, y, parents)
+
+# Visualizar las series temporales
+plt.figure(figsize=(12, 6))
+plt.plot(time, x, label='X')
+plt.plot(time, y, label='Y')
+plt.title('Series Temporales X e Y')
+
+# Mostrar la correlación parcial promedio
+print(f"Correlación parcial promedio: {avg_partial_corr}")
+
+
+
+
+
+
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+x = series['n34'][2:]  # Serie temporal X con tendencia lineal
+y = series['dmi'][2:]
+# Generar parents
+num_parents = 3
+parents = [series['dmi'][1:-1], series['n34'][:-2],
+           series['dmi'][:-2], series['n34'][1:-1]]
+
+
+# Crear un DataFrame con los datos
+data = pd.DataFrame({'x': x, 'y': y,
+                     'parent1': parents[0],
+                     'parent2': parents[1],
+                     'parent3': parents[2],
+                     'parent4': parents[3]})
+
+# Realizar regresión múltiple para quitar efecto de los parents en x
+model_x = sm.OLS(data['x'], sm.add_constant(data[['parent1', 'parent2',
+                                                  'parent3', 'parent4']])).fit()
+x_resid = model_x.resid
+
+# Realizar regresión múltiple para quitar efecto de los parents en y
+model_y = sm.OLS(data['y'], sm.add_constant(data[['parent1', 'parent2',
+                                                  'parent3', 'parent4']])).fit()
+y_resid = model_y.resid
+
+# Calcular la correlación entre los residuos
+correlation_residuals, _ = np.corrcoef(x_resid, y_resid)
+
+print(f"Correlación entre los residuos: {correlation_residuals[1]}")
