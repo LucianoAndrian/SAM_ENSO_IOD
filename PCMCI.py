@@ -1,8 +1,3 @@
-"""
-TEST Algoritmo de descubrimiento causal
-en UN punto de grilla
-"""
-
 ################################################################################
 import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
@@ -19,55 +14,6 @@ warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from scipy.stats import pearsonr
 import statsmodels.formula.api as smf
 ################################################################################
-################################################################################
-sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/mlr/'
-era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
-t_pp_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_obs_d_w_c/'
-# ---------------------------------------------------------------------------- #
-path = '/pikachu/datos/luciano.andrian/cases_fields/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
-################################################################################
-################################################################################
-ruta = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
-hgt = xr.open_dataset(ruta + 'ERA5_HGT200_40-20.nc')
-hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
-hgt = hgt.sel(lat=slice(-20, -90))
-hgt = hgt.interp(lon=np.arange(0,360,.5), lat=np.arange(-90, 90, .5))
-
-hgt_clim = hgt.sel(time=slice('1979-01-01', '2000-12-01'))
-hgt_anom = hgt.groupby('time.month') - \
-           hgt_clim.groupby('time.month').mean('time')
-
-weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom.lat))))
-hgt_anom = hgt_anom * weights
-
-hgt_anom = hgt_anom.sel(lat=slice(None, -20))
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
-sam = sam.rolling(time=3, center=True).mean()
-
-dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
-           sst_anom_sd=False, opposite_signs_criteria=False)[2]
-
-aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
-n34 = Nino34CPC(aux, start=1920, end=2020)[0]
-################################################################################
-c = hgt_anom.sel(lon=270, lat=-60)#.sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
-#c = c.sel(time=c.time.dt.year.isin([np.arange(2010,2018)]))
-#c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
-dmi2 = SameDateAs(dmi, c)
-n342 = SameDateAs(n34, c)
-sam2 = SameDateAs(sam, c)
-
-c = c/c.std()
-dmi3 = dmi2/dmi2.std()
-n343 = n342/n342.std()
-sam3 = sam2/sam2.std()
-#------------------------------------------------------------------------------#
-################################################################################
-# Funciones ####################################################################
 def SetParents(parents, pc_alpha, withtarget=False):
     parents = parents[parents['pval'] < pc_alpha]
     parents = parents.query('r < 0.99')
@@ -294,7 +240,7 @@ def MCI(series, targets, tau_max, parents, mci_alpha):
                     parents_f = pd.concat([parents_f, pd.DataFrame(d)], axis=0)
 
     links = SetParents(parents_f, mci_alpha, True)
-    print(links)
+    #print(links)
     return links
 
 def PCMCI(series, tau_max, pc_alpha, mci_alpha):
@@ -305,23 +251,5 @@ def PCMCI(series, tau_max, pc_alpha, mci_alpha):
         targets.append(s)
         targets_parents.update({s:PC(series, s, tau_max, pc_alpha)})
     # MCI -------------------------------------------------------------------- #
-    links = MCI(series, targets, tau_max, targets_parents, mci_alpha)
+    links = MCI(series,targets, tau_max, targets_parents, mci_alpha)
     return links
-################################################################################
-series = {'c':c['var'].values, 'dmi':dmi3.values, 'n34':n343.values}
-#
-# PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
-################################################################################
-# posible forma de aplicar en grilla
-# se puede seleccionar que es lo que se quiere de pcmci y luuego usar
-# xr.apply_ufunc.
-results_dict = {}
-for ln in hgt_anom['lon'].values:
-    for lt in hgt_anom['lat'].values:
-        values = hgt['var'].sel(lon=ln, lat=lt).values
-        series = {'c': values, 'dmi': dmi3.values, 'n34': n343.values}
-
-        result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05,
-                          mci_alpha=0.05)
-        results_dict[(ln, lt)] = result_df
-
