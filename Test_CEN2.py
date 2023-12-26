@@ -17,7 +17,7 @@ import warnings
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from scipy.stats import pearsonr
-import statsmodels.formula.api as smf
+import statsmodels.api as sm
 ################################################################################
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
@@ -32,8 +32,7 @@ out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
 ruta = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
 hgt = xr.open_dataset(ruta + 'ERA5_HGT200_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
-hgt = hgt.sel(lat=slice(-20, -90))
-hgt = hgt.interp(lon=np.arange(0,360,.5), lat=np.arange(-90, 90, .5))
+hgt = hgt.interp(lon=np.arange(0,360,1), lat=np.arange(-90, 90, 1))
 
 hgt_clim = hgt.sel(time=slice('1979-01-01', '2000-12-01'))
 hgt_anom = hgt.groupby('time.month') - \
@@ -42,7 +41,7 @@ hgt_anom = hgt.groupby('time.month') - \
 weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom.lat))))
 hgt_anom = hgt_anom * weights
 
-hgt_anom = hgt_anom.sel(lat=slice(None, -20))
+hgt_anom = hgt_anom.sel(lat=slice(-90, -70), lon=slice(250, 270))
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
@@ -54,7 +53,7 @@ dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
 aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 ################################################################################
-c = hgt_anom.sel(lon=270, lat=-60)#.sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
+c = hgt_anom.sel(lon=260, lat=-75)#.sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
 #c = c.sel(time=c.time.dt.year.isin([np.arange(2010,2018)]))
 #c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 dmi2 = SameDateAs(dmi, c)
@@ -68,23 +67,10 @@ sam3 = sam2/sam2.std()
 #------------------------------------------------------------------------------#
 ################################################################################
 # Funciones ####################################################################
-def SetParents(parents, pc_alpha, withtarget=False):
-    parents = parents[parents['pval'] < pc_alpha]
-    parents = parents.query('r < 0.99')
-    if withtarget:
-        parents = parents.assign(abs_r=parents['r'].abs()).sort_values(
-            by=['Target', 'abs_r'], ascending=[True, False])
-        parents = parents.drop(columns=['abs_r'])
-    else:
-        parents = parents.iloc[parents['r'].abs().argsort()[::-1]]
-    parents['r'] = parents['r'].round(3)
-    parents['pval'] = parents['pval'].round(3)
-    return parents
-
 def recursive_cut(s1, s2):
     i=1
     while(len(s1)!=len(s2)):
-        i =+ 1
+        i += 1
         if len(s1)>len(s2):
             s1 = s1[1:]
         else:
@@ -148,180 +134,109 @@ def SetLags(x, y, ty, series, parents):
 
     return pd.DataFrame({'x':x, 'y':y, **z_data})
 
-def PartialCorrelation(df):
+def regre(df):
     import statsmodels.api as sm
 
     x_model = sm.OLS(df['x'], sm.add_constant(df[df.columns[2:]])).fit()
     x_res = x_model.resid
 
-    y_model = sm.OLS(df['y'], sm.add_constant(df[df.columns[2:]])).fit()
-    y_res = y_model.resid
+    return x_res
 
-    return pearsonr(x_res, y_res)
+def resize_serie(s1, len_min):
+    i=1
+    while(len(s1)!=len_min):
+        i += 1
+        s1 = s1[1:]
+        if i > 100:
+            print('Error recursive_cut +100 iter.')
+            return
 
-def PC(series, target, tau_max, pc_alpha):
-    taus = np.arange(1, tau_max + 1)
-    len_series = len(series[target])
-
-    # Set preliminary parents ------------------------------------------------ #
-    # Correlation
-    first = True
-    for k in series.keys():
-        for t in taus:
-            r, pv = pearsonr(series[target][t:], series[k][:len_series - t])
-            d = {'pparents': k + '_lag_' + str(t), 'r': [r], 'pval': [pv]}
-
-            if first:
-                first = False
-                parents0 = pd.DataFrame(d)
-            else:
-                parents0 = pd.concat([parents0, pd.DataFrame(d)], axis=0)
-
-    parents = SetParents(parents0, pc_alpha)
-    # ------------------------------------------------------------------------ #
-    # Partial correlation
-    if len(parents) > 2:
-        # Strong parents for partial correlation
-        strong_parents = parents['pparents'].head(2).tolist()
-
-        first = True
-        for p in parents['pparents']:
-            if p == strong_parents[0]:
-                sp = strong_parents[1]
-            else:
-                sp = strong_parents[0]
-
-            serie_p = p.split('_lag_')[0]
-            t_p = np.int(p.split('_lag_')[1])
-
-            df = SetLags(series[target], series[serie_p], ty=t_p, series=series,
-                         parents=[sp])
-
-            r, pv = PartialCorrelation(df)
-
-            d = {'pparents': serie_p + '_lag_' + str(t_p),
-                 'r': [r], 'pval': [pv]}
-            if first:
-                first = False
-                parents1 = pd.DataFrame(d)
-            else:
-                parents1 = pd.concat([parents1, pd.DataFrame(d)], axis=0)
-
-        parents = SetParents(parents1, pc_alpha)
-        # print('parents1')
-        # print(parents)
-        # -------------------------------------------------------------------- #
-        if len(parents) > 2:
-            # Strong parents for partial correlation
-            strong_parents = parents['pparents'].head(3).tolist()
-
-            first = True
-            for p in parents['pparents']:
-                # Select 2 strong parents for partial correlation
-                aux_strong_parents = strong_parents[:2] if \
-                    all(parent != p for parent in strong_parents) else \
-                    [parent for parent in strong_parents if parent != p]
-
-                serie_p = p.split('_lag_')[0]
-                t_p = np.int(p.split('_lag_')[1])
-
-                df = SetLags(series[target], series[serie_p], ty=t_p,
-                             series=series,
-                             parents=aux_strong_parents)
-
-                r, pv = PartialCorrelation(df)
-
-                d = {'pparents': serie_p + '_lag_' + str(t_p), 'r': [r],
-                     'pval': [pv]}
-                if first:
-                    first = False
-                    parents2 = pd.DataFrame(d)
-                else:
-                    parents2 = pd.concat([parents2, pd.DataFrame(d)],
-                                         axis=0)
-
-            parents = SetParents(parents2, pc_alpha)
-
-    #print(parents)
-    parents_name=[]
-    for p in parents['pparents']:
-        parents_name.append(p)
-
-    return parents_name
-
-def add_lag(parents, plus_lag=1):
-    parents_add_lag = []
-    for p in parents:
-        pre, lag = p.split('_lag_')
-        lag = int(lag) + plus_lag
-        parents_add_lag.append(pre + '_lag_' + str(lag))
-
-    return parents_add_lag
-
-def MCI(series, targets, tau_max, parents, mci_alpha):
-
-    lags = np.arange(0, tau_max + 1)
-    first = True
-    for target in targets:
-        target_parents_original = parents[target].copy()
-
-        for l in lags:
-            for a in targets:
-                actor_parents = parents[a].copy()
-                actor_as_target_parent = a + '_lag_' + str(l)
-
-                target_parents = target_parents_original.copy()
-                if actor_as_target_parent in target_parents_original:
-                    target_parents.remove(actor_as_target_parent)
-
-                target_actor_parents = target_parents + \
-                                       add_lag(actor_parents, l)
-                # Test
-                target_actor_parents = list(set(target_actor_parents))
-
-                df = SetLags(series[target], series[a], ty=l, series=series,
-                             parents=target_actor_parents)
-
-                r, pv = PartialCorrelation(df)
-
-                d = {'Target': target, 'Actor': a + '_lag_' + str(l),
-                     'r': [r], 'pval': [pv]}
-
-                if first:
-                    first = False
-                    parents_f = pd.DataFrame(d)
-                else:
-                    parents_f = pd.concat([parents_f, pd.DataFrame(d)], axis=0)
-
-    links = SetParents(parents_f, mci_alpha, True)
-    print(links)
-    return links
-
-def PCMCI(series, tau_max, pc_alpha, mci_alpha):
-    targets = []
-    targets_parents= {}
-    # PC --------------------------------------------------------------------- #
-    for s in series.keys():
-        targets.append(s)
-        targets_parents.update({s:PC(series, s, tau_max, pc_alpha)})
-    # MCI -------------------------------------------------------------------- #
-    links = MCI(series, targets, tau_max, targets_parents, mci_alpha)
-    return links
+    return s1
 ################################################################################
+from PCMCI import PCMCI
 series = {'c':c['var'].values, 'dmi':dmi3.values, 'n34':n343.values}
 #
-# PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
+df = PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
 ################################################################################
 # posible forma de aplicar en grilla
 # se puede seleccionar que es lo que se quiere de pcmci y luuego usar
 # xr.apply_ufunc.
-results_dict = {}
-for ln in hgt_anom['lon'].values:
-    for lt in hgt_anom['lat'].values:
-        values = hgt['var'].sel(lon=ln, lat=lt).values
-        series = {'c': values, 'dmi': dmi3.values, 'n34': n343.values}
 
-        result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05,
-                          mci_alpha=0.05)
-        results_dict[(ln, lt)] = result_df
+from PCMCI import PCMCI
+def aux_func(x):#, dmi3, n343):
+    x_values = x
+    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values}
+    result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
+    actors_res = []
+    for actor in ['c', 'dmi', 'n34']:
+        aux_df = result_df.loc[result_df['Target'] == actor]
+        links = list(aux_df['Actor'])
+        df = SetLags(series[actor], series['c'], ty=0, series=series, parents=links)
+        actors_res.append(regre(df))
+    len_min = min(len(serie) for serie in actors_res)
 
+    for i, a_res in enumerate(actors_res):
+        actors_res[i] = resize_serie(a_res.values, len_min)
+    aux_df = pd.DataFrame({'c': actors_res[0], 'dmi': actors_res[1], 'n34': actors_res[2]})
+    model = sm.OLS(aux_df['c'], sm.add_constant(aux_df[aux_df.columns[1:]])).fit()
+
+    return model.params[1]
+
+from datetime import datetime
+print(datetime.now())
+reg_array = xr.apply_ufunc(
+    aux_func,
+    hgt_anom['var'],
+    input_core_dims=[['time']],  # Las dimensiones sobre las cuales iterar
+    # ,     # Las dimensiones del resultado
+    #dask='parallelized',       # Opción de paralelización para cálculos grandes
+    vectorize=True,
+    output_dtypes=[float]       # Tipo de datos del resultado
+)
+print(datetime.now())
+
+
+
+def aux_func(hgt):
+    reg_array = hgt.copy()
+
+    for lt in hgt['lat'].values:
+        for ln in hgt['lon'].values:
+
+            x = hgt.sel(lat=lt, lon=ln).values
+
+            series = {'c': x, 'dmi': dmi3.values, 'n34': n343.values}
+            result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05,
+                              mci_alpha=0.05)
+            actors_res = []
+            for actor in ['c', 'dmi', 'n34']:
+                aux_df = result_df.loc[result_df['Target'] == actor]
+                links = list(aux_df['Actor'])
+                df = SetLags(series[actor], series['c'], ty=0, series=series,
+                             parents=links)
+                actors_res.append(regre(df))
+
+            len_min = min(len(serie) for serie in actors_res)
+
+            for i, a_res in enumerate(actors_res):
+                actors_res[i] = resize_serie(a_res.values, len_min)
+
+            aux_df = pd.DataFrame(
+                {'c': actors_res[0], 'dmi': actors_res[1],
+                 'n34': actors_res[2]})
+            model = sm.OLS(aux_df['c'],
+                           sm.add_constant(aux_df[aux_df.columns[1:]])).fit()
+
+            reg_array.loc[
+                dict(lon=ln, lat=lt, time='1940-01-01')] = model.params[1]
+
+    return reg_array
+
+hgt_anom_dask = hgt_anom.chunk(chunks={'time': -1, 'lat': 5, 'lon': 5})
+
+from datetime import datetime
+
+print(datetime.now())
+test_hgt = hgt_anom_dask['var'].map_blocks(
+    aux_func, template=hgt_anom_dask['var']).compute()
+print(datetime.now())
