@@ -94,7 +94,7 @@ def SetLags(x, y, ty, series, parents):
 
     return pd.DataFrame({'x':x, 'y':y, **z_data})
 
-def PartialCorrelation(df):
+def PartialCorrelation2(df):
     import statsmodels.api as sm
 
     x_model = sm.OLS(df['x'], sm.add_constant(df[df.columns[2:]])).fit()
@@ -104,6 +104,21 @@ def PartialCorrelation(df):
     y_res = y_model.resid
 
     return pearsonr(x_res, y_res)
+
+
+def PartialCorrelation(df):
+    x = df['x'].values
+    y = df['y'].values
+
+    X = np.column_stack((np.ones_like(x), df[df.columns[2:]].values))
+    beta_x = np.linalg.lstsq(X, x, rcond=None)[0]
+    x_res = x - np.dot(X, beta_x)
+
+    beta_y = np.linalg.lstsq(X, y, rcond=None)[0]
+    y_res = y - np.dot(X, beta_y)
+    r, pv = pearsonr(x_res, y_res)
+
+    return r, pv
 
 def PC(series, target, tau_max, pc_alpha):
     taus = np.arange(1, tau_max + 1)
