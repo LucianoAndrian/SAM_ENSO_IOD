@@ -16,8 +16,11 @@ os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 import warnings
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-from scipy.stats import pearsonr
 import statsmodels.api as sm
+from PCMCI import PCMCI
+import concurrent.futures
+import time
+import matplotlib.pyplot as plt
 ################################################################################
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
@@ -32,16 +35,19 @@ out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
 ruta = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
 hgt = xr.open_dataset(ruta + 'ERA5_HGT200_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
-hgt = hgt.interp(lon=np.arange(0,360,1), lat=np.arange(-90, 90, 1))
+hgt = hgt.interp(lon=np.arange(0,360,2), lat=np.arange(-90, 90, 2))
 
 hgt_clim = hgt.sel(time=slice('1979-01-01', '2000-12-01'))
 hgt_anom = hgt.groupby('time.month') - \
            hgt_clim.groupby('time.month').mean('time')
 
-weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom.lat))))
-hgt_anom = hgt_anom * weights
+# weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom.lat))))
+# hgt_anom = hgt_anom * weights
 
-hgt_anom = hgt_anom.sel(lat=slice(-90, -70), lon=slice(250, 270))
+#hgt_anom2 = hgt_anom.sel(lat=slice(-80, 0), lon=slice(60, 70))
+hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
+hgt_anom = hgt_anom.sel(time=slice('1940-02-01', '2020-11-01'))
+#hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([8,9,10,11]))
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
@@ -53,17 +59,18 @@ dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
 aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 ################################################################################
-c = hgt_anom.sel(lon=260, lat=-75)#.sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
+#c = hgt_anom2.sel(lon=65, lat=-75)#.sel(time=hgt_anom.time.dt.year.isin(np.arange(1980,2020)))
 #c = c.sel(time=c.time.dt.year.isin([np.arange(2010,2018)]))
 #c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
-dmi2 = SameDateAs(dmi, c)
-n342 = SameDateAs(n34, c)
-sam2 = SameDateAs(sam, c)
+dmi2 = SameDateAs(dmi, hgt_anom)
+n342 = SameDateAs(n34, hgt_anom)
+#sam2 = SameDateAs(sam, hgt_anom)
 
-c = c/c.std()
+#sam3 = sam2
+#c = c/c.std()
 dmi3 = dmi2/dmi2.std()
 n343 = n342/n342.std()
-sam3 = sam2/sam2.std()
+# sam3 = sam2/sam2.std()
 #------------------------------------------------------------------------------#
 ################################################################################
 # Funciones ####################################################################
@@ -142,6 +149,18 @@ def regre(df):
 
     return x_res
 
+def regre(df):
+    X = np.column_stack((np.ones_like(df[df.columns[2:]]), df[df.columns[2:]]))
+    y = df['x']
+
+    # Calcular los coeficientes de la regresión lineal
+    beta = np.linalg.lstsq(X, y, rcond=None)[0]
+
+    # Calcular los residuos
+    x_res = y - np.dot(X, beta)
+
+    return x_res
+
 def resize_serie(s1, len_min):
     i=1
     while(len(s1)!=len_min):
@@ -153,17 +172,7 @@ def resize_serie(s1, len_min):
 
     return s1
 ################################################################################
-from PCMCI import PCMCI
-series = {'c':c['var'].values, 'dmi':dmi3.values, 'n34':n343.values}
-#
-df = PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
-################################################################################
-# posible forma de aplicar en grilla
-# se puede seleccionar que es lo que se quiere de pcmci y luuego usar
-# xr.apply_ufunc.
-
-from PCMCI import PCMCI
-def aux_func(x):#, dmi3, n343):
+def aux_func(x):
     x_values = x
     series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values}
     result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
@@ -173,6 +182,7 @@ def aux_func(x):#, dmi3, n343):
         links = list(aux_df['Actor'])
         df = SetLags(series[actor], series['c'], ty=0, series=series, parents=links)
         actors_res.append(regre(df))
+
     len_min = min(len(serie) for serie in actors_res)
 
     for i, a_res in enumerate(actors_res):
@@ -182,61 +192,47 @@ def aux_func(x):#, dmi3, n343):
 
     return model.params[1]
 
-from datetime import datetime
-print(datetime.now())
-reg_array = xr.apply_ufunc(
-    aux_func,
-    hgt_anom['var'],
-    input_core_dims=[['time']],  # Las dimensiones sobre las cuales iterar
-    # ,     # Las dimensiones del resultado
-    #dask='parallelized',       # Opción de paralelización para cálculos grandes
-    vectorize=True,
-    output_dtypes=[float]       # Tipo de datos del resultado
-)
-print(datetime.now())
+def fakedaks(c):
+    try:
+        hgt_anom2 = hgt_anom.sel(lat=slice(c[0], c[1]), lon=slice(c[2], c[3]))
+        reg_array = xr.apply_ufunc(
+            aux_func,
+            hgt_anom2['var'],
+            input_core_dims=[['time']],
+            #dask='parallelized',
+            vectorize=True,
+            output_dtypes=[float])
+        return reg_array
+    except Exception as e:
+        print(f"Error in fakedaks for chunk {c}: {e}")
 
 
+# hacer funcion para esto
+lonlat = [[-90, -60, 60, 90], [-90, -60, 91, 120], [-90, -60, 121, 150],
+          [-90, -60, 151, 180], [-90, -60, 181, 210], [-90, -60, 211, 240],
+          [-90, -60, 241, 270], [-90, -60, 271, 300], [-90, -60, 301, 330],
+          [-61, -30, 60, 90], [-61, -30, 91, 120], [-61, -30, 121, 150],
+          [-61, -30, 151, 180], [-61, -30, 181, 210], [-61, -30, 211, 240],
+          [-61, -30, 241, 270], [-61, -30, 271, 300], [-61, -30, 301, 330],
+          [-31, 0, 60, 90], [-31, 0, 91, 120], [-31, 0, 121, 150],
+          [-31, 0, 151, 180], [-31, 0, 181, 210], [-31, 0, 211, 240],
+          [-31, 0, 241, 270], [-31, 0, 271, 300], [-31, 0, 301, 330]]
 
-def aux_func(hgt):
-    reg_array = hgt.copy()
 
-    for lt in hgt['lat'].values:
-        for ln in hgt['lon'].values:
+time0 = time.time()
 
-            x = hgt.sel(lat=lt, lon=ln).values
+with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
+    aux_result = list(executor.map(fakedaks, lonlat))
 
-            series = {'c': x, 'dmi': dmi3.values, 'n34': n343.values}
-            result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05,
-                              mci_alpha=0.05)
-            actors_res = []
-            for actor in ['c', 'dmi', 'n34']:
-                aux_df = result_df.loc[result_df['Target'] == actor]
-                links = list(aux_df['Actor'])
-                df = SetLags(series[actor], series['c'], ty=0, series=series,
-                             parents=links)
-                actors_res.append(regre(df))
+delta_t = time.time() - time0
+print(f"Tiempo: {delta_t} segundos")
 
-            len_min = min(len(serie) for serie in actors_res)
+aux_xr = xr.merge(aux_result)
 
-            for i, a_res in enumerate(actors_res):
-                actors_res[i] = resize_serie(a_res.values, len_min)
+plt.contourf(aux_xr.where(aux_xr)['var'], cmap='RdBu_r',
+             levels=np.arange(-150, 150, 25),
+             extend='both')
+plt.colorbar()
+plt.show()
 
-            aux_df = pd.DataFrame(
-                {'c': actors_res[0], 'dmi': actors_res[1],
-                 'n34': actors_res[2]})
-            model = sm.OLS(aux_df['c'],
-                           sm.add_constant(aux_df[aux_df.columns[1:]])).fit()
 
-            reg_array.loc[
-                dict(lon=ln, lat=lt, time='1940-01-01')] = model.params[1]
-
-    return reg_array
-
-hgt_anom_dask = hgt_anom.chunk(chunks={'time': -1, 'lat': 5, 'lon': 5})
-
-from datetime import datetime
-
-print(datetime.now())
-test_hgt = hgt_anom_dask['var'].map_blocks(
-    aux_func, template=hgt_anom_dask['var']).compute()
-print(datetime.now())
