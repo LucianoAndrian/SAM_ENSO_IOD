@@ -141,17 +141,17 @@ def SetLags(x, y, ty, series, parents):
 
     return pd.DataFrame({'x':x, 'y':y, **z_data})
 
-def regre(df):
-    import statsmodels.api as sm
-
-    x_model = sm.OLS(df['x'], sm.add_constant(df[df.columns[2:]])).fit()
-    x_res = x_model.resid
-
-    return x_res
+# def regre_res(df):
+#     import statsmodels.api as sm
+#
+#     x_model = sm.OLS(df['y'], sm.add_constant(df[df.columns[2:]])).fit()
+#     x_res = x_model.resid
+#
+#     return x_res
 
 def regre(df):
     X = np.column_stack((np.ones_like(df[df.columns[2:]]), df[df.columns[2:]]))
-    y = df['x']
+    y = df['y']
 
     # Calcular los coeficientes de la regresión lineal
     beta = np.linalg.lstsq(X, y, rcond=None)[0]
@@ -184,8 +184,11 @@ def resize_serie(s1, len_min):
             return
 
     return s1
+
 ################################################################################
 def aux_func(x):
+    target='n34'
+    lag=0
     x_values = x
     series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values}
     result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.2, mci_alpha=0.05)
@@ -201,49 +204,61 @@ def aux_func(x):
             if actor in element:
                 own_links.append(element)
 
-        df = SetLags(series[actor], series[actor], ty=0,
+        # own_links=links
+        df = SetLags(series[actor], series[actor], ty=lag,
                      series=series, parents=own_links)
 
         if actor == 'c':
             actors_parents.append(regre(df))
-        elif actor == 'dmi':
+        elif actor == target:
             actors_parents.append(regre(df))
             actors_parents.append(regre_res(df))
         else:
             actors_parents.append(df['x'].values)
+            actors_parents.append(regre(df))
+
+        # actors_parents.append(regre_res(df))
 
     len_min = min(len(serie) for serie in actors_parents)
 
     for i, a_res in enumerate(actors_parents):
         actors_parents[i] = resize_serie(a_res, len_min)
 
-    # VER ESTO, sigue la descripción de Di Capua 2020
-    # pero hay algunas cosas que se podrian probar
+    # crear dos formas,
+    # forma 2
     aux_df = pd.DataFrame({'c_or': resize_serie(series['c'], len_min),
-                           #'dmi':  resize_serie(series['dmi'], len_min),
-                           'dmi': actors_parents[2],
-                           'c_l': actors_parents[0],
-                           'dmi_l': actors_parents[1],
-                           'n34': actors_parents[3]})
-    #model = sm.OLS(aux_df['c'], sm.add_constant(aux_df[aux_df.columns[1:]])).fit()ç
+                           target: resize_serie(series[target], len_min),
+                           'c_t': actors_parents[0],
+                           target+'_t': actors_parents[1],
+                           '2actor': actors_parents[3],
+                           '2actor_t':actors_parents[4]})
+    #,
+                           #'c_l': actors_parents[0].values,
+                           #target +'_l': actors_parents[1],
+                           #'actor_WO': actors_parents[3]
+                           #'n34_res':actors_parents[2].values})
+
     model = sm.OLS(aux_df['c_or'],
                    sm.add_constant(aux_df[aux_df.columns[1:]])).fit()
 
-    return model.params[1]#*dmi3.std()/np.std(x)
+    if model.pvalues[1]<0.5:
+        return model.params[1]
+    else:
+        return np.nan
 
 def fakedaks(c):
-    try:
-        hgt_anom2 = hgt_anom.sel(lat=slice(c[0], c[1]), lon=slice(c[2], c[3]))
-        reg_array = xr.apply_ufunc(
-            aux_func,
-            hgt_anom2['var'],
-            input_core_dims=[['time']],
-            #dask='parallelized',
-            vectorize=True,
-            output_dtypes=[float])
-        return reg_array
-    except Exception as e:
-        print(f"Error in fakedaks for chunk {c}: {e}")
+    hgt_anom2 = hgt_anom.sel(lat=slice(c[0], c[1]), lon=slice(c[2], c[3]))
+    reg_array = xr.apply_ufunc(
+        aux_func,
+        hgt_anom2['var'],
+        input_core_dims=[['time']],
+        # dask='parallelized',
+        vectorize=True,
+        output_dtypes=[float])
+    return reg_array
+
+
+
 
 # hacer funcion para esto
 lonlat = [[-80, -60, 30, 60], [-80, -60, 61, 90], [-80, -60, 91, 120],
@@ -264,11 +279,11 @@ from datetime import datetime
 print(datetime.now())
 time0 = time.time()
 
-with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
+with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
     aux_result = list(executor.map(fakedaks, lonlat))
 
 delta_t = time.time() - time0
-print(f"Tiempo: {delta_t} segundos")
+print(f"Tiempo: {delta_t/60} minutos")
 
 aux_xr = xr.merge(aux_result)
 
