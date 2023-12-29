@@ -47,7 +47,7 @@ hgt_anom = hgt.groupby('time.month') - \
 #hgt_anom2 = hgt_anom.sel(lat=slice(-80, 0), lon=slice(60, 70))
 hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
 hgt_anom = hgt_anom.sel(time=slice('1940-02-01', '2020-11-01'))
-#hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([8,9,10,11]))
+hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([8,9,10,11]))
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
@@ -64,13 +64,13 @@ n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 #c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 dmi2 = SameDateAs(dmi, hgt_anom)
 n342 = SameDateAs(n34, hgt_anom)
-#sam2 = SameDateAs(sam, hgt_anom)
+sam2 = SameDateAs(sam, hgt_anom)
 
 #sam3 = sam2
 #c = c/c.std()
 dmi3 = dmi2/dmi2.std()
 n343 = n342/n342.std()
-# sam3 = sam2/sam2.std()
+sam3 = sam2/sam2.std()
 #------------------------------------------------------------------------------#
 ################################################################################
 # Funciones ####################################################################
@@ -159,6 +159,19 @@ def regre(df):
     # Calcular los residuos
     x_res = y - np.dot(X, beta)
 
+    #return x_res
+    return  np.dot(X, beta)
+
+def regre_res(df):
+    X = np.column_stack((np.ones_like(df[df.columns[2:]]), df[df.columns[2:]]))
+    y = df['x']
+
+    # Calcular los coeficientes de la regresión lineal
+    beta = np.linalg.lstsq(X, y, rcond=None)[0]
+
+    # Calcular los residuos
+    x_res = y - np.dot(X, beta)
+
     return x_res
 
 def resize_serie(s1, len_min):
@@ -175,22 +188,48 @@ def resize_serie(s1, len_min):
 def aux_func(x):
     x_values = x
     series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values}
-    result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.05, mci_alpha=0.05)
-    actors_res = []
+    result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.2, mci_alpha=0.05)
+
+    actors_parents=[]
     for actor in ['c', 'dmi', 'n34']:
         aux_df = result_df.loc[result_df['Target'] == actor]
         links = list(aux_df['Actor'])
-        df = SetLags(series[actor], series['c'], ty=0, series=series, parents=links)
-        actors_res.append(regre(df))
 
-    len_min = min(len(serie) for serie in actors_res)
 
-    for i, a_res in enumerate(actors_res):
-        actors_res[i] = resize_serie(a_res.values, len_min)
-    aux_df = pd.DataFrame({'c': actors_res[0], 'dmi': actors_res[1], 'n34': actors_res[2]})
-    model = sm.OLS(aux_df['c'], sm.add_constant(aux_df[aux_df.columns[1:]])).fit()
+        own_links = []
+        for element in links:
+            if actor in element:
+                own_links.append(element)
 
-    return model.params[1]
+        df = SetLags(series[actor], series[actor], ty=0,
+                     series=series, parents=own_links)
+
+        if actor == 'c':
+            actors_parents.append(regre(df))
+        elif actor == 'dmi':
+            actors_parents.append(regre(df))
+            actors_parents.append(regre_res(df))
+        else:
+            actors_parents.append(df['x'].values)
+
+    len_min = min(len(serie) for serie in actors_parents)
+
+    for i, a_res in enumerate(actors_parents):
+        actors_parents[i] = resize_serie(a_res, len_min)
+
+    # VER ESTO, sigue la descripción de Di Capua 2020
+    # pero hay algunas cosas que se podrian probar
+    aux_df = pd.DataFrame({'c_or': resize_serie(series['c'], len_min),
+                           #'dmi':  resize_serie(series['dmi'], len_min),
+                           'dmi': actors_parents[2],
+                           'c_l': actors_parents[0],
+                           'dmi_l': actors_parents[1],
+                           'n34': actors_parents[3]})
+    #model = sm.OLS(aux_df['c'], sm.add_constant(aux_df[aux_df.columns[1:]])).fit()ç
+    model = sm.OLS(aux_df['c_or'],
+                   sm.add_constant(aux_df[aux_df.columns[1:]])).fit()
+
+    return model.params[1]#*dmi3.std()/np.std(x)
 
 def fakedaks(c):
     try:
@@ -206,19 +245,23 @@ def fakedaks(c):
     except Exception as e:
         print(f"Error in fakedaks for chunk {c}: {e}")
 
-
 # hacer funcion para esto
-lonlat = [[-90, -60, 60, 90], [-90, -60, 91, 120], [-90, -60, 121, 150],
-          [-90, -60, 151, 180], [-90, -60, 181, 210], [-90, -60, 211, 240],
-          [-90, -60, 241, 270], [-90, -60, 271, 300], [-90, -60, 301, 330],
-          [-61, -30, 60, 90], [-61, -30, 91, 120], [-61, -30, 121, 150],
-          [-61, -30, 151, 180], [-61, -30, 181, 210], [-61, -30, 211, 240],
-          [-61, -30, 241, 270], [-61, -30, 271, 300], [-61, -30, 301, 330],
-          [-31, 0, 60, 90], [-31, 0, 91, 120], [-31, 0, 121, 150],
-          [-31, 0, 151, 180], [-31, 0, 181, 210], [-31, 0, 211, 240],
-          [-31, 0, 241, 270], [-31, 0, 271, 300], [-31, 0, 301, 330]]
+lonlat = [[-80, -60, 30, 60], [-80, -60, 61, 90], [-80, -60, 91, 120],
+          [-80, -60, 121, 150], [-80, -60, 151, 180], [-80, -60, 181, 210],
+          [-80, -60, 211, 240], [-80, -60, 241, 270], [-80, -60, 271, 300],
+          [-80, -60, 301, 330],
+          [-59, -30, 30, 60], [-59, -30, 61, 90], [-59, -30, 91, 120],
+          [-59, -30, 121, 150], [-59, -30, 151, 180], [-59, -30, 181, 210],
+          [-59, -30, 211, 240], [-59, -30, 241, 270], [-59, -30, 271, 300],
+          [-59, -30, 301, 330],
+          [-31, 0, 30, 60], [-31, 0, 61, 90], [-31, 0, 91, 120],
+          [-31, 0, 121, 150], [-31, 0, 151, 180], [-31, 0, 181, 210],
+          [-31, 0, 211, 240], [-31, 0, 241, 270], [-31, 0, 271, 300],
+          [-31, 0, 301, 330]]
 
 
+from datetime import datetime
+print(datetime.now())
 time0 = time.time()
 
 with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
@@ -229,10 +272,63 @@ print(f"Tiempo: {delta_t} segundos")
 
 aux_xr = xr.merge(aux_result)
 
-plt.contourf(aux_xr.where(aux_xr)['var'], cmap='RdBu_r',
-             levels=np.arange(-150, 150, 25),
-             extend='both')
-plt.colorbar()
+from matplotlib import colors
+import numpy as np
+################################################################################
+cbar_hgt = colors.ListedColormap(['#9B1C00', '#B9391B', '#CD4838',
+                                      '#E25E55', '#F28C89', '#FFCECC',
+                                      'white',
+                                      '#B3DBFF', '#83B9EB', '#5E9AD7',
+                                      '#3C7DC3', '#2064AF', '#014A9B'][::-1])
+cbar_hgt.set_over('#641B00')
+cbar_hgt.set_under('#012A52')
+cbar_hgt.set_bad(color='white')
+
+
+import cartopy.feature
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import cartopy.crs as ccrs
+
+fig = plt.figure(figsize=(7, 3), dpi=100)
+ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
+crs_latlon = ccrs.PlateCarree()
+
+ax.set_extent([0, 359, -90, 10], crs=crs_latlon)
+
+im = ax.contourf(aux_xr.lon, aux_xr.lat, aux_xr['var'],
+                 # levels=[-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2],
+                 levels=[-150, -100, -75, -50, -25, -15,
+                         0, 15, 25, 50, 75, 100, 150],
+                 transform=crs_latlon, cmap=cbar_hgt, extend='both')
+
+values = ax.contour(aux_xr.lon, aux_xr.lat, aux_xr['var'],
+                    levels=np.arange(-350, 350, 50),
+                    transform=crs_latlon, colors='k', linewidths=1)
+
+cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
+cb.ax.tick_params(labelsize=8)
+ax.add_feature(cartopy.feature.LAND, facecolor='#d9d9d9')
+ax.add_feature(cartopy.feature.COASTLINE)
+ax.gridlines(crs=crs_latlon, linewidth=0.3, linestyle='-')
+lon_formatter = LongitudeFormatter(zero_direction_label=True)
+lat_formatter = LatitudeFormatter()
+ax.xaxis.set_major_formatter(lon_formatter)
+ax.yaxis.set_major_formatter(lat_formatter)
+ax.tick_params(labelsize=7)
+plt.title('test', fontsize=10)
+# if text:
+#     plt.figtext(0.5, 0.01, number_events, ha="center", fontsize=10,
+#                 bbox={'facecolor': 'w', 'alpha': 0.5, 'pad': 5})
+plt.tight_layout()
+
+# save=False
+# if save:
+#     plt.savefig(
+#         name_fig + str(season) + '_' + str(fase.split(' ', 1)[1]) + '.jpg')
+#     plt.close()
+# else:
+#     plt.show()
 plt.show()
+
 
 
