@@ -20,6 +20,9 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.path as mpath
 
+import sys
+sys.path.append('/home/auri/Facultad/Doc/scrips/ENSO_IOD_SAM/')
+
 def plot_stereo(dataarray, variance, n, lead, save, dpi, aux_name):
     import Scales_Cbars
     cbar = Scales_Cbars.get_cbars('hgt200')
@@ -107,13 +110,14 @@ def Compute(hgt, aux_name_r, aux_name_em, save, modeL=False):
         # Plot Eof
         var_per = np.around(solver.varianceFraction(neigs=3).values * 100, 1)
         for n in [0, 1, 2]:
-            plot_stereo(eof_L_r[n], var_per, n + 1, 'todos', save, dpi, aux_name_r)
+            plot_stereo(eof_L_r[n], var_per, n + 1, 'todos', save, dpi,
+                        aux_name_r)
 
     else:
-        # por leads -------------------------------------------------------------- #
+        # por leads ---------------------------------------------------------- #
         for l in [0, 1, 2, 3]:
             print('L:' + str(l))
-            # Todos las runs ----------------------------------------------------- #
+            # Todos las runs ------------------------------------------------- #
 
             aux = hgt.sel(time=hgt['L'] == l) * weights  # .mean('r')
 
@@ -150,11 +154,19 @@ def Compute(hgt, aux_name_r, aux_name_em, save, modeL=False):
             del aux_st
             del solver
 
-            # Media del ensamble --------------------------------------------------#
+            # Media del ensamble --------------------------------------------- #
             aux = aux.mean('r')
 
             # eof ------------------------------------#
-            solver = Eof(xr.DataArray(aux['hgt']))
+            try:
+                solver = Eof(xr.DataArray(aux['hgt']))
+
+            except ValueError as ve:
+                if str(ve) == 'all input data is missing':
+                    print('Lead ' + str(l) + ' con campos faltantes')
+                    aux = aux.where(~np.isnan(aux), drop=True)
+                    solver = Eof(xr.DataArray(aux['hgt']))
+
             eof_L_em = solver.eofsAsCovariance(neofs=3)
             pcs = solver.pcs()
 
@@ -185,31 +197,27 @@ def Compute(hgt, aux_name_r, aux_name_em, save, modeL=False):
 
             print('Done concat')
 
-        # -------------------------------------------------------------------------#
+        # -------------------------------------------------------------------- #
         if save:
             eof_r.to_netcdf(out_dir + 'eof_r' + aux_name_r + '_z200.nc')
             sam_r.to_netcdf(out_dir + 'sam_r' + aux_name_r + '_z200.nc')
 
             eof_em.to_netcdf(out_dir + 'eof_em' + aux_name_r + '_z200.nc')
             sam_em.to_netcdf(out_dir + 'sam_em' + aux_name_r + '_z200.nc')
-        # -------------------------------------------------------------------------#
-
-
-
+        # -------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 hgt = xr.open_dataset(path + 'hgt_mon_anom_d.nc')
-
 hgt_sea = xr.open_dataset(path + 'hgt_seas_anom_d.nc')
-hgt_sea = hgt_sea.sel(time=hgt_sea.time.dt.month.isin(10)) # SON
+hgt_son = hgt_sea.sel(time=hgt_sea.time.dt.month.isin(10)) # SON
 # Compute ---------------------------------------------------------------------#
 Compute(hgt, 'mon_r', 'mon_em', save)
-Compute(hgt_sea, 'SON_r', 'SON_em', save)
-Compute(hgt_sea, 'SON_r', 'SON_em', False, True)
+Compute(hgt_sea, 'sea_r', 'sea_em', save)
+Compute(hgt_son, 'SON_r', 'SON_em', False, True)
 print('#######################################################################')
 print('done')
 print('#######################################################################')
 # Test Select
-# sam = xr.open_dataset(out_dir + 'sam_r_z200.nc').rename({'time2':'time'})
+# sam = xr.open_dataset(out_dir + 'sam_rSON_r_z200.nc').rename({'time2':'time'})
 # hgt = xr.open_dataset(path + 'hgt_mon_anom_d.nc')
 #
 # hgt_l=hgt.sel(time=hgt['L']==3)
