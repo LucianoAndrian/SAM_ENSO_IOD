@@ -62,7 +62,8 @@ sam = sam.rolling(time=3, center=True).mean()
 dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
            sst_anom_sd=False, opposite_signs_criteria=False)[2]
 
-aux = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
+aux = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
+aux = aux.sel(time=slice('1920-01-01', '2020-12-01'))
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 # ---------------------------------------------------------------------------- #
 dmi2 = SameDateAs(dmi, hgt_anom)
@@ -194,7 +195,7 @@ def resize_serie(s1, len_min):
 
 def Compute_PCMCI_MLR(x):
     target='dmi'
-    dc2020=True
+    dc2020=False
     lag=0
     # PENDIENTE
     # SETEAR LAAAG!
