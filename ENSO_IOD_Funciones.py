@@ -408,7 +408,7 @@ def DMI2(end_per=1920, start_per=2020, filter_harmonic=True, filter_bwa=False,
     end_year = end_per
     ####################################################################################################################
     # DATA - ERSSTv5 --------------------------------------------------------------------------------------------------#
-    sst = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
+    sst = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
 
     # Pre-processing --------------------------------------------------------------------------------------------------#
     iodw = sst.sel(lat=slice(10.0, -10.0), lon=western_io,
