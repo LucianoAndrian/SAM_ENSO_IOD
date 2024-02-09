@@ -10,7 +10,8 @@ out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/events_dates/'
 # ---------------------------------------------------------------------------- #
 import xarray as xr
 import numpy as np
-import asyncio # **
+import os
+os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 # **
 # La selección de los campos en hgt tarda mucho debido a la cantidad >10mil
 # en general para cada categoria.
@@ -54,6 +55,20 @@ def UniqueValues(target, extract):
     target_uniques = target - extract
     return np.array(list(target_uniques))
 
+def SameDatesAs(data, dates):
+    return data.sel(time=data.time.isin(dates))
+
+def SetDates(*args):
+    if len(args) == 2:
+        dates = np.intersect1d(args[0], args[1])
+    elif len(args) == 3:
+        dates = np.intersect1d(args[0], np.intersect1d(args[1], args[2]))
+    else:
+        raise ValueError("Error: número de argumentos")
+
+    return SameDatesAs(args[0], dates)
+
+
 # ---------------------------------------------------------------------------- #
 
 sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc')\
@@ -74,7 +89,6 @@ hgt = xr.open_dataset(path_aux + 'hgt_mon_anom_d.nc')
 # ---------------------------------------------------------------------------- #
 dates_dir = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
 
-out_dir = '/pikachu/datos/luciano.andrian/cases_dates/'
 ########################################################################################################################
 seasons = ['JJA', 'JAS', 'ASO', 'SON']
 main_month_season = [7, 8, 9, 10]
@@ -102,203 +116,245 @@ Clasificacion de eventos para cada r en funcion de los criterios de arriba
 el r, la seasons y la fecha funcionan de labels para identificar los campos
 correspondientes en las variables
 """
-check_dmi_pos_n34_neg = 666
-check_dmi_neg_n34_pos = 666
-#for r in range(1, 25):
-r=15
+for r in range(1, 25):
+    # Clasificados en positivos y negativos y seleccionados para cada r
+    dmi_pos, dmi_neg, dmi = xrClassifierEvents(data_dmi, r, 'sst')
+    n34_pos, n34_neg, n34 = xrClassifierEvents(data_n34, r, 'sst')
+    sam_pos, sam_neg, sam = xrClassifierEvents(data_sam, r, 'sam')
 
-# Clasificados en positivos y negativos y seleccionados para cada r
-dmi_pos, dmi_neg, dmi = xrClassifierEvents(data_dmi, r, 'sst')
-n34_pos, n34_neg, n34 = xrClassifierEvents(data_n34, r, 'sst')
-sam_pos, sam_neg, sam = xrClassifierEvents(data_sam, r, 'sam')
+    # ------------------------------------------------------------------------ #
+    # Eventos simultaneos ---------------------------------------------------- #
+    # Fechas
+    # x2
+    dmi_n34_sim = np.intersect1d(n34.time, dmi.time)
+    dmi_sam_sim = np.intersect1d(dmi.time, sam.time)
+    n34_sam_sim = np.intersect1d(n34.time, sam.time)
 
-# ---------------------------------------------------------------------------- #
-# Eventos simultaneos -------------------------------------------------------- #
-# Fechas
-# x2
-dmi_n34_sim = np.intersect1d(n34.time, dmi.time)
-dmi_sam_sim = np.intersect1d(dmi.time, sam.time)
-n34_sam_sim = np.intersect1d(n34.time, sam.time)
+    # x3
+    dmi_n34_sam_sim = np.intersect1d(dmi_n34_sim, sam.time)
 
-# x3
-dmi_n34_sam_sim = np.intersect1d(dmi_n34_sim, sam.time)
+    # simultaneos ""puros""
+    # (buscar otro nombre para no perder tiempo explicando cosas obvias...)
+    dmi_n34_wo_sam = UniqueValues(dmi_n34_sim, dmi_n34_sam_sim)
+    dmi_sam_wo_n34 = UniqueValues(dmi_sam_sim, dmi_n34_sam_sim)
+    n34_sam_wo_dmi = UniqueValues(n34_sam_sim, dmi_n34_sam_sim)
+    # ------------------------------------------------------------------------ #
 
-# simultaneos ""puros""
-# (buscar otro nombre para no perder tiempo explicando cosas obvias...)
-dmi_n34_wo_sam = UniqueValues(dmi_n34_sim, dmi_n34_sam_sim)
-dmi_sam_wo_n34 = UniqueValues(dmi_sam_sim, dmi_n34_sam_sim)
-n34_sam_wo_dmi = UniqueValues(n34_sam_sim, dmi_n34_sam_sim)
+    # Identificando que eventos dmi y ENSO fueron simultaneos
+    dmi_sim_n34_sam = dmi.sel(time=dmi.time.isin(dmi_n34_sam_sim))
+    dmi_sim_n34_wo_sam = dmi.sel(time=dmi.time.isin(dmi_n34_wo_sam))
+    dmi_sim_sam_wo_n34 = dmi.sel(time=dmi.time.isin(dmi_sam_wo_n34))
 
-# ---------------------------------------------------------------------------- #
-# Identificando que eventos dmi y ENSO fueron simultaneos
-dmi_sim_n34_sam = dmi.sel(time=dmi.time.isin(dmi_n34_sam_sim))
-dmi_sim_n34_wo_sam = dmi.sel(time=dmi.time.isin(dmi_n34_wo_sam))
-dmi_sim_sam_wo_n34 = dmi.sel(time=dmi.time.isin(dmi_sam_wo_n34))
+    n34_sim_dmi_sam = n34.sel(time=n34.time.isin(dmi_n34_sam_sim))
+    n34_sim_dmi_wo_sam = n34.sel(time=n34.time.isin(dmi_n34_wo_sam))
+    n34_sim_sam_wo_dmi = n34.sel(time=n34.time.isin(n34_sam_wo_dmi))
 
-n34_sim_dmi_sam = n34.sel(time=n34.time.isin(dmi_n34_sam_sim))
-n34_sim_dmi_wo_sam = n34.sel(time=n34.time.isin(dmi_n34_wo_sam))
-n34_sim_sam_wo_dmi = n34.sel(time=n34.time.isin(n34_sam_wo_dmi))
+    sam_sim_dmi_n34 = sam.sel(time=sam.time.isin(dmi_n34_sam_sim))
+    sam_sim_n34_wo_dmi = sam.sel(time=sam.time.isin(n34_sam_wo_dmi))
+    sam_sim_dmi_wo_n34 = sam.sel(time=sam.time.isin(dmi_sam_wo_n34))
+    # ---------------------------------------------------------------------------- #
+    # Clasificando los simultaneos
+    dmi_pos_sim_n34_sam, dmi_neg_sim_n34_sam = xrClassifierEvents(
+        dmi_sim_n34_sam, r=666, var_name='sst', by_r=False)
+    dmi_pos_sim_n34_wo_sam, dmi_neg_sim_n34_wo_sam = xrClassifierEvents(
+        dmi_sim_n34_wo_sam, r=666, var_name='sst', by_r=False)
+    dmi_pos_sim_sam_wo_n34, dmi_neg_sim_sam_wo_n34 = xrClassifierEvents(
+        dmi_sim_sam_wo_n34, r=666, var_name='sst', by_r=False)
 
-sam_sim_dmi_n34 = sam.sel(time=sam.time.isin(dmi_n34_sam_sim))
-sam_sim_n34_wo_dmi = sam.sel(time=sam.time.isin(n34_sam_wo_dmi))
-sam_sim_dmi_wo_n34 = sam.sel(time=sam.time.isin(dmi_sam_wo_n34))
-# ---------------------------------------------------------------------------- #
-# Clasificando los simultaneos
-dmi_pos_sim_n34_sam, dmi_neg_sim_n34_sam = xrClassifierEvents(
-    dmi_sim_n34_sam, r=666, var_name='sst', by_r=False)
-dmi_pos_sim_n34_wo_sam, dmi_neg_sim_n34_wo_sam = xrClassifierEvents(
-    dmi_sim_n34_wo_sam, r=666, var_name='sst', by_r=False)
-dmi_pos_sim_sam_wo_n34, dmi_neg_sim_sam_wo_n34 = xrClassifierEvents(
-    dmi_sim_sam_wo_n34, r=666, var_name='sst', by_r=False)
+    n34_pos_sim_dmi_sam, n34_neg_sim_dmi_sam = xrClassifierEvents(
+        n34_sim_dmi_sam, r=666, var_name='sst', by_r=False)
+    n34_pos_sim_dmi_wo_sam, n34_neg_sim_dmi_wo_sam = xrClassifierEvents(
+        n34_sim_dmi_wo_sam, r=666, var_name='sst', by_r=False)
+    n34_pos_sim_sam_wo_dmi, n34_neg_sim_sam_wo_dmi = xrClassifierEvents(
+        n34_sim_sam_wo_dmi, r=666, var_name='sst', by_r=False)
 
-n34_pos_sim_dmi_sam, n34_neg_sim_dmi_sam  = xrClassifierEvents(
-    n34_sim_dmi_sam, r=666, var_name='sst', by_r=False)
-n34_pos_sim_dmi_wo_sam, n34_neg_sim_dmi_wo_sam = xrClassifierEvents(
-    n34_sim_dmi_wo_sam, r=666, var_name='sst', by_r=False)
-n34_pos_sim_sam_wo_dmi, n34_neg_sim_sam_wo_dmi = xrClassifierEvents(
-    n34_sim_sam_wo_dmi, r=666, var_name='sst', by_r=False)
-
-sam_pos_sim_dmi_n34, sam_neg_sim_dmi_n34  = xrClassifierEvents(
-    sam_sim_dmi_n34, r=666, var_name='sam', by_r=False)
-sam_pos_sim_n34_wo_dmi, sam_neg_sim_n34_wo_dmi = xrClassifierEvents(
-    sam_sim_n34_wo_dmi, r=666, var_name='sam', by_r=False)
-sam_pos_sim_dmi_wo_n34, sam_neg_sim_dmi_wo_n34 = xrClassifierEvents(
-    sam_sim_dmi_wo_n34, r=666, var_name='sam', by_r=False)
+    sam_pos_sim_dmi_n34, sam_neg_sim_dmi_n34 = xrClassifierEvents(
+        sam_sim_dmi_n34, r=666, var_name='sam', by_r=False)
+    sam_pos_sim_n34_wo_dmi, sam_neg_sim_n34_wo_dmi = xrClassifierEvents(
+        sam_sim_n34_wo_dmi, r=666, var_name='sam', by_r=False)
+    sam_pos_sim_dmi_wo_n34, sam_neg_sim_dmi_wo_n34 = xrClassifierEvents(
+        sam_sim_dmi_wo_n34, r=666, var_name='sam', by_r=False)
 
 
-sim_pos = np.intersect1d(dmi_pos_sim_n34_sam,
-                         np.intersect1d(n34_pos_sim_dmi_sam,
-                                        sam_pos_sim_dmi_n34))
 
-dmi_sim_n34_pos_wo_sam = np.intersect1d(dmi_pos_sim_n34_wo_sam,
-                                        n34_pos_sim_dmi_wo_sam)
-dmi_sim_sam_pos_wo_n34 = np.intersect1d(dmi_pos_sim_sam_wo_n34,
-                                        sam_pos_sim_dmi_wo_n34)
+    sim_pos = SetDates(dmi_pos_sim_n34_sam, n34_pos_sim_dmi_sam,
+                       sam_pos_sim_dmi_n34)
 
-n34_sim_sam_pos_wo_dmi = np.intersect1d(n34_pos_sim_sam_wo_dmi,
-                                        sam_pos_sim_n34_wo_dmi)
-n34_sim_dmi_pos_wo_sam = dmi_sim_n34_pos_wo_sam.copy()
+    dmi_sim_n34_pos_wo_sam = SetDates(dmi_pos_sim_n34_wo_sam,
+                                      n34_pos_sim_dmi_wo_sam)
+    dmi_sim_sam_pos_wo_n34 = SetDates(dmi_pos_sim_sam_wo_n34,
+                                      sam_pos_sim_dmi_wo_n34)
 
-sam_sim_n34_pos_wo_dmi = n34_sim_sam_pos_wo_dmi.copy()
-sam_sim_dmi_pos_wo_n34 = dmi_sim_sam_pos_wo_n34.copy()
+    n34_sim_sam_pos_wo_dmi = SetDates(n34_pos_sim_sam_wo_dmi,
+                                      sam_pos_sim_n34_wo_dmi)
+    n34_sim_dmi_pos_wo_sam = dmi_sim_n34_pos_wo_sam.copy()
+
+    sam_sim_n34_pos_wo_dmi = n34_sim_sam_pos_wo_dmi.copy()
+    sam_sim_dmi_pos_wo_n34 = dmi_sim_sam_pos_wo_n34.copy()
+
+    sim_neg = SetDates(dmi_neg_sim_n34_sam, n34_neg_sim_dmi_sam,
+                       sam_neg_sim_dmi_n34)
+
+    dmi_sim_n34_neg_wo_sam = SetDates(dmi_neg_sim_n34_wo_sam,
+                                      n34_neg_sim_dmi_wo_sam)
+    dmi_sim_sam_neg_wo_n34 = SetDates(dmi_neg_sim_sam_wo_n34,
+                                      sam_neg_sim_dmi_wo_n34)
+
+    n34_sim_sam_neg_wo_dmi = SetDates(n34_neg_sim_sam_wo_dmi,
+                                      sam_neg_sim_n34_wo_dmi)
+    n34_sim_dmi_neg_wo_sam = dmi_sim_n34_neg_wo_sam.copy()
+
+    sam_sim_n34_neg_wo_dmi = n34_sim_sam_neg_wo_dmi.copy()
+    sam_sim_dmi_neg_wo_n34 = dmi_sim_sam_neg_wo_n34.copy()
+
+    dmi_pos_n34_pos_sam_neg = SetDates(dmi_pos_sim_n34_sam, n34_pos_sim_dmi_sam,
+                                       sam_neg_sim_dmi_n34)
+    dmi_pos_n34_neg_sam_pos = SetDates(dmi_pos_sim_n34_sam, n34_neg_sim_dmi_sam,
+                                       sam_pos_sim_dmi_n34)
+    dmi_pos_n34_neg_sam_neg = SetDates(dmi_pos_sim_n34_sam, n34_neg_sim_dmi_sam,
+                                       sam_neg_sim_dmi_n34)
+    dmi_neg_n34_neg_sam_pos = SetDates(dmi_neg_sim_n34_sam, n34_neg_sim_dmi_sam,
+                                       sam_pos_sim_dmi_n34)
+    dmi_neg_n34_pos_sam_pos = SetDates(dmi_neg_sim_n34_sam, n34_pos_sim_dmi_sam,
+                                       sam_pos_sim_dmi_n34)
+    dmi_neg_n34_pos_sam_neg = SetDates(dmi_neg_sim_n34_sam, n34_pos_sim_dmi_sam,
+                                       sam_neg_sim_dmi_n34)
+    # ---------------------------------------------------------------------------- #
+    # Eventos puros
+    dmi_puros = dmi.sel(time=~dmi.time.isin(dmi_n34_sam_sim))
+    n34_puros = n34.sel(time=~n34.time.isin(dmi_n34_sam_sim))
+    sam_puros = sam.sel(time=~sam.time.isin(dmi_n34_sam_sim))
+
+    dmi_puros_pos, dmi_puros_neg = xrClassifierEvents(dmi_puros,
+                                                      r=666, var_name='sst',
+                                                      by_r=False)
+    n34_puros_pos, n34_puros_neg = xrClassifierEvents(n34_puros,
+                                                      r=666, var_name='sst',
+                                                      by_r=False)
+    sam_puros_pos, sam_puros_neg = xrClassifierEvents(sam_puros,
+                                                      r=666, var_name='sam',
+                                                      by_r=False)
+
+    # Puede haber datos faltantes en algunas inicializaciónes (especialmente SST)
+    # por eso primero se revisa que solo se consideren los valores no nan para los
+    # neutros.
+    aux_dmi_season = dmi_season.sel(r=r)
+    dates_ref = aux_dmi_season.time[np.where(~np.isnan(aux_dmi_season.sst))]
+    aux_sam_season = sam_season.sel(r=r)
+    dates_ref_sam = aux_sam_season.time[np.where(~np.isnan(aux_sam_season.sam))]
+
+    dates_ref = np.intersect1d(dates_ref, dates_ref_sam)
+
+    mask = np.in1d(dates_ref, dmi.time,
+                   invert=True)  # cuales de esas fechas no fueron dmi
+    neutros = dmi_season.sel(
+        time=dmi_season.time.isin(dates_ref[mask]), r=r)
+
+    mask = np.in1d(neutros.time, n34.time,
+                   invert=True)  # cuales de esas fechas no fueron n34
+    neutros = neutros.time[mask]
+
+    mask = np.in1d(neutros.time, sam.time,
+                   invert=True)  # cuales de esas fechas no fueron sam
+    neutros = neutros.time[mask]
+
+    if r == 1:
+        dmi_puros_pos_f = dmi_puros_pos
+        dmi_puros_neg_f = dmi_puros_neg
+        n34_puros_pos_f = n34_puros_pos
+        n34_puros_neg_f = n34_puros_neg
+        sam_puros_pos_f = sam_puros_pos
+        sam_puros_neg_f = sam_puros_neg
+
+        dmi_pos_f = dmi_pos
+        dmi_neg_f = dmi_neg
+        n34_pos_f = n34_pos
+        n34_neg_f = n34_neg
+        sam_pos_f = sam_pos
+        sam_neg_f = sam_neg
+
+        neutros_f = neutros
+
+        sim_neg_f = sim_neg
+        sim_pos_f = sim_pos
+
+        dmi_pos_n34_pos_sam_neg_f = dmi_pos_n34_pos_sam_neg
+        dmi_pos_n34_neg_sam_pos_f = dmi_pos_n34_neg_sam_pos
+
+        dmi_pos_n34_neg_sam_neg_f = dmi_pos_n34_neg_sam_neg
+        dmi_neg_n34_neg_sam_pos_f = dmi_neg_n34_neg_sam_pos
+
+        dmi_neg_n34_pos_sam_pos_f = dmi_neg_n34_pos_sam_pos
+        dmi_neg_n34_pos_sam_neg_f = dmi_neg_n34_pos_sam_neg
+
+    else:
+
+        dmi_puros_pos_f = ConcatEvent(dmi_puros_pos_f, dmi_puros_pos)
+        dmi_puros_neg_f = ConcatEvent(dmi_puros_neg_f, dmi_puros_neg)
+        n34_puros_pos_f = ConcatEvent(n34_puros_pos_f, n34_puros_pos)
+        n34_puros_neg_f = ConcatEvent(n34_puros_neg_f, n34_puros_neg)
+        sam_puros_pos_f = ConcatEvent(sam_puros_pos_f, sam_puros_pos)
+        sam_puros_neg_f = ConcatEvent(sam_puros_neg_f, sam_puros_neg)
+
+        dmi_pos_f = ConcatEvent(dmi_pos_f, dmi_pos)
+        dmi_neg_f = ConcatEvent(dmi_neg_f, dmi_neg)
+        n34_pos_f = ConcatEvent(n34_pos_f, n34_pos)
+        n34_neg_f = ConcatEvent(n34_neg_f, n34_neg)
+        sam_pos_f = ConcatEvent(sam_pos_f, sam_pos)
+        sam_neg_f = ConcatEvent(sam_neg_f, sam_neg)
+
+        neutros_f = ConcatEvent(neutros_f, neutros)
+
+        sim_neg_f = ConcatEvent(sim_neg_f, sim_neg)
+        sim_pos_f = ConcatEvent(sim_pos_f, sim_pos)
+
+        dmi_pos_n34_pos_sam_neg_f = ConcatEvent(dmi_pos_n34_pos_sam_neg_f,
+                                                dmi_pos_n34_pos_sam_neg)
+        dmi_pos_n34_neg_sam_pos_f = ConcatEvent(dmi_pos_n34_neg_sam_pos_f,
+                                                dmi_pos_n34_neg_sam_pos)
+
+        dmi_pos_n34_neg_sam_neg_f = ConcatEvent(dmi_pos_n34_neg_sam_neg_f,
+                                                dmi_pos_n34_neg_sam_neg)
+        dmi_neg_n34_neg_sam_pos_f = ConcatEvent(dmi_neg_n34_neg_sam_pos_f,
+                                                dmi_neg_n34_neg_sam_pos)
+
+        dmi_neg_n34_pos_sam_pos_f = ConcatEvent(dmi_neg_n34_pos_sam_pos_f,
+                                                dmi_neg_n34_pos_sam_pos)
+        dmi_neg_n34_pos_sam_neg_f = ConcatEvent(dmi_neg_n34_pos_sam_neg_f,
+                                                dmi_neg_n34_pos_sam_neg)
 
 
-sim_neg = np.intersect1d(dmi_neg_sim_n34_sam,
-                         np.intersect1d(n34_neg_sim_dmi_sam,
-                                        sam_neg_sim_dmi_n34))
-
-dmi_sim_n34_neg_wo_sam = np.intersect1d(dmi_neg_sim_n34_wo_sam,
-                                        n34_neg_sim_dmi_wo_sam)
-dmi_sim_sam_neg_wo_n34 = np.intersect1d(dmi_neg_sim_sam_wo_n34,
-                                        sam_neg_sim_dmi_wo_n34)
-
-n34_sim_sam_neg_wo_dmi = np.intersect1d(n34_neg_sim_sam_wo_dmi,
-                                        sam_neg_sim_n34_wo_dmi)
-n34_sim_dmi_neg_wo_sam = dmi_sim_n34_neg_wo_sam.copy()
-
-sam_sim_n34_neg_wo_dmi = n34_sim_sam_neg_wo_dmi.copy()
-sam_sim_dmi_neg_wo_n34 = dmi_sim_sam_neg_wo_n34.copy()
 
 
-dmi_pos_n34_pos_sam_neg = np.intersect1d(dmi_pos_sim_n34_sam,
-                                     np.intersect1d(n34_pos_sim_dmi_sam,
-                                                    sam_neg_sim_dmi_n34))
-dmi_pos_n34_neg_sam_pos = np.intersect1d(dmi_pos_sim_n34_sam,
-                                     np.intersect1d(n34_neg_sim_dmi_sam,
-                                                    sam_pos_sim_dmi_n34))
-dmi_pos_n34_neg_sam_neg = np.intersect1d(dmi_pos_sim_n34_sam,
-                                     np.intersect1d(n34_neg_sim_dmi_sam,
-                                                    sam_neg_sim_dmi_n34))
-dmi_neg_n34_neg_sam_pos = np.intersect1d(dmi_neg_sim_n34_sam,
-                                     np.intersect1d(n34_neg_sim_dmi_sam,
-                                                    sam_pos_sim_dmi_n34))
-dmi_neg_n34_pos_sam_pos = np.intersect1d(dmi_neg_sim_n34_sam,
-                                     np.intersect1d(n34_pos_sim_dmi_sam,
-                                                    sam_pos_sim_dmi_n34))
-dmi_neg_n34_pos_sam_neg = np.intersect1d(dmi_neg_sim_n34_sam,
-                                     np.intersect1d(n34_pos_sim_dmi_sam,
-                                                    sam_neg_sim_dmi_n34))
-# ---------------------------------------------------------------------------- #
-# Eventos puros
 
-    # # Existen eventos simultaneos de signo opuesto?
-    # # cuales?
-    # if (len(sim_events) != (len(sim_pos) + len(sim_neg))):
-    #     dmi_pos_n34_neg = np.intersect1d(dmi_sim_pos, n34_sim_neg)
-    #     dmi_pos_n34_neg = dmi_sim.sel(
-    #         time=dmi_sim.time.isin(dmi_pos_n34_neg))
-    #
-    #     dmi_neg_n34_pos = np.intersect1d(dmi_sim_neg, n34_sim_pos)
-    #     dmi_neg_n34_pos = dmi_sim.sel(
-    #         time=dmi_sim.time.isin(dmi_neg_n34_pos))
-    # else:
-    #     dmi_pos_n34_neg = []
-    #     dmi_neg_n34_pos = []
-    #
-    # # Eventos puros --> los eventos que No ocurrieron en simultaneo
-    # dmi_puros = dmi.sel(time=~dmi.time.isin(sim_events))
-    # n34_puros = n34.sel(time=~n34.time.isin(sim_events))
-    #
-    # # Valor de n34 restringido para dmi puros
-    # # dmi_puros = dmi_puros.sel(time=dmi_puros.time.isin(n34_rest.time))
-    #
-    # # Clasificacion de eventos puros negativos y positivos
-    # dmi_puros_pos, dmi_puros_neg = xrClassifierEvents(dmi_puros, r=666,
-    #                                                   by_r=False)
-    # n34_puros_pos, n34_puros_neg = xrClassifierEvents(n34_puros, r=666,
-    #                                                   by_r=False)
-    #
-    # # Años neutros. Sin ningun evento.
-    # """
-    # Un paso mas acá para elimiar las fechas q son nan debido a dato faltante del CFSv2
-    # En tdo el resto del código no importan xq fueron descartados todos los nan luego de
-    # tomar criterios para cada índice.
-    # """
-    # aux_dmi_season = dmi_season.sel(r=r)
-    # dates_ref = aux_dmi_season.time[np.where(~np.isnan(aux_dmi_season.sst))]
-    # mask = np.in1d(dates_ref, dmi.time,
-    #                invert=True)  # cuales de esas fechas no fueron dmi
-    # neutros = dmi_season.sel(
-    #     time=dmi_season.time.isin(dates_ref.time[mask]), r=r)
-    #
-    # mask = np.in1d(neutros.time, n34.time,
-    #                invert=True)  # cuales de esas fechas no fueron n34
-    # neutros = neutros.time[mask]
-    #
-    # if r == 1:
-    #     dmi_puros_pos_f = dmi_puros_pos
-    #     dmi_puros_neg_f = dmi_puros_neg
-    #
-    #     n34_puros_pos_f = n34_puros_pos
-    #     n34_puros_neg_f = n34_puros_neg
-    #
-    #     sim_neg_f = sim_neg
-    #     sim_pos_f = sim_pos
-    #
-    #     dmi_pos_f = dmi_pos
-    #     dmi_neg_f = dmi_neg
-    #     n34_pos_f = n34_pos
-    #     n34_neg_f = n34_neg
-    #
-    #     neutros_f = neutros
-    # else:
-    #
-    #     dmi_puros_pos_f = ConcatEvent(dmi_puros_pos_f, dmi_puros_pos)
-    #     dmi_puros_neg_f = ConcatEvent(dmi_puros_neg_f, dmi_puros_neg)
-    #
-    #     n34_puros_pos_f = ConcatEvent(n34_puros_pos_f, n34_puros_pos)
-    #     n34_puros_neg_f = ConcatEvent(n34_puros_neg_f, n34_puros_neg)
-    #
-    #     sim_neg_f = ConcatEvent(sim_neg_f, sim_neg)
-    #     sim_pos_f = ConcatEvent(sim_pos_f, sim_pos)
-    #
-    #     dmi_pos_f = ConcatEvent(dmi_pos_f, dmi_pos)
-    #     dmi_neg_f = ConcatEvent(dmi_neg_f, dmi_neg)
-    #     n34_pos_f = ConcatEvent(n34_pos_f, n34_pos)
-    #     n34_neg_f = ConcatEvent(n34_neg_f, n34_neg)
-    #
-    #     neutros_f = ConcatEvent(neutros_f, neutros)
-    #
+variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
+        'dmi_puros_neg_f': dmi_puros_neg_f,
+        'n34_puros_pos_f': n34_puros_pos_f,
+        'n34_puros_neg_f': n34_puros_neg_f,
+        'sam_puros_pos_f': sam_puros_pos_f,
+        'sam_puros_neg_f': sam_puros_neg_f,
+        'dmi_pos_f': dmi_pos_f,
+        'dmi_neg_f': dmi_neg_f,
+        'n34_pos_f': n34_pos_f,
+        'n34_neg_f': n34_neg_f,
+        'sam_pos_f': sam_pos_f,
+        'sam_neg_f': sam_neg_f,
+        'neutros_f': neutros_f,
+        'sim_neg_f': sim_neg_f,
+        'sim_pos_f': sim_pos_f,
+        'dmi_pos_n34_pos_sam_neg_f': dmi_pos_n34_pos_sam_neg_f,
+        'dmi_pos_n34_neg_sam_pos_f': dmi_pos_n34_neg_sam_pos_f,
+        'dmi_pos_n34_neg_sam_neg_f': dmi_pos_n34_neg_sam_neg_f,
+        'dmi_neg_n34_neg_sam_pos_f': dmi_neg_n34_neg_sam_pos_f,
+        'dmi_neg_n34_pos_sam_pos_f': dmi_neg_n34_pos_sam_pos_f,
+        'dmi_neg_n34_pos_sam_neg_f': dmi_neg_n34_pos_sam_neg_f
+    }
+
+
+print('Saving...')
+for nombre, objeto in variables.items():
+    objeto.to_netcdf(out_dir + nombre + '_' + s + '.nc')
+
     # # Signos opuestos
     # # Son mas raros, necesitan mas condiciones
     #
