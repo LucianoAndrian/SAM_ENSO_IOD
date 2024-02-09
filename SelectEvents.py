@@ -29,8 +29,9 @@ def xrClassifierEvents(index, r, var_name, by_r=True):
 
         return index_pos, index_neg, index_r_f
     else:
-        index_pos = index.sst.time[index.sst > 0]
-        index_neg = index.sst.time[index.sst < 0]
+        index_pos = index[var_name].time[index[var_name] > 0]
+        index_neg = index[var_name].time[index[var_name] < 0]
+
         return index_pos, index_neg
 
 
@@ -45,6 +46,14 @@ def ConcatEvent(xr_original, xr_to_concat, dim='time'):
         return xr_original
 
     return xr_concat
+
+def UniqueValues(target, extract):
+    target = set(target)
+    extract = set(extract)
+
+    target_uniques = target - extract
+    return np.array(list(target_uniques))
+
 # ---------------------------------------------------------------------------- #
 
 sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc')\
@@ -95,38 +104,123 @@ correspondientes en las variables
 """
 check_dmi_pos_n34_neg = 666
 check_dmi_neg_n34_pos = 666
-for r in range(1, 25):
-    # Clasificados en positivos y negativos
-    dmi_pos, dmi_neg, dmi = xrClassifierEvents(data_dmi, r, 'sst')
-    n34_pos, n34_neg, n34 = xrClassifierEvents(data_n34, r, 'sst')
-    sam_pos, sam_neg, sam = xrClassifierEvents(data_sam, r, 'sam')
-# continuar...
+#for r in range(1, 25):
+r=15
+
+# Clasificados en positivos y negativos y seleccionados para cada r
+dmi_pos, dmi_neg, dmi = xrClassifierEvents(data_dmi, r, 'sst')
+n34_pos, n34_neg, n34 = xrClassifierEvents(data_n34, r, 'sst')
+sam_pos, sam_neg, sam = xrClassifierEvents(data_sam, r, 'sam')
+
+# ---------------------------------------------------------------------------- #
+# Eventos simultaneos -------------------------------------------------------- #
+# Fechas
+# x2
+dmi_n34_sim = np.intersect1d(n34.time, dmi.time)
+dmi_sam_sim = np.intersect1d(dmi.time, sam.time)
+n34_sam_sim = np.intersect1d(n34.time, sam.time)
+
+# x3
+dmi_n34_sam_sim = np.intersect1d(dmi_n34_sim, sam.time)
+
+# simultaneos ""puros""
+# (buscar otro nombre para no perder tiempo explicando cosas obvias...)
+dmi_n34_wo_sam = UniqueValues(dmi_n34_sim, dmi_n34_sam_sim)
+dmi_sam_wo_n34 = UniqueValues(dmi_sam_sim, dmi_n34_sam_sim)
+n34_sam_wo_dmi = UniqueValues(n34_sam_sim, dmi_n34_sam_sim)
+
+# ---------------------------------------------------------------------------- #
+# Identificando que eventos dmi y ENSO fueron simultaneos
+dmi_sim_n34_sam = dmi.sel(time=dmi.time.isin(dmi_n34_sam_sim))
+dmi_sim_n34_wo_sam = dmi.sel(time=dmi.time.isin(dmi_n34_wo_sam))
+dmi_sim_sam_wo_n34 = dmi.sel(time=dmi.time.isin(dmi_sam_wo_n34))
+
+n34_sim_dmi_sam = n34.sel(time=n34.time.isin(dmi_n34_sam_sim))
+n34_sim_dmi_wo_sam = n34.sel(time=n34.time.isin(dmi_n34_wo_sam))
+n34_sim_sam_wo_dmi = n34.sel(time=n34.time.isin(n34_sam_wo_dmi))
+
+sam_sim_dmi_n34 = sam.sel(time=sam.time.isin(dmi_n34_sam_sim))
+sam_sim_n34_wo_dmi = sam.sel(time=sam.time.isin(n34_sam_wo_dmi))
+sam_sim_dmi_wo_n34 = sam.sel(time=sam.time.isin(dmi_sam_wo_n34))
+# ---------------------------------------------------------------------------- #
+# Clasificando los simultaneos
+dmi_pos_sim_n34_sam, dmi_neg_sim_n34_sam = xrClassifierEvents(
+    dmi_sim_n34_sam, r=666, var_name='sst', by_r=False)
+dmi_pos_sim_n34_wo_sam, dmi_neg_sim_n34_wo_sam = xrClassifierEvents(
+    dmi_sim_n34_wo_sam, r=666, var_name='sst', by_r=False)
+dmi_pos_sim_sam_wo_n34, dmi_neg_sim_sam_wo_n34 = xrClassifierEvents(
+    dmi_sim_sam_wo_n34, r=666, var_name='sst', by_r=False)
+
+n34_pos_sim_dmi_sam, n34_neg_sim_dmi_sam  = xrClassifierEvents(
+    n34_sim_dmi_sam, r=666, var_name='sst', by_r=False)
+n34_pos_sim_dmi_wo_sam, n34_neg_sim_dmi_wo_sam = xrClassifierEvents(
+    n34_sim_dmi_wo_sam, r=666, var_name='sst', by_r=False)
+n34_pos_sim_sam_wo_dmi, n34_neg_sim_sam_wo_dmi = xrClassifierEvents(
+    n34_sim_sam_wo_dmi, r=666, var_name='sst', by_r=False)
+
+sam_pos_sim_dmi_n34, sam_neg_sim_dmi_n34  = xrClassifierEvents(
+    sam_sim_dmi_n34, r=666, var_name='sam', by_r=False)
+sam_pos_sim_n34_wo_dmi, sam_neg_sim_n34_wo_dmi = xrClassifierEvents(
+    sam_sim_n34_wo_dmi, r=666, var_name='sam', by_r=False)
+sam_pos_sim_dmi_wo_n34, sam_neg_sim_dmi_wo_n34 = xrClassifierEvents(
+    sam_sim_dmi_wo_n34, r=666, var_name='sam', by_r=False)
 
 
-    # # Si se usa n34 restringido para los dmi puros
-    # # n34_pos_r, n34_neg_r, n34_r = xrClassifierEvents(data_n34_restricted, r)
-    #
-    # # Eventos simultaneos
-    # sim_events = np.intersect1d(n34.time, dmi.time)
-    #
-    #
-    #
-    # # Identificando que eventos IOD y ENSO fueron simultaneos
-    # dmi_sim = dmi.sel(time=dmi.time.isin(sim_events))
-    # n34_sim = n34.sel(time=n34.time.isin(sim_events))
-    #
-    # # Clasificando los simultaneos
-    # dmi_sim_pos, dmi_sim_neg = xrClassifierEvents(dmi_sim, r=666,
-    #                                               by_r=False)
-    # n34_sim_pos, n34_sim_neg = xrClassifierEvents(n34_sim, r=666,
-    #                                               by_r=False)
-    #
-    # sim_pos = np.intersect1d(dmi_sim_pos, n34_sim_pos)
-    # sim_pos = dmi_sim_pos.sel(time=dmi_sim_pos.time.isin(sim_pos))
-    #
-    # sim_neg = np.intersect1d(dmi_sim_neg, n34_sim_neg)
-    # sim_neg = dmi_sim_neg.sel(time=dmi_sim_neg.time.isin(sim_neg))
-    #
+sim_pos = np.intersect1d(dmi_pos_sim_n34_sam,
+                         np.intersect1d(n34_pos_sim_dmi_sam,
+                                        sam_pos_sim_dmi_n34))
+
+dmi_sim_n34_pos_wo_sam = np.intersect1d(dmi_pos_sim_n34_wo_sam,
+                                        n34_pos_sim_dmi_wo_sam)
+dmi_sim_sam_pos_wo_n34 = np.intersect1d(dmi_pos_sim_sam_wo_n34,
+                                        sam_pos_sim_dmi_wo_n34)
+
+n34_sim_sam_pos_wo_dmi = np.intersect1d(n34_pos_sim_sam_wo_dmi,
+                                        sam_pos_sim_n34_wo_dmi)
+n34_sim_dmi_pos_wo_sam = dmi_sim_n34_pos_wo_sam.copy()
+
+sam_sim_n34_pos_wo_dmi = n34_sim_sam_pos_wo_dmi.copy()
+sam_sim_dmi_pos_wo_n34 = dmi_sim_sam_pos_wo_n34.copy()
+
+
+sim_neg = np.intersect1d(dmi_neg_sim_n34_sam,
+                         np.intersect1d(n34_neg_sim_dmi_sam,
+                                        sam_neg_sim_dmi_n34))
+
+dmi_sim_n34_neg_wo_sam = np.intersect1d(dmi_neg_sim_n34_wo_sam,
+                                        n34_neg_sim_dmi_wo_sam)
+dmi_sim_sam_neg_wo_n34 = np.intersect1d(dmi_neg_sim_sam_wo_n34,
+                                        sam_neg_sim_dmi_wo_n34)
+
+n34_sim_sam_neg_wo_dmi = np.intersect1d(n34_neg_sim_sam_wo_dmi,
+                                        sam_neg_sim_n34_wo_dmi)
+n34_sim_dmi_neg_wo_sam = dmi_sim_n34_neg_wo_sam.copy()
+
+sam_sim_n34_neg_wo_dmi = n34_sim_sam_neg_wo_dmi.copy()
+sam_sim_dmi_neg_wo_n34 = dmi_sim_sam_neg_wo_n34.copy()
+
+
+dmi_pos_n34_pos_sam_neg = np.intersect1d(dmi_pos_sim_n34_sam,
+                                     np.intersect1d(n34_pos_sim_dmi_sam,
+                                                    sam_neg_sim_dmi_n34))
+dmi_pos_n34_neg_sam_pos = np.intersect1d(dmi_pos_sim_n34_sam,
+                                     np.intersect1d(n34_neg_sim_dmi_sam,
+                                                    sam_pos_sim_dmi_n34))
+dmi_pos_n34_neg_sam_neg = np.intersect1d(dmi_pos_sim_n34_sam,
+                                     np.intersect1d(n34_neg_sim_dmi_sam,
+                                                    sam_neg_sim_dmi_n34))
+dmi_neg_n34_neg_sam_pos = np.intersect1d(dmi_neg_sim_n34_sam,
+                                     np.intersect1d(n34_neg_sim_dmi_sam,
+                                                    sam_pos_sim_dmi_n34))
+dmi_neg_n34_pos_sam_pos = np.intersect1d(dmi_neg_sim_n34_sam,
+                                     np.intersect1d(n34_pos_sim_dmi_sam,
+                                                    sam_pos_sim_dmi_n34))
+dmi_neg_n34_pos_sam_neg = np.intersect1d(dmi_neg_sim_n34_sam,
+                                     np.intersect1d(n34_pos_sim_dmi_sam,
+                                                    sam_neg_sim_dmi_n34))
+# ---------------------------------------------------------------------------- #
+# Eventos puros
+
     # # Existen eventos simultaneos de signo opuesto?
     # # cuales?
     # if (len(sim_events) != (len(sim_pos) + len(sim_neg))):
