@@ -300,11 +300,12 @@ for r in range(1, 25):
         n34_sim_dmi_pos_wo_sam_f = n34_sim_dmi_pos_wo_sam
         sam_sim_n34_pos_wo_dmi_f = sam_sim_n34_pos_wo_dmi
         sam_sim_dmi_pos_wo_n34_f = sam_sim_dmi_pos_wo_n34
-        dmi_sim_n34_neg_wo_sam_f = dmi_sim_sam_neg_wo_n34
+        dmi_sim_n34_neg_wo_sam_f = dmi_sim_n34_neg_wo_sam
         n34_sim_sam_neg_wo_dmi_f = n34_sim_sam_neg_wo_dmi
         n34_sim_dmi_neg_wo_sam_f = n34_sim_dmi_neg_wo_sam
         sam_sim_n34_neg_wo_dmi_f = sam_sim_n34_neg_wo_dmi
         sam_sim_dmi_neg_wo_n34_f = sam_sim_dmi_neg_wo_n34
+        dmi_sim_sam_neg_wo_n34_f = dmi_sim_sam_neg_wo_n34
 
     else:
 
@@ -355,7 +356,7 @@ for r in range(1, 25):
         sam_sim_dmi_pos_wo_n34_f = ConcatEvent(sam_sim_dmi_pos_wo_n34_f,
                                                sam_sim_dmi_pos_wo_n34)
         dmi_sim_n34_neg_wo_sam_f = ConcatEvent(dmi_sim_n34_neg_wo_sam_f,
-                                               dmi_sim_sam_neg_wo_n34)
+                                               dmi_sim_n34_neg_wo_sam)
         n34_sim_sam_neg_wo_dmi_f = ConcatEvent(n34_sim_sam_neg_wo_dmi_f,
                                                n34_sim_sam_neg_wo_dmi)
         n34_sim_dmi_neg_wo_sam_f = ConcatEvent(n34_sim_dmi_neg_wo_sam_f,
@@ -364,6 +365,8 @@ for r in range(1, 25):
                                                sam_sim_n34_neg_wo_dmi)
         sam_sim_dmi_neg_wo_n34_f = ConcatEvent(sam_sim_dmi_neg_wo_n34_f,
                                                sam_sim_dmi_neg_wo_n34)
+        dmi_sim_sam_neg_wo_n34_f = ConcatEvent(dmi_sim_sam_neg_wo_n34_f,
+                                               dmi_sim_sam_neg_wo_n34)
 
 variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
              'dmi_puros_neg_f': dmi_puros_neg_f,
@@ -396,7 +399,8 @@ variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
              'n34_sim_sam_neg_wo_dmi_f': n34_sim_sam_neg_wo_dmi_f,
              'n34_sim_dmi_neg_wo_sam_f': n34_sim_dmi_neg_wo_sam_f,
              'sam_sim_n34_neg_wo_dmi_f': sam_sim_n34_neg_wo_dmi_f,
-             'sam_sim_dmi_neg_wo_n34_f': sam_sim_dmi_neg_wo_n34_f
+             'sam_sim_dmi_neg_wo_n34_f': sam_sim_dmi_neg_wo_n34_f,
+             'dmi_sim_sam_neg_wo_n34_f':dmi_sim_sam_neg_wo_n34_f
 
              }
 
