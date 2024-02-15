@@ -26,7 +26,32 @@ cases = ['sim_pos', 'sim_neg', #triple sim
          'dmi_pos', 'dmi_neg', # todos los de uno, sin importar el resto
          'n34_pos', 'n34_neg', # todos los de uno, sin importar el resto
          'sam_pos', 'sam_neg', # todos los de uno, sin importar el resto
-         'neutros'] # todos neutros
+         'neutros', # todos neutros
+         'dmi_sim_n34_pos_wo_sam', # dos eventos simultaneos sin el otro
+         'dmi_sim_sam_pos_wo_n34', # dos eventos simultaneos sin el otro
+         'n34_sim_sam_pos_wo_dmi', # dos eventos simultaneos sin el otro
+         'n34_sim_dmi_pos_wo_sam', # dos eventos simultaneos sin el otro
+         'sam_sim_n34_pos_wo_dmi', # dos eventos simultaneos sin el otro
+         'sam_sim_dmi_pos_wo_n34', # dos eventos simultaneos sin el otro
+         'dmi_sim_n34_neg_wo_sam', # dos eventos simultaneos sin el otro
+         'n34_sim_sam_neg_wo_dmi', # dos eventos simultaneos sin el otro
+         'n34_sim_dmi_neg_wo_sam', # dos eventos simultaneos sin el otro
+         'sam_sim_n34_neg_wo_dmi', # dos eventos simultaneos sin el otro
+         'sam_sim_dmi_neg_wo_n34', # dos eventos simultaneos sin el otro]
+         'dmi_sim_sam_neg_wo_n34'] # dos eventos simultaneos sin el otro
+
+cases = [ 'dmi_sim_n34_pos_wo_sam', # dos eventos simultaneos sin el otro
+         'dmi_sim_sam_pos_wo_n34', # dos eventos simultaneos sin el otro
+         'n34_sim_sam_pos_wo_dmi', # dos eventos simultaneos sin el otro
+         'n34_sim_dmi_pos_wo_sam', # dos eventos simultaneos sin el otro
+         'sam_sim_n34_pos_wo_dmi', # dos eventos simultaneos sin el otro
+         'sam_sim_dmi_pos_wo_n34', # dos eventos simultaneos sin el otro
+         'dmi_sim_n34_neg_wo_sam', # dos eventos simultaneos sin el otro
+         'n34_sim_sam_neg_wo_dmi', # dos eventos simultaneos sin el otro
+         'n34_sim_dmi_neg_wo_sam', # dos eventos simultaneos sin el otro
+         'sam_sim_n34_neg_wo_dmi', # dos eventos simultaneos sin el otro
+         'sam_sim_dmi_neg_wo_n34', # dos eventos simultaneos sin el otro]
+          'dmi_sim_sam_neg_wo_n34'] # dos eventos simultaneos sin el otro]
 
 seasons = ['SON']
 # ---------------------------------------------------------------------------- #
