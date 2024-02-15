@@ -85,6 +85,13 @@ for l, mm in zip([0,1,2,3],[10,9,8,7]):
 sam_season = sam_season.drop(['mode','month'])
 sam_season = sam_season.rename({'time2':'time'})
 
+
+file = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/' \
+       'SAM_SON_Leads_r_CFSv2.nc'
+if ~os.path.exists(file):
+    sam_season.to_netcdf(file)
+
+
 hgt = xr.open_dataset(path_aux + 'hgt_mon_anom_d.nc')
 # ---------------------------------------------------------------------------- #
 dates_dir = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
@@ -287,6 +294,18 @@ for r in range(1, 25):
         dmi_neg_n34_pos_sam_pos_f = dmi_neg_n34_pos_sam_pos
         dmi_neg_n34_pos_sam_neg_f = dmi_neg_n34_pos_sam_neg
 
+        dmi_sim_n34_pos_wo_sam_f = dmi_sim_n34_pos_wo_sam
+        dmi_sim_sam_pos_wo_n34_f = dmi_sim_sam_pos_wo_n34
+        n34_sim_sam_pos_wo_dmi_f = n34_sim_sam_pos_wo_dmi
+        n34_sim_dmi_pos_wo_sam_f = n34_sim_dmi_pos_wo_sam
+        sam_sim_n34_pos_wo_dmi_f = sam_sim_n34_pos_wo_dmi
+        sam_sim_dmi_pos_wo_n34_f = sam_sim_dmi_pos_wo_n34
+        dmi_sim_n34_neg_wo_sam_f = dmi_sim_sam_neg_wo_n34
+        n34_sim_sam_neg_wo_dmi_f = n34_sim_sam_neg_wo_dmi
+        n34_sim_dmi_neg_wo_sam_f = n34_sim_dmi_neg_wo_sam
+        sam_sim_n34_neg_wo_dmi_f = sam_sim_n34_neg_wo_dmi
+        sam_sim_dmi_neg_wo_n34_f = sam_sim_dmi_neg_wo_n34
+
     else:
 
         dmi_puros_pos_f = ConcatEvent(dmi_puros_pos_f, dmi_puros_pos)
@@ -323,33 +342,63 @@ for r in range(1, 25):
         dmi_neg_n34_pos_sam_neg_f = ConcatEvent(dmi_neg_n34_pos_sam_neg_f,
                                                 dmi_neg_n34_pos_sam_neg)
 
-
-
-
+        dmi_sim_n34_pos_wo_sam_f = ConcatEvent(dmi_sim_n34_pos_wo_sam_f,
+                                               dmi_sim_n34_pos_wo_sam)
+        dmi_sim_sam_pos_wo_n34_f = ConcatEvent(dmi_sim_sam_pos_wo_n34_f,
+                                               dmi_sim_sam_pos_wo_n34)
+        n34_sim_sam_pos_wo_dmi_f = ConcatEvent(n34_sim_sam_pos_wo_dmi_f,
+                                               n34_sim_sam_pos_wo_dmi)
+        n34_sim_dmi_pos_wo_sam_f = ConcatEvent(n34_sim_dmi_pos_wo_sam_f,
+                                               n34_sim_dmi_pos_wo_sam)
+        sam_sim_n34_pos_wo_dmi_f = ConcatEvent(sam_sim_n34_pos_wo_dmi_f,
+                                               sam_sim_n34_pos_wo_dmi)
+        sam_sim_dmi_pos_wo_n34_f = ConcatEvent(sam_sim_dmi_pos_wo_n34_f,
+                                               sam_sim_dmi_pos_wo_n34)
+        dmi_sim_n34_neg_wo_sam_f = ConcatEvent(dmi_sim_n34_neg_wo_sam_f,
+                                               dmi_sim_sam_neg_wo_n34)
+        n34_sim_sam_neg_wo_dmi_f = ConcatEvent(n34_sim_sam_neg_wo_dmi_f,
+                                               n34_sim_sam_neg_wo_dmi)
+        n34_sim_dmi_neg_wo_sam_f = ConcatEvent(n34_sim_dmi_neg_wo_sam_f,
+                                               n34_sim_dmi_neg_wo_sam)
+        sam_sim_n34_neg_wo_dmi_f = ConcatEvent(sam_sim_n34_neg_wo_dmi_f,
+                                               sam_sim_n34_neg_wo_dmi)
+        sam_sim_dmi_neg_wo_n34_f = ConcatEvent(sam_sim_dmi_neg_wo_n34_f,
+                                               sam_sim_dmi_neg_wo_n34)
 
 variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
-        'dmi_puros_neg_f': dmi_puros_neg_f,
-        'n34_puros_pos_f': n34_puros_pos_f,
-        'n34_puros_neg_f': n34_puros_neg_f,
-        'sam_puros_pos_f': sam_puros_pos_f,
-        'sam_puros_neg_f': sam_puros_neg_f,
-        'dmi_pos_f': dmi_pos_f,
-        'dmi_neg_f': dmi_neg_f,
-        'n34_pos_f': n34_pos_f,
-        'n34_neg_f': n34_neg_f,
-        'sam_pos_f': sam_pos_f,
-        'sam_neg_f': sam_neg_f,
-        'neutros_f': neutros_f,
-        'sim_neg_f': sim_neg_f,
-        'sim_pos_f': sim_pos_f,
-        'dmi_pos_n34_pos_sam_neg_f': dmi_pos_n34_pos_sam_neg_f,
-        'dmi_pos_n34_neg_sam_pos_f': dmi_pos_n34_neg_sam_pos_f,
-        'dmi_pos_n34_neg_sam_neg_f': dmi_pos_n34_neg_sam_neg_f,
-        'dmi_neg_n34_neg_sam_pos_f': dmi_neg_n34_neg_sam_pos_f,
-        'dmi_neg_n34_pos_sam_pos_f': dmi_neg_n34_pos_sam_pos_f,
-        'dmi_neg_n34_pos_sam_neg_f': dmi_neg_n34_pos_sam_neg_f
-    }
+             'dmi_puros_neg_f': dmi_puros_neg_f,
+             'n34_puros_pos_f': n34_puros_pos_f,
+             'n34_puros_neg_f': n34_puros_neg_f,
+             'sam_puros_pos_f': sam_puros_pos_f,
+             'sam_puros_neg_f': sam_puros_neg_f,
+             'dmi_pos_f': dmi_pos_f,
+             'dmi_neg_f': dmi_neg_f,
+             'n34_pos_f': n34_pos_f,
+             'n34_neg_f': n34_neg_f,
+             'sam_pos_f': sam_pos_f,
+             'sam_neg_f': sam_neg_f,
+             'neutros_f': neutros_f,
+             'sim_neg_f': sim_neg_f,
+             'sim_pos_f': sim_pos_f,
+             'dmi_pos_n34_pos_sam_neg_f': dmi_pos_n34_pos_sam_neg_f,
+             'dmi_pos_n34_neg_sam_pos_f': dmi_pos_n34_neg_sam_pos_f,
+             'dmi_pos_n34_neg_sam_neg_f': dmi_pos_n34_neg_sam_neg_f,
+             'dmi_neg_n34_neg_sam_pos_f': dmi_neg_n34_neg_sam_pos_f,
+             'dmi_neg_n34_pos_sam_pos_f': dmi_neg_n34_pos_sam_pos_f,
+             'dmi_neg_n34_pos_sam_neg_f': dmi_neg_n34_pos_sam_neg_f,
+             'dmi_sim_n34_pos_wo_sam_f': dmi_sim_n34_pos_wo_sam_f,
+             'dmi_sim_sam_pos_wo_n34_f': dmi_sim_sam_pos_wo_n34_f,
+             'n34_sim_sam_pos_wo_dmi_f': n34_sim_sam_pos_wo_dmi_f,
+             'n34_sim_dmi_pos_wo_sam_f': n34_sim_dmi_pos_wo_sam_f,
+             'sam_sim_n34_pos_wo_dmi_f': sam_sim_n34_pos_wo_dmi_f,
+             'sam_sim_dmi_pos_wo_n34_f': sam_sim_dmi_pos_wo_n34_f,
+             'dmi_sim_n34_neg_wo_sam_f': dmi_sim_n34_neg_wo_sam_f,
+             'n34_sim_sam_neg_wo_dmi_f': n34_sim_sam_neg_wo_dmi_f,
+             'n34_sim_dmi_neg_wo_sam_f': n34_sim_dmi_neg_wo_sam_f,
+             'sam_sim_n34_neg_wo_dmi_f': sam_sim_n34_neg_wo_dmi_f,
+             'sam_sim_dmi_neg_wo_n34_f': sam_sim_dmi_neg_wo_n34_f
 
+             }
 
 print('Saving...')
 for nombre, objeto in variables.items():
