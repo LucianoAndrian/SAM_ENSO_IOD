@@ -6,6 +6,7 @@ data_dir = '/pikachu/datos/luciano.andrian/cases_fields/'
 cases_date_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/' \
                  'events_dates/'
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cases_fields/'
+out_dir2 = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cases_index/'
 # ---------------------------------------------------------------------------- #
 import xarray as xr
 from multiprocessing.pool import ThreadPool
@@ -103,8 +104,150 @@ else:
         process.start()
 
 # ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
+# DMI ##########################################################################
+cases_data_dir_dmi = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
+if len(seasons)>1:
+    def SelectEventsDMI(c):
+        for s in seasons:
+            try:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'__xarray_dataarray_variable__': 'index'})
+            except:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'sst': 'index'})
 
+            data_dmi_s = xr.open_dataset(
+                cases_data_dir_dmi + 'DMI_' + s + '_Leads_r_CFSv2.nc')
+
+            case_events = SelectVariables(aux_cases, data_dmi_s)
+
+            case_events.to_netcdf(out_dir2 + 'dmi_values_' + c + '_' + s + '.nc')
+
+    pool = ThreadPool(4)  # uno por season
+    pool.map_async(SelectEventsDMI, [c for c in cases])
+
+else:
+    print('one season')
+    def SelectEventsDMI(c):
+        s = seasons[0]
+        try:
+            aux_cases = xr.open_dataset(
+                cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'__xarray_dataarray_variable__': 'index'})
+        except:
+            aux_cases = xr.open_dataset(
+                cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'sst': 'index'})
+
+        data_dmi_s = xr.open_dataset(
+            cases_data_dir_dmi + 'DMI_' + s + '_Leads_r_CFSv2.nc')
+
+        case_events = SelectVariables(aux_cases, data_dmi_s)
+
+        case_events.to_netcdf(out_dir2 + 'dmi_values_' + c + '_' + s + '.nc')
+
+    processes = [Process(target=SelectEventsDMI, args=(c,)) for c in cases]
+    for process in processes:
+        process.start()
+
+# N34 ##################################################################################################################
+if len(seasons)>1:
+    def SelectEventsN34(c):
+        for s in seasons:
+            try:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'__xarray_dataarray_variable__': 'index'})
+            except:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'sst': 'index'})
+
+            data_n34_s = xr.open_dataset(
+                cases_data_dir_dmi + 'N34_' + s + '_Leads_r_CFSv2.nc')
+
+            case_events = SelectVariables(aux_cases, data_n34_s)
+
+            case_events.to_netcdf(out_dir2 + 'n34_values_' + c + '_' + s + '.nc')
+
+    pool = ThreadPool(4)  # uno por season
+    pool.map_async(SelectEventsN34, [c for c in cases])
+
+else:
+    print('one season')
+    def SelectEventsN34(c):
+        s = seasons[0]
+        try:
+            aux_cases = xr.open_dataset(
+                cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'__xarray_dataarray_variable__': 'index'})
+        except:
+            aux_cases = xr.open_dataset(
+                cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'sst': 'index'})
+
+        data_n34_s = xr.open_dataset(
+            cases_data_dir_dmi + 'N34_' + s + '_Leads_r_CFSv2.nc')
+
+        case_events = SelectVariables(aux_cases, data_n34_s)
+
+        case_events.to_netcdf(out_dir2 + 'n34_values_' + c + '_' + s + '.nc')
+
+    processes = [Process(target=SelectEventsN34, args=(c,)) for c in cases]
+    for process in processes:
+        process.start()
+
+# SAM ##########################################################################
+cases_data_sam = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
+if len(seasons)>1:
+    def SelectEventsSAM(c):
+        for s in seasons:
+            try:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'__xarray_dataarray_variable__': 'index'})
+            except:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'sst': 'index'})
+
+            data_sam_s = xr.open_dataset(
+                cases_data_sam + 'SAM_' + s + '_Leads_r_CFSv2.nc')
+
+            case_events = SelectVariables(aux_cases, data_sam_s)
+
+            case_events.to_netcdf(out_dir2 + 'sam_values_' + c + '_' + s + '.nc')
+
+    pool = ThreadPool(4)  # uno por season
+    pool.map_async(SelectEventsSAM, [c for c in cases])
+
+else:
+    print('one season')
+    def SelectEventsSAM(c):
+        s = seasons[0]
+        try:
+            aux_cases = xr.open_dataset(
+                cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'__xarray_dataarray_variable__': 'index'})
+        except:
+            aux_cases = xr.open_dataset(
+                cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'sst': 'index'})
+
+        data_sam_s = xr.open_dataset(
+            cases_data_sam + 'SAM_' + s + '_Leads_r_CFSv2.nc')
+
+        case_events = SelectVariables(aux_cases, data_sam_s)
+
+        case_events.to_netcdf(out_dir2 + 'sam_values_' + c + '_' + s + '.nc')
+
+    processes = [Process(target=SelectEventsSAM, args=(c,)) for c in cases]
+    for process in processes:
+        process.start()
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
 # sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc').\
 #     rename({'time2':'time'})
 # hgt = xr.open_dataset(path_aux + 'hgt_mon_anom_d.nc')
