@@ -100,8 +100,10 @@ dates_dir = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
 seasons = ['JJA', 'JAS', 'ASO', 'SON']
 main_month_season = [7, 8, 9, 10]
 
-ms =main_month_season[3]
+# for ms in main_month_season:
+ms = main_month_season[3]
 s = seasons[ms - 7]
+
 print(s)
 n34_season = xr.open_dataset(dates_dir + 'N34_' + s + '_Leads_r_CFSv2.nc')
 dmi_season = xr.open_dataset(dates_dir + 'DMI_' + s + '_Leads_r_CFSv2.nc')
@@ -128,6 +130,7 @@ for r in range(1, 25):
     dmi_pos, dmi_neg, dmi = xrClassifierEvents(data_dmi, r, 'sst')
     n34_pos, n34_neg, n34 = xrClassifierEvents(data_n34, r, 'sst')
     sam_pos, sam_neg, sam = xrClassifierEvents(data_sam, r, 'sam')
+    # Estos serian 28-33
 
     # ------------------------------------------------------------------------ #
     # Eventos simultaneos ---------------------------------------------------- #
@@ -147,73 +150,76 @@ for r in range(1, 25):
     n34_sam_wo_dmi = UniqueValues(n34_sam_sim, dmi_n34_sam_sim)
     # ------------------------------------------------------------------------ #
 
-    # Identificando que eventos dmi y ENSO fueron simultaneos
+    # Simultaneos triples
     dmi_sim_n34_sam = dmi.sel(time=dmi.time.isin(dmi_n34_sam_sim))
+    n34_sim_dmi_sam = n34.sel(time=n34.time.isin(dmi_n34_sam_sim))
+    sam_sim_dmi_n34 = sam.sel(time=sam.time.isin(dmi_n34_sam_sim))
+
+    # Simultaneos dobles
     dmi_sim_n34_wo_sam = dmi.sel(time=dmi.time.isin(dmi_n34_wo_sam))
     dmi_sim_sam_wo_n34 = dmi.sel(time=dmi.time.isin(dmi_sam_wo_n34))
-
-    n34_sim_dmi_sam = n34.sel(time=n34.time.isin(dmi_n34_sam_sim))
     n34_sim_dmi_wo_sam = n34.sel(time=n34.time.isin(dmi_n34_wo_sam))
     n34_sim_sam_wo_dmi = n34.sel(time=n34.time.isin(n34_sam_wo_dmi))
-
-    sam_sim_dmi_n34 = sam.sel(time=sam.time.isin(dmi_n34_sam_sim))
     sam_sim_n34_wo_dmi = sam.sel(time=sam.time.isin(n34_sam_wo_dmi))
     sam_sim_dmi_wo_n34 = sam.sel(time=sam.time.isin(dmi_sam_wo_n34))
-    # ---------------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     # Clasificando los simultaneos
+
+    # Simultaneos triples
+    # Puede estar demás ahcerlo para todos...
     dmi_pos_sim_n34_sam, dmi_neg_sim_n34_sam = xrClassifierEvents(
         dmi_sim_n34_sam, r=666, var_name='sst', by_r=False)
+    n34_pos_sim_dmi_sam, n34_neg_sim_dmi_sam = xrClassifierEvents(
+        n34_sim_dmi_sam, r=666, var_name='sst', by_r=False)
+    sam_pos_sim_dmi_n34, sam_neg_sim_dmi_n34 = xrClassifierEvents(
+        sam_sim_dmi_n34, r=666, var_name='sam', by_r=False)
+
+    # Simultaneos dobles
     dmi_pos_sim_n34_wo_sam, dmi_neg_sim_n34_wo_sam = xrClassifierEvents(
         dmi_sim_n34_wo_sam, r=666, var_name='sst', by_r=False)
     dmi_pos_sim_sam_wo_n34, dmi_neg_sim_sam_wo_n34 = xrClassifierEvents(
         dmi_sim_sam_wo_n34, r=666, var_name='sst', by_r=False)
-
-    n34_pos_sim_dmi_sam, n34_neg_sim_dmi_sam = xrClassifierEvents(
-        n34_sim_dmi_sam, r=666, var_name='sst', by_r=False)
     n34_pos_sim_dmi_wo_sam, n34_neg_sim_dmi_wo_sam = xrClassifierEvents(
         n34_sim_dmi_wo_sam, r=666, var_name='sst', by_r=False)
     n34_pos_sim_sam_wo_dmi, n34_neg_sim_sam_wo_dmi = xrClassifierEvents(
         n34_sim_sam_wo_dmi, r=666, var_name='sst', by_r=False)
-
-    sam_pos_sim_dmi_n34, sam_neg_sim_dmi_n34 = xrClassifierEvents(
-        sam_sim_dmi_n34, r=666, var_name='sam', by_r=False)
     sam_pos_sim_n34_wo_dmi, sam_neg_sim_n34_wo_dmi = xrClassifierEvents(
         sam_sim_n34_wo_dmi, r=666, var_name='sam', by_r=False)
     sam_pos_sim_dmi_wo_n34, sam_neg_sim_dmi_wo_n34 = xrClassifierEvents(
         sam_sim_dmi_wo_n34, r=666, var_name='sam', by_r=False)
 
-
-
+    # 2 triples full
     sim_pos = SetDates(dmi_pos_sim_n34_sam, n34_pos_sim_dmi_sam,
                        sam_pos_sim_dmi_n34)
+    sim_neg = SetDates(dmi_neg_sim_n34_sam, n34_neg_sim_dmi_sam,
+                       sam_neg_sim_dmi_n34)
 
+
+    # 12 dobles "wo"
     dmi_sim_n34_pos_wo_sam = SetDates(dmi_pos_sim_n34_wo_sam,
                                       n34_pos_sim_dmi_wo_sam)
     dmi_sim_sam_pos_wo_n34 = SetDates(dmi_pos_sim_sam_wo_n34,
                                       sam_pos_sim_dmi_wo_n34)
-
     n34_sim_sam_pos_wo_dmi = SetDates(n34_pos_sim_sam_wo_dmi,
                                       sam_pos_sim_n34_wo_dmi)
-    n34_sim_dmi_pos_wo_sam = dmi_sim_n34_pos_wo_sam.copy()
 
+    n34_sim_dmi_pos_wo_sam = dmi_sim_n34_pos_wo_sam.copy()
     sam_sim_n34_pos_wo_dmi = n34_sim_sam_pos_wo_dmi.copy()
     sam_sim_dmi_pos_wo_n34 = dmi_sim_sam_pos_wo_n34.copy()
-
-    sim_neg = SetDates(dmi_neg_sim_n34_sam, n34_neg_sim_dmi_sam,
-                       sam_neg_sim_dmi_n34)
 
     dmi_sim_n34_neg_wo_sam = SetDates(dmi_neg_sim_n34_wo_sam,
                                       n34_neg_sim_dmi_wo_sam)
     dmi_sim_sam_neg_wo_n34 = SetDates(dmi_neg_sim_sam_wo_n34,
                                       sam_neg_sim_dmi_wo_n34)
-
     n34_sim_sam_neg_wo_dmi = SetDates(n34_neg_sim_sam_wo_dmi,
                                       sam_neg_sim_n34_wo_dmi)
-    n34_sim_dmi_neg_wo_sam = dmi_sim_n34_neg_wo_sam.copy()
 
+    n34_sim_dmi_neg_wo_sam = dmi_sim_n34_neg_wo_sam.copy()
     sam_sim_n34_neg_wo_dmi = n34_sim_sam_neg_wo_dmi.copy()
     sam_sim_dmi_neg_wo_n34 = dmi_sim_sam_neg_wo_n34.copy()
 
+
+    # 6 tiples 'op'
     dmi_pos_n34_pos_sam_neg = SetDates(dmi_pos_sim_n34_sam, n34_pos_sim_dmi_sam,
                                        sam_neg_sim_dmi_n34)
     dmi_pos_n34_neg_sam_pos = SetDates(dmi_pos_sim_n34_sam, n34_neg_sim_dmi_sam,
@@ -232,6 +238,7 @@ for r in range(1, 25):
     n34_puros = n34.sel(time=~n34.time.isin(dmi_n34_sam_sim))
     sam_puros = sam.sel(time=~sam.time.isin(dmi_n34_sam_sim))
 
+    # 6 puros
     dmi_puros_pos, dmi_puros_neg = xrClassifierEvents(dmi_puros,
                                                       r=666, var_name='sst',
                                                       by_r=False)
@@ -245,6 +252,7 @@ for r in range(1, 25):
     # Puede haber datos faltantes en algunas inicializaciónes (especialmente SST)
     # por eso primero se revisa que solo se consideren los valores no nan para los
     # neutros.
+    # 1 neutro
     aux_dmi_season = dmi_season.sel(r=r)
     dates_ref = aux_dmi_season.time[np.where(~np.isnan(aux_dmi_season.sst))]
     aux_sam_season = sam_season.sel(r=r)
@@ -266,6 +274,7 @@ for r in range(1, 25):
     neutros = neutros.time[mask]
 
     if r == 1:
+        # 6 puros
         dmi_puros_pos_f = dmi_puros_pos
         dmi_puros_neg_f = dmi_puros_neg
         n34_puros_pos_f = n34_puros_pos
@@ -273,6 +282,7 @@ for r in range(1, 25):
         sam_puros_pos_f = sam_puros_pos
         sam_puros_neg_f = sam_puros_neg
 
+        # 6 extras
         dmi_pos_f = dmi_pos
         dmi_neg_f = dmi_neg
         n34_pos_f = n34_pos
@@ -280,11 +290,14 @@ for r in range(1, 25):
         sam_pos_f = sam_pos
         sam_neg_f = sam_neg
 
+        # 1 neutro
         neutros_f = neutros
 
+        # 2 triples full
         sim_neg_f = sim_neg
         sim_pos_f = sim_pos
 
+        # 6 triples 'op'
         dmi_pos_n34_pos_sam_neg_f = dmi_pos_n34_pos_sam_neg
         dmi_pos_n34_neg_sam_pos_f = dmi_pos_n34_neg_sam_pos
 
@@ -294,6 +307,7 @@ for r in range(1, 25):
         dmi_neg_n34_pos_sam_pos_f = dmi_neg_n34_pos_sam_pos
         dmi_neg_n34_pos_sam_neg_f = dmi_neg_n34_pos_sam_neg
 
+        # 12 dobles "wo"
         dmi_sim_n34_pos_wo_sam_f = dmi_sim_n34_pos_wo_sam
         dmi_sim_sam_pos_wo_n34_f = dmi_sim_sam_pos_wo_n34
         n34_sim_sam_pos_wo_dmi_f = n34_sim_sam_pos_wo_dmi
