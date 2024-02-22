@@ -19,91 +19,50 @@ if save:
 else:
     dpi=100
 # ---------------------------------------------------------------------------- #
+def SelectParIndex(x, y, s):
 
-def SelectParIndex(x_case, y_case, s, by_r=True,
-                   open_x=True,
-                   open_y=False,
-                   y_case_aux=None):
+    x_name = x.split('_')[0]
+    y_name = y.split('_')[0]
 
-    x_name = x_case.split('_')[0]
-    y_name = y_case.split('_')[0]
+    if x_name == y.split('_')[1]:
+        y = y.split('_', 1)[1]
 
     if x_name.lower() == 'sam':
-        index_dir_x = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-        xr_x_name = 'sam'
+        x_xr_name = 'sam'
+        x_sd_aux_path = \
+            '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cases_index/'
     else:
-        index_dir_x = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/' \
-                      'DMI_N34_Leads_r/'
-        xr_x_name = 'sst'
+        x_xr_name = 'sst'
+        x_sd_aux_path = \
+            '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
 
     if y_name.lower() == 'sam':
-        index_dir_y = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-        xr_y_name = 'sam'
-    elif y_name.lower() == 'neutros':
-        #ESTO HAY que cambiarlo!!!
-        y_name = y_case_aux.split('_')[0]
-        if y_name.lower() == 'sam':
-            index_dir_y = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-            xr_y_name = 'sam'
-        else:
-            index_dir_y = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/' \
-                          'DMI_N34_Leads_r/'
-            xr_y_name = 'sst'
+        y_xr_name = 'sam'
+        y_sd_aux_path = \
+            '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cases_index/'
     else:
-        index_dir_y = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/' \
-                      'DMI_N34_Leads_r/'
-        xr_y_name = 'sst'
+        y_xr_name = 'sst'
+        y_sd_aux_path = \
+            '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
 
     sd_x_s = xr.open_dataset(
-        index_dir_x + x_name.upper() + '_' + s + '_Leads_r_CFSv2.nc').std()
+        x_sd_aux_path + x_name.upper() + '_' + s + '_Leads_r_CFSv2.nc').std()
     sd_y_s = xr.open_dataset(
-        index_dir_y + y_name.upper() +'_' + s + '_Leads_r_CFSv2.nc').std()
-    print(sd_y_s)
+        y_sd_aux_path + y_name.upper() +'_' + s + '_Leads_r_CFSv2.nc').std()
 
     aux_x = xr.open_dataset(
-        cases_dir + x_name + '_values_' + x_case + '_' + s + '.nc')\
+        cases_dir + x_name + '_values_in_' + x + '_' + s + '.nc')\
         .__mul__(1 / sd_x_s)
+
     aux_y = xr.open_dataset(
-        cases_dir + y_name + '_values_' + y_case + '_' + s + '.nc')\
+        cases_dir + y_name + '_values_in_' + y + '_' + s + '.nc') \
         .__mul__(1 / sd_y_s)
 
-    if by_r:
-        if open_y:
-            y_s = xr.open_dataset(
-                index_dir_y + y_name.upper() + '_' + s + '_Leads_r_CFSv2.nc')\
-                .__mul__(1 / sd_y_s)
+    return aux_x[x_xr_name].values.round(2), \
+               aux_y[y_xr_name].values.round(2)
 
-            aux_y2 = y_s.sel(r=aux_x.r, time=aux_x.time)
 
-            if len(np.where(aux_y2.L.values == aux_x.L.values)[0]):
-                return aux_x[xr_x_name].values.round(2), \
-                       aux_y2[xr_y_name].values.round(2)
-            else:
-                print('Error: CASES')
-                return [], []
 
-        if open_x:
-            x_s = xr.open_dataset(
-                index_dir_x + x_name.upper() + '_' + s + '_Leads_r_CFSv2.nc')\
-                .__mul__(1 / sd_x_s)
-
-            aux_x2 = x_s.sel(r=aux_y.r, time=aux_y.time)
-
-            if len(np.where(aux_x2.L.values == aux_y.L.values)[0]):
-                return aux_x2[xr_x_name].values.round(2), \
-                       aux_y[xr_y_name].values.round(2)
-            else:
-                print('Error: CASES')
-                return [], []
-    else:
-        aux_y = aux_y.sel(time=aux_y.time.isin([aux_x.time.values]))
-
-        if len(aux_y.time) == len(aux_x.time):
-            return aux_x[xr_x_name].values.round(2), \
-                   aux_y[xr_y_name].values.round(2)
-        else:
-            print('Error: CASES')
-            return [], []
 
 
 ########################################################################################################################
@@ -141,30 +100,45 @@ first_index = 'dmi'
 second_index = 'sam'
 excluded_index = 'n34'
 sign = 'pos'
+
+sam_puros = xr.open_dataset(cases_dir + 'sam_values_in_sam_puros_pos_SON.nc')
+dmi_for_sam_puros = xr.open_dataset(cases_dir + 'dmi_values_in_sam_puros_pos_SON.nc')
 for s in seasons:
     #Sim_pos
-    c = f"{first_index}_sim_{second_index}_pos_wo_{excluded_index}"
-    c2 = f"{second_index}_sim_{first_index}_pos_wo_{excluded_index}"
-    fi_sim_pos, si_sim_pos = SelectParIndex(c, c2, s)
+    x = f"{first_index}_sim_{second_index}_pos_wo_{excluded_index}"
+    y = f"{second_index}_sim_{first_index}_pos_wo_{excluded_index}"
+    fi_sim_pos, si_sim_pos = SelectParIndex(x, y, s)
+
     #sim_neg
-    c = f"{first_index}_sim_{second_index}_neg_wo_{excluded_index}"
-    c2 = f"{second_index}_sim_{first_index}_neg_wo_{excluded_index}"
-    fi_sim_neg, si_sim_neg = SelectParIndex(c, c2, s)
+    x = f"{first_index}_sim_{second_index}_neg_wo_{excluded_index}"
+    y = f"{second_index}_sim_{first_index}_neg_wo_{excluded_index}"
+    fi_sim_neg, si_sim_neg = SelectParIndex(x, y, s)
+
     # fi_puros_pos
-    c = f"{first_index}_puros_pos"
-    fi_puros_pos, si_in_fi_puros_pos = SelectParIndex(c, 'neutros', s,
-                                                      by_r=True,
-                                                      open_x=False,
-                                                      open_y=True,
-                                                      y_case_aux='n34_pos')
-    # #dmi_puros_neg
-    # dmi_puros_neg, n34_in_dmi_puros_neg = SelectParIndex('dmi_puros_neg', 'neutros',
-    #                                                      sd_dmi_s, sd_n34_s, s,
-    #                                                      by_r=True, open_dmi=False, open_n34=True)
-    # #n34_puros_pos
-    # dmi_in_n34_puros_pos, n34_puros_pos = SelectParIndex('neutros', 'n34_puros_pos',
-    #                                                      sd_dmi_s, sd_n34_s, s,
-    #                                                      by_r=True, open_dmi=True, open_n34=False)
+    x = f"{first_index}_puros_pos"
+    y = f"{second_index}_{x}"
+    fi_puros_pos, si_in_fi_puros_pos = SelectParIndex(x, y, s)
+
+    #fi_puros_neg
+    x = f"{first_index}_puros_neg"
+    y = f"{second_index}_{x}"
+    fi_puros_neg, si_in_fi_puros_neg = SelectParIndex(x, y, s)
+
+    #si_puros_pos
+    x = f"{second_index}_puros_pos"
+    y = f"{first_index}_{x}"
+    si_puros_pos, fi_in_si_puros_pos = SelectParIndex(x, y, s)
+
+    #si_puros_neg
+    x = f"{second_index}_puros_neg"
+    y = f"{first_index}_{x}"
+    si_puros_neg, fi_in_si_puros_neg = SelectParIndex(x, y, s)
+
+    # fi_pos_si_neg # Corrgeir los dobles 'WO' en SelectEvents
+    x = f"{first_index}_pos_{second_index}_neg_wo_{excluded_index}"
+    y = f"{second_index}_neg_{first_index}_pos_wo_{excluded_index}"
+    fi_sim_pos, si_sim_pos = SelectParIndex(x, y, s)
+
     # #n34_puros_neg
     # dmi_in_n34_puros_neg, n34_puros_neg = SelectParIndex('neutros', 'n34_puros_neg',
     #                                                      sd_dmi_s, sd_n34_s, s,
@@ -185,24 +159,24 @@ for s in seasons:
     # Plot ------------------------------------------------------------------------------------------------------------#
     # ------------------------------------------------------------------------------------------------------------------#
     fig, ax = plt.subplots(dpi=dpi, figsize=(5, 5))
-    #Simultaneos positivos --------------------------------------------------------------------------------------------#
+    # Simultaneos positivos --------------------------------------------------------------------------------------------#
     plt.scatter(x=fi_sim_pos, y=si_sim_pos,
                 marker='o', s=20, edgecolor='k', color='red', alpha=.5)
-    #Simultaneos negativos --------------------------------------------------------------------------------------------#
+    # Simultaneos negativos --------------------------------------------------------------------------------------------#
     plt.scatter(x=fi_sim_neg, y=si_sim_neg,
                 marker='o', s=20, edgecolor='k', color='lightseagreen', alpha=.5)
-    # #dmi puros positivos ----------------------------------------------------------------------------------------------#
-    # plt.scatter(x=dmi_puros_pos, y=n34_in_dmi_puros_pos, marker='>',
-    #             s=20, edgecolor='k', color='firebrick', alpha=.5)
-    # #dmi puros negativos ----------------------------------------------------------------------------------------------#
-    # plt.scatter(x=dmi_puros_neg, y=n34_in_dmi_puros_neg, marker='<',
-    #             s=20, edgecolor='k', color='lime', alpha=.5)
-    # #n34 puros positivos ----------------------------------------------------------------------------------------------#
-    # plt.scatter(x=dmi_in_n34_puros_pos, y=n34_puros_pos, marker='^',
-    #             s=20, edgecolor='k', color='darkorange', alpha=.5)
-    # #n34 puros negativos ----------------------------------------------------------------------------------------------#
-    # plt.scatter(x=dmi_in_n34_puros_neg, y=n34_puros_neg, marker='v',
-    #             s=20, edgecolor='k', color='blue', alpha=.5)
+    # fi puros positivos ----------------------------------------------------------------------------------------------#
+    plt.scatter(x=fi_puros_pos, y=si_in_fi_puros_pos, marker='>',
+                s=20, edgecolor='k', color='firebrick', alpha=.5)
+    # fi puros negativos ----------------------------------------------------------------------------------------------#
+    plt.scatter(x=fi_puros_neg, y=si_in_fi_puros_neg, marker='<',
+                s=20, edgecolor='k', color='lime', alpha=.5)
+    # si puros positivos ----------------------------------------------------------------------------------------------#
+    plt.scatter(x=fi_in_si_puros_pos, y=si_puros_pos, marker='^',
+                s=20, edgecolor='k', color='darkorange', alpha=.5)
+    # si puros negativos ----------------------------------------------------------------------------------------------#
+    plt.scatter(x=si_in_fi_puros_neg, y=fi_puros_neg, marker='v',
+                 s=20, edgecolor='k', color='blue', alpha=.5)
     # #dmi positivos n34 negativos --------------------------------------------------------------------------------------#
     # plt.scatter(x=dmi_pos_n34_neg, y=n34_in_dmi_pos_n34_neg, marker='o',
     #             s=20, edgecolor='k', color='purple', alpha=.5)
