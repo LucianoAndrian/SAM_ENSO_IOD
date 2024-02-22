@@ -7,6 +7,7 @@ save = False
 path = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
 path_aux = '/pikachu/datos/luciano.andrian/cases_fields/'
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/events_dates/'
+out_dir2 = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cases_index/'
 # ---------------------------------------------------------------------------- #
 import xarray as xr
 import numpy as np
@@ -71,19 +72,24 @@ def SetDates(*args):
 
 # ---------------------------------------------------------------------------- #
 
-sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc')\
-    .rolling(time2=3, center=True).mean()
-sam_index = sam_index.rename({'pcs':'sam'})
-for l, mm in zip([0,1,2,3],[10,9,8,7]):
-    aux = sam_index.sel(
-        time2=sam_index.time2.dt.month.isin(mm), L=l)
-    aux = aux.assign_coords({'L':l})
-    if l==0:
-        sam_season = aux
-    else:
-        sam_season = xr.concat([sam_season, aux], dim='time2')
-sam_season = sam_season.drop(['mode','month'])
-sam_season = sam_season.rename({'time2':'time'})
+try:
+    sam_season = xr.open_dataset(out_dir2 + 'SAM_SON_Leads_r_CFSv2.nc')
+except:
+    print('SAM_SON_Leads_r_CFSv2.nc not found, computing...')
+    sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc') \
+        .rolling(time2=3, center=True).mean()
+    sam_index = sam_index.rename({'pcs': 'sam'})
+    for l, mm in zip([0, 1, 2, 3], [10, 9, 8, 7]):
+        aux = sam_index.sel(
+            time2=sam_index.time2.dt.month.isin(mm), L=l)
+        aux = aux.assign_coords({'L': l})
+        if l == 0:
+            sam_season = aux
+        else:
+            sam_season = xr.concat([sam_season, aux], dim='time2')
+    sam_season = sam_season.drop(['mode', 'month'])
+    sam_season = sam_season.rename({'time2': 'time'})
+    sam_season.to_netcdf(out_dir2 + 'SAM_SON_Leads_r_CFSv2.nc')
 
 
 file = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/' \
@@ -116,7 +122,7 @@ data_n34 = n34_season.where(np.abs(n34_season) >
 data_dmi = dmi_season.where(np.abs(dmi_season) >
                             0.5*dmi_season.mean('r').std())
 
-# Criterio SAM (?????)
+# Criterio SAM
 data_sam = sam_season.where(np.abs(sam_season) >
                             0.5*sam_season.mean('r').std())
 
@@ -143,8 +149,7 @@ for r in range(1, 25):
     # x3
     dmi_n34_sam_sim = np.intersect1d(dmi_n34_sim, sam.time)
 
-    # simultaneos ""puros""
-    # (buscar otro nombre para no perder tiempo explicando cosas obvias...)
+    # simultaneos "wo"
     dmi_n34_wo_sam = UniqueValues(dmi_n34_sim, dmi_n34_sam_sim)
     dmi_sam_wo_n34 = UniqueValues(dmi_sam_sim, dmi_n34_sam_sim)
     n34_sam_wo_dmi = UniqueValues(n34_sam_sim, dmi_n34_sam_sim)
@@ -235,8 +240,16 @@ for r in range(1, 25):
     # ---------------------------------------------------------------------------- #
     # Eventos puros
     dmi_puros = dmi.sel(time=~dmi.time.isin(dmi_n34_sam_sim))
+    dmi_puros = dmi_puros.sel(time=~dmi_puros.time.isin(dmi_n34_wo_sam))
+    dmi_puros = dmi_puros.sel(time=~dmi_puros.time.isin(dmi_sam_wo_n34))
+
     n34_puros = n34.sel(time=~n34.time.isin(dmi_n34_sam_sim))
+    n34_puros = n34_puros.sel(time=~n34_puros.time.isin(dmi_n34_wo_sam))
+    n34_puros = n34_puros.sel(time=~n34_puros.time.isin(n34_sam_wo_dmi))
+
     sam_puros = sam.sel(time=~sam.time.isin(dmi_n34_sam_sim))
+    sam_puros = sam_puros.sel(time=~sam_puros.time.isin(dmi_sam_wo_n34))
+    sam_puros = sam_puros.sel(time=~sam_puros.time.isin(n34_sam_wo_dmi))
 
     # 6 puros
     dmi_puros_pos, dmi_puros_neg = xrClassifierEvents(dmi_puros,
@@ -321,6 +334,11 @@ for r in range(1, 25):
         sam_sim_dmi_neg_wo_n34_f = sam_sim_dmi_neg_wo_n34
         dmi_sim_sam_neg_wo_n34_f = dmi_sim_sam_neg_wo_n34
 
+        sam_f = sam
+        dmi_f = dmi
+        n34_f = n34
+
+
     else:
 
         dmi_puros_pos_f = ConcatEvent(dmi_puros_pos_f, dmi_puros_pos)
@@ -382,6 +400,10 @@ for r in range(1, 25):
         dmi_sim_sam_neg_wo_n34_f = ConcatEvent(dmi_sim_sam_neg_wo_n34_f,
                                                dmi_sim_sam_neg_wo_n34)
 
+        sam_f = ConcatEvent(sam_f, sam)
+        dmi_f = ConcatEvent(dmi_f, dmi)
+        n34_f = ConcatEvent(n34_f, n34)
+
 variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
              'dmi_puros_neg_f': dmi_puros_neg_f,
              'n34_puros_pos_f': n34_puros_pos_f,
@@ -414,7 +436,8 @@ variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
              'n34_sim_dmi_neg_wo_sam_f': n34_sim_dmi_neg_wo_sam_f,
              'sam_sim_n34_neg_wo_dmi_f': sam_sim_n34_neg_wo_dmi_f,
              'sam_sim_dmi_neg_wo_n34_f': sam_sim_dmi_neg_wo_n34_f,
-             'dmi_sim_sam_neg_wo_n34_f':dmi_sim_sam_neg_wo_n34_f
+             'dmi_sim_sam_neg_wo_n34_f':dmi_sim_sam_neg_wo_n34_f,
+             'sam_f':sam_f, 'dmi_f':dmi_f, 'n34_f':n34_f
 
              }
 
