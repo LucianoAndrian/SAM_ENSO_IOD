@@ -207,7 +207,6 @@ for r in range(1, 25):
                                       sam_pos_sim_dmi_wo_n34)
     n34_sim_sam_pos_wo_dmi = SetDates(n34_pos_sim_sam_wo_dmi,
                                       sam_pos_sim_n34_wo_dmi)
-
     n34_sim_dmi_pos_wo_sam = dmi_sim_n34_pos_wo_sam.copy()
     sam_sim_n34_pos_wo_dmi = n34_sim_sam_pos_wo_dmi.copy()
     sam_sim_dmi_pos_wo_n34 = dmi_sim_sam_pos_wo_n34.copy()
@@ -218,11 +217,29 @@ for r in range(1, 25):
                                       sam_neg_sim_dmi_wo_n34)
     n34_sim_sam_neg_wo_dmi = SetDates(n34_neg_sim_sam_wo_dmi,
                                       sam_neg_sim_n34_wo_dmi)
-
     n34_sim_dmi_neg_wo_sam = dmi_sim_n34_neg_wo_sam.copy()
     sam_sim_n34_neg_wo_dmi = n34_sim_sam_neg_wo_dmi.copy()
     sam_sim_dmi_neg_wo_n34 = dmi_sim_sam_neg_wo_n34.copy()
 
+    dmi_pos_n34_neg_wo_sam = SetDates(dmi_pos_sim_n34_wo_sam,
+                                      n34_neg_sim_dmi_wo_sam)
+    dmi_pos_sam_neg_wo_n34 = SetDates(dmi_pos_sim_sam_wo_n34,
+                                      sam_neg_sim_dmi_wo_n34)
+    n34_pos_sam_neg_wo_dmi = SetDates(n34_pos_sim_sam_wo_dmi,
+                                      sam_neg_sim_n34_wo_dmi)
+    n34_pos_dmi_neg_wo_sam = dmi_pos_n34_neg_wo_sam.copy()
+    sam_pos_dmi_neg_wo_n34 = dmi_pos_sam_neg_wo_n34.copy()
+    sam_pos_n34_neg_wo_dmi = n34_pos_sam_neg_wo_dmi.copy()
+
+    dmi_neg_n34_pos_wo_sam = SetDates(dmi_neg_sim_n34_wo_sam,
+                                      n34_pos_sim_dmi_wo_sam)
+    dmi_neg_sam_pos_wo_n34 = SetDates(dmi_neg_sim_sam_wo_n34,
+                                      sam_pos_sim_dmi_wo_n34)
+    n34_neg_sam_pos_wo_dmi = SetDates(n34_neg_sim_sam_wo_dmi,
+                                      sam_pos_sim_n34_wo_dmi)
+    n34_neg_dmi_pos_wo_sam = dmi_neg_n34_pos_wo_sam.copy()
+    sam_neg_dmi_pos_wo_n34 = dmi_neg_sam_pos_wo_n34.copy()
+    sam_neg_n34_pos_wo_dmi = n34_neg_sam_pos_wo_dmi.copy()
 
     # 6 tiples 'op'
     dmi_pos_n34_pos_sam_neg = SetDates(dmi_pos_sim_n34_sam, n34_pos_sim_dmi_sam,
@@ -237,7 +254,7 @@ for r in range(1, 25):
                                        sam_pos_sim_dmi_n34)
     dmi_neg_n34_pos_sam_neg = SetDates(dmi_neg_sim_n34_sam, n34_pos_sim_dmi_sam,
                                        sam_neg_sim_dmi_n34)
-    # ---------------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     # Eventos puros
     dmi_puros = dmi.sel(time=~dmi.time.isin(dmi_n34_sam_sim))
     dmi_puros = dmi_puros.sel(time=~dmi_puros.time.isin(dmi_n34_wo_sam))
@@ -334,6 +351,20 @@ for r in range(1, 25):
         sam_sim_dmi_neg_wo_n34_f = sam_sim_dmi_neg_wo_n34
         dmi_sim_sam_neg_wo_n34_f = dmi_sim_sam_neg_wo_n34
 
+        dmi_pos_n34_neg_wo_sam_f = dmi_pos_n34_neg_wo_sam
+        dmi_pos_sam_neg_wo_n34_f = dmi_pos_sam_neg_wo_n34
+        n34_pos_sam_neg_wo_dmi_f = n34_pos_sam_neg_wo_dmi
+        n34_pos_dmi_neg_wo_sam_f = n34_pos_dmi_neg_wo_sam
+        sam_pos_dmi_neg_wo_n34_f = sam_pos_dmi_neg_wo_n34
+        sam_pos_n34_neg_wo_dmi_f = sam_pos_n34_neg_wo_dmi
+
+        dmi_neg_n34_pos_wo_sam_f = dmi_neg_n34_pos_wo_sam
+        dmi_neg_sam_pos_wo_n34_f = dmi_neg_sam_pos_wo_n34
+        n34_neg_sam_pos_wo_dmi_f = n34_neg_sam_pos_wo_dmi
+        n34_neg_dmi_pos_wo_sam_f = n34_neg_dmi_pos_wo_sam
+        sam_neg_dmi_pos_wo_n34_f = sam_neg_dmi_pos_wo_n34
+        sam_neg_n34_pos_wo_dmi_f = sam_neg_n34_pos_wo_dmi
+
         sam_f = sam
         dmi_f = dmi
         n34_f = n34
@@ -400,6 +431,32 @@ for r in range(1, 25):
         dmi_sim_sam_neg_wo_n34_f = ConcatEvent(dmi_sim_sam_neg_wo_n34_f,
                                                dmi_sim_sam_neg_wo_n34)
 
+        dmi_pos_n34_neg_wo_sam_f = ConcatEvent(dmi_pos_n34_neg_wo_sam_f,
+                                               dmi_pos_n34_neg_wo_sam)
+        dmi_pos_sam_neg_wo_n34_f = ConcatEvent(dmi_pos_sam_neg_wo_n34_f,
+                                               dmi_pos_sam_neg_wo_n34)
+        n34_pos_sam_neg_wo_dmi_f = ConcatEvent(n34_pos_sam_neg_wo_dmi_f,
+                                               n34_pos_sam_neg_wo_dmi)
+        n34_pos_dmi_neg_wo_sam_f = ConcatEvent(n34_pos_dmi_neg_wo_sam_f,
+                                               n34_pos_dmi_neg_wo_sam)
+        sam_pos_dmi_neg_wo_n34_f = ConcatEvent(sam_pos_dmi_neg_wo_n34_f,
+                                               sam_pos_dmi_neg_wo_n34)
+        sam_pos_n34_neg_wo_dmi_f = ConcatEvent(sam_pos_n34_neg_wo_dmi_f,
+                                               sam_pos_n34_neg_wo_dmi)
+
+        dmi_neg_n34_pos_wo_sam_f = ConcatEvent(dmi_neg_n34_pos_wo_sam_f,
+                                               dmi_neg_n34_pos_wo_sam)
+        dmi_neg_sam_pos_wo_n34_f = ConcatEvent(dmi_neg_sam_pos_wo_n34_f,
+                                               dmi_neg_sam_pos_wo_n34)
+        n34_neg_sam_pos_wo_dmi_f = ConcatEvent(n34_neg_sam_pos_wo_dmi_f,
+                                               n34_neg_sam_pos_wo_dmi)
+        n34_neg_dmi_pos_wo_sam_f = ConcatEvent(n34_neg_dmi_pos_wo_sam_f,
+                                               n34_neg_dmi_pos_wo_sam)
+        sam_neg_dmi_pos_wo_n34_f = ConcatEvent(sam_neg_dmi_pos_wo_n34_f,
+                                               sam_neg_dmi_pos_wo_n34)
+        sam_neg_n34_pos_wo_dmi_f = ConcatEvent(sam_neg_n34_pos_wo_dmi_f,
+                                               sam_neg_n34_pos_wo_dmi)
+
         sam_f = ConcatEvent(sam_f, sam)
         dmi_f = ConcatEvent(dmi_f, dmi)
         n34_f = ConcatEvent(n34_f, n34)
@@ -437,9 +494,19 @@ variables = {'dmi_puros_pos_f': dmi_puros_pos_f,
              'sam_sim_n34_neg_wo_dmi_f': sam_sim_n34_neg_wo_dmi_f,
              'sam_sim_dmi_neg_wo_n34_f': sam_sim_dmi_neg_wo_n34_f,
              'dmi_sim_sam_neg_wo_n34_f':dmi_sim_sam_neg_wo_n34_f,
-             'sam_f':sam_f, 'dmi_f':dmi_f, 'n34_f':n34_f
-
-             }
+             'dmi_pos_n34_neg_wo_sam_f' : dmi_pos_n34_neg_wo_sam_f,
+             'dmi_pos_sam_neg_wo_n34_f' : dmi_pos_sam_neg_wo_n34_f,
+             'n34_pos_sam_neg_wo_dmi_f' : n34_pos_sam_neg_wo_dmi_f,
+             'n34_pos_dmi_neg_wo_sam_f' : n34_pos_dmi_neg_wo_sam_f,
+             'sam_pos_dmi_neg_wo_n34_f' : sam_pos_dmi_neg_wo_n34_f,
+             'sam_pos_n34_neg_wo_dmi_f' : sam_pos_n34_neg_wo_dmi_f,
+             'dmi_neg_n34_pos_wo_sam_f' : dmi_neg_n34_pos_wo_sam_f,
+             'dmi_neg_sam_pos_wo_n34_f' : dmi_neg_sam_pos_wo_n34_f,
+             'n34_neg_sam_pos_wo_dmi_f' : n34_neg_sam_pos_wo_dmi_f,
+             'n34_neg_dmi_pos_wo_sam_f' : n34_neg_dmi_pos_wo_sam_f,
+             'sam_neg_dmi_pos_wo_n34_f' : sam_neg_dmi_pos_wo_n34_f,
+             'sam_neg_n34_pos_wo_dmi_f' : sam_neg_n34_pos_wo_dmi_f,
+             'sam_f':sam_f, 'dmi_f':dmi_f, 'n34_f':n34_f}
 
 print('Saving...')
 for nombre, objeto in variables.items():

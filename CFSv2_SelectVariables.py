@@ -39,6 +39,18 @@ cases = ['sim_pos', 'sim_neg', #triple sim
          'sam_sim_n34_neg_wo_dmi', # dos eventos simultaneos sin el otro
          'sam_sim_dmi_neg_wo_n34', # dos eventos simultaneos sin el otro]
          'dmi_sim_sam_neg_wo_n34', # dos eventos simultaneos sin el otro
+         'dmi_pos_n34_neg_wo_sam',
+         'dmi_pos_sam_neg_wo_n34',
+         'n34_pos_sam_neg_wo_dmi',
+         'n34_pos_dmi_neg_wo_sam',
+         'sam_pos_dmi_neg_wo_n34',
+         'sam_pos_n34_neg_wo_dmi',
+         'dmi_neg_n34_pos_wo_sam',
+         'dmi_neg_sam_pos_wo_n34',
+         'n34_neg_sam_pos_wo_dmi',
+         'n34_neg_dmi_pos_wo_sam',
+         'sam_neg_dmi_pos_wo_n34',
+         'sam_neg_n34_pos_wo_dmi',
          'sam', 'dmi', 'n34']
 
 seasons = ['SON']
