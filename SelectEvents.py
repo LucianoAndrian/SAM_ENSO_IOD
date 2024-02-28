@@ -227,9 +227,9 @@ for r in range(1, 25):
                                       sam_neg_sim_dmi_wo_n34)
     n34_pos_sam_neg_wo_dmi = SetDates(n34_pos_sim_sam_wo_dmi,
                                       sam_neg_sim_n34_wo_dmi)
-    n34_pos_dmi_neg_wo_sam = dmi_pos_n34_neg_wo_sam.copy()
-    sam_pos_dmi_neg_wo_n34 = dmi_pos_sam_neg_wo_n34.copy()
-    sam_pos_n34_neg_wo_dmi = n34_pos_sam_neg_wo_dmi.copy()
+    n34_neg_dmi_pos_wo_sam = dmi_pos_n34_neg_wo_sam.copy()
+    sam_neg_dmi_pos_wo_n34 = dmi_pos_sam_neg_wo_n34.copy()
+    sam_neg_n34_pos_wo_dmi = n34_pos_sam_neg_wo_dmi.copy()
 
     dmi_neg_n34_pos_wo_sam = SetDates(dmi_neg_sim_n34_wo_sam,
                                       n34_pos_sim_dmi_wo_sam)
@@ -237,9 +237,9 @@ for r in range(1, 25):
                                       sam_pos_sim_dmi_wo_n34)
     n34_neg_sam_pos_wo_dmi = SetDates(n34_neg_sim_sam_wo_dmi,
                                       sam_pos_sim_n34_wo_dmi)
-    n34_neg_dmi_pos_wo_sam = dmi_neg_n34_pos_wo_sam.copy()
-    sam_neg_dmi_pos_wo_n34 = dmi_neg_sam_pos_wo_n34.copy()
-    sam_neg_n34_pos_wo_dmi = n34_neg_sam_pos_wo_dmi.copy()
+    n34_pos_dmi_neg_wo_sam = dmi_neg_n34_pos_wo_sam.copy()
+    sam_pos_dmi_neg_wo_n34 = dmi_neg_sam_pos_wo_n34.copy()
+    sam_pos_n34_neg_wo_dmi = n34_neg_sam_pos_wo_dmi.copy()
 
     # 6 tiples 'op'
     dmi_pos_n34_pos_sam_neg = SetDates(dmi_pos_sim_n34_sam, n34_pos_sim_dmi_sam,
