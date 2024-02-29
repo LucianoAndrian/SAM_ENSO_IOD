@@ -59,7 +59,7 @@ cases = ['sim_pos', 'sim_neg', #triple sim
 
 seasons = ['SON']
 
-cases_1 = cases[1:10]
+cases_1 = cases[0:10]
 cases_2 = cases[10:20]
 cases_3 = cases[20:30]
 cases_4 = cases[30:40]
