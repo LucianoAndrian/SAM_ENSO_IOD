@@ -63,10 +63,17 @@ def Plot(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
 
     comp_var = comp['var']
 
+    levels_contour = levels.copy()
+    levels_contour.remove(0)
+
     fig = plt.figure(figsize=fig_size, dpi=dpi)
     ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
     crs_latlon = ccrs.PlateCarree()
     ax.set_extent(extent, crs=crs_latlon)
+
+    ax.contour(comp.lon, comp.lat, comp_var,
+               linewidths=.8, levels=levels_contour, transform=crs_latlon,
+               colors='black')
 
     im = ax.contourf(comp.lon, comp.lat, comp_var, levels=levels,
                      transform=crs_latlon, cmap=cmap, extend='both')
