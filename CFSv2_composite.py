@@ -119,6 +119,47 @@ def PlotSST(comp, levels = np.linspace(-1,1,11), cmap='RdBu',
         plt.close()
     else:
         plt.show()
+
+
+def PlotPP_T(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
+    import matplotlib.pyplot as plt
+    fig_size = (5, 6)
+    extent= [270, 330, -60, 20]
+    xticks = np.arange(270, 330, 10)
+    yticks = np.arange(-60, 40, 20)
+
+    comp_var = comp['var']
+
+    fig = plt.figure(figsize=fig_size, dpi=dpi)
+    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
+    crs_latlon = ccrs.PlateCarree()
+    ax.set_extent(extent, crs=crs_latlon)
+
+    im = ax.contourf(comp.lon, comp.lat, comp_var, levels=levels,
+                     transform=crs_latlon, cmap=cmap, extend='both')
+
+    cb = plt.colorbar(im, fraction=0.042, pad=0.035,shrink=0.7)
+    cb.ax.tick_params(labelsize=8)
+    ax.add_feature(cartopy.feature.LAND, facecolor='lightgrey',
+                   edgecolor='k')
+    ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.5)
+    ax.coastlines(color='k', linestyle='-', alpha=1)
+    ax.gridlines(crs=crs_latlon, linewidth=0.3, linestyle='-')
+    ax.set_xticks(xticks, crs=crs_latlon)
+    ax.set_yticks(yticks, crs=crs_latlon)
+    lon_formatter = LongitudeFormatter(zero_direction_label=True)
+    lat_formatter = LatitudeFormatter()
+    ax.xaxis.set_major_formatter(lon_formatter)
+    ax.yaxis.set_major_formatter(lat_formatter)
+    ax.tick_params(labelsize=8)
+    plt.title(title, fontsize=10)
+    plt.tight_layout()
+
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
+    else:
+        plt.show()
 ################################################################################
 seasons = ['JJA','SON']
 seasons = ['SON']
@@ -189,6 +230,22 @@ cbar_sst.set_over('#9B1C00')
 cbar_sst.set_under('#014A9B')
 cbar_sst.set_bad(color='white')
 
+cbar_pp = colors.ListedColormap(['#003C30', '#004C42', '#0C7169', '#79C8BC',
+                                 '#B4E2DB',
+                                 'white',
+                                 '#F1DFB3', '#DCBC75', '#995D13','#6A3D07',
+                                 '#543005'][::-1])
+cbar_pp.set_under('#3F2404')
+cbar_pp.set_over('#00221A')
+cbar_pp.set_bad(color='white')
+
+cbar_snr_pp = colors.ListedColormap(['#1E6D5A' ,'#52C39D',
+                                     '#6FFE9B','#FFFFFF',
+                                  '#FFFFFF','#FFFFFF',
+                                  '#DCBC75', '#995D13','#6A3D07'][::-1])
+cbar_snr_pp.set_under('#6A3D07')
+cbar_snr_pp.set_over('#1E6D5A')
+cbar_snr_pp.set_bad(color='white')
 # ---------------------------------------------------------------------------- #
 # HGT ------------------------------------------------------------------------ #
 print('z200')
@@ -261,3 +318,40 @@ for s in seasons:
         except:
             print('Error in ' + c + ' - ' + s)
 # ---------------------------------------------------------------------------- #
+# PP T ----------------------------------------------------------------------- #
+print('pp')
+from ENSO_IOD_Funciones import MakeMask
+scale = np.linspace(-45, 45, 13)
+scale_snr = [-1,-.5,-.25,0,0.25,0.5,1]
+for s in seasons:
+    neutro = xr.open_dataset(
+        cases_dir + 'pp_neutros_' + s + '.nc').rename({'prec':'var'})
+    neutro *= 30
+    for c_count, c in enumerate(cases):
+        case = xr.open_dataset(
+            cases_dir + 'pp_' + c + '_' + s + '.nc').rename({'prec':'var'})
+        case *= 30
+        try:
+            num_case = len(case.time)
+            comp = case.mean('time') - neutro.mean('time')
+            comp *= MakeMask(comp, 'var')
+            PlotPP_T(comp, levels=scale, cmap=cbar_pp, dpi=dpi,
+                 name_fig='pp_' + c + '_' + s,
+                 title='Mean Composite - CFSv2 - ' + s + '\n' +
+                       title_case[c_count] + '\n' + ' ' + 'PP'
+                       + ' - ' + 'Cases: ' + str(num_case),
+                 save=save, out_dir=out_dir)
+
+            spread = case - comp
+            spread = spread.std('time')
+            snr = comp / spread
+
+            PlotPP_T(snr, levels=scale_snr, cmap=cbar_snr_pp, dpi=dpi,
+                 name_fig='SNR_pp_' + c + '_' + s,
+                 title='Mean Composite - CFSv2 - ' + s + '\n' +
+                       title_case[c_count] + '\n' + ' ' + 'PP'
+                       + ' - ' + 'Cases: ' + str(num_case),
+                 save=save, out_dir=out_dir)
+
+        except:
+            print('Error in ' + c + ' - ' + s)

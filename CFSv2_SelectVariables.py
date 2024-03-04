@@ -4,7 +4,8 @@ Similar al SelectEvents de ENSO_IOD
 # ---------------------------------------------------------------------------- #
 select_indices = False
 select_hgt = False
-select_sst = True
+select_sst = False
+select_pp_t = True
 # ---------------------------------------------------------------------------- #
 data_dir = '/pikachu/datos/luciano.andrian/cases_fields/'
 cases_date_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/' \
@@ -395,6 +396,55 @@ if select_sst:
         process_cases(cases_5)
 
 # ---------------------------------------------------------------------------- #
+if select_pp_t:
+    print('Select PP')
+    if len(seasons) > 1:
+        def SelectEventsPP(c):
+            for s in seasons:
+                aux_cases = xr.open_dataset(
+                    cases_date_dir + c + '_f_' + s + '.nc') \
+                    .rename({'__xarray_dataarray_variable__': 'index'})
+                data_pp_s = xr.open_dataset(
+                    data_dir + 'prec_' + s.lower() + '.nc')
+                case_events = SelectVariables(aux_cases, data_pp_s)
+                case_events.to_netcdf(out_dir + 'pp_' + c + '_' + s + '.nc')
+
+
+        pool = ThreadPool(4)  # uno por season
+        pool.map_async(SelectEventsPP, [c for c in cases])
+    else:
+        print('one season')
+
+        def SelectEventsPP(c):
+            s = seasons[0]
+            aux_cases = xr.open_dataset(cases_date_dir + c + '_f_' + s + '.nc') \
+                .rename({'__xarray_dataarray_variable__': 'index'})
+            data_pp_s = xr.open_dataset(data_dir + 'prec_' + s.lower() + '.nc')
+            case_events = SelectVariables(aux_cases, data_pp_s)
+            case_events.to_netcdf(out_dir + 'pp_' + c + '_' + s + '.nc')
+
+        # processes = [Process(target=SelectEvents, args=(c,)) for c in cases]
+        # for process in processes:
+        #     process.start()
+
+        def process_cases(cases_part):
+            processes = [Process(target=SelectEventsPP, args=(c,)) for c in
+                         cases_part]
+            print('start...')
+            for process in processes:
+                process.start()
+            print('join...')
+            for process in processes:
+                process.join()
+
+        process_cases(cases_1)
+        process_cases(cases_2)
+        process_cases(cases_3)
+        process_cases(cases_4)
+        process_cases(cases_5)
+# ---------------------------------------------------------------------------- #
+
+
 # ---------------------------------------------------------------------------- #
 # sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc').\
 #     rename({'time2':'time'})
