@@ -3,8 +3,9 @@ Composiciones de HGT200 a partir de los outputs de
 ENSO_IOD_CFSv2_preSELECT_HGT.py
 """
 # ---------------------------------------------------------------------------- #
-save = True
+save = False
 save_nc = False
+fast_waf=True
 # ---------------------------------------------------------------------------- #
 cases_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cases_fields/'
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cfsv2/composites/'
@@ -28,7 +29,8 @@ else:
 # Funciones ####################################################################
 def Plot(comp, comp_var, levels = np.linspace(-1,1,11),
          cmap='RdBu', dpi=100, save=True, step=1, name_fig='fig',
-         title='title', color_map='grey'):
+         title='title', color_map='grey', waf=False, px=None, py=None,
+         waf_scale=None, waf_qlimite=99, data_ref_waf=None, step_waf = 3):
 
     import matplotlib.pyplot as plt
     levels_contour = levels.copy()
@@ -47,6 +49,33 @@ def Plot(comp, comp_var, levels = np.linspace(-1,1,11),
                      comp_var[::step, ::step],
                      levels=levels, transform=crs_latlon, cmap=cmap,
                      extend='both')
+
+    if waf:
+        from numpy import ma
+
+        Q60 = np.percentile(np.sqrt(np.add(np.power(px, 2), np.power(py, 2))),
+                            0)
+        M = np.sqrt(np.add(np.power(px, 2), np.power(py, 2))) < Q60
+        # mask array
+        px_mask = ma.array(px, mask=M)
+        py_mask = ma.array(py, mask=M)
+
+        QL = np.nanpercentile(np.sqrt(np.add(np.power(px, 2),
+                                              np.power(py, 2))), waf_qlimite)
+        M = np.sqrt(np.add(np.power(px, 2), np.power(py, 2))) > QL
+        # mask array
+        px_mask = ma.array(px_mask, mask=M)
+        py_mask = ma.array(py_mask, mask=M)
+        # plot vectors
+        lons, lats = np.meshgrid(data_ref_waf.lon.values,
+                                 data_ref_waf.lat.values)
+        ax.quiver(lons[::step_waf, ::step_waf], lats[::step_waf, ::step_waf],
+                  px_mask[0, ::step_waf, ::step_waf],
+                  py_mask[0, ::step_waf, ::step_waf],
+                  transform=crs_latlon, pivot='tail', width=1.5e-3,
+                  headwidth=3, alpha=1,
+                  headlength=2.5, color='k', scale=waf_scale)
+
     cb = plt.colorbar(im, fraction=0.042, pad=0.035,shrink=0.8)
     cb.ax.tick_params(labelsize=8)
     ax.add_feature(cartopy.feature.LAND, facecolor='white', edgecolor=color_map)
@@ -247,6 +276,32 @@ cbar_snr_pp.set_under('#6A3D07')
 cbar_snr_pp.set_over('#1E6D5A')
 cbar_snr_pp.set_bad(color='white')
 # ---------------------------------------------------------------------------- #
+# for fast_waf --------------------------------------------------------------- #
+if fast_waf:
+    #print('fast_waf = True. Se calculará el WAF a partir de Z asumiendo QG')
+    #print('Usar solo de manera exploratoria!')
+    f_aux = 2 * 7.24 / 100000
+    g = 9.8
+
+    print('Niveles medios de Z no configurados, fast_waf = False')
+    fast_waf = False
+
+    def ComputeWaf(data_anom, data_clim):
+        from ENSO_IOD_Funciones import WAF
+        px, py = WAF(data_clim, data_anom, data_clim.lon, data_clim.lat,
+                     reshape=True, variable='var')
+
+        weights = np.transpose(
+            np.tile(-2 *
+                    np.cos(data_clim.lat.values * 1 * np.pi / 180) + 2.1,
+                    (360, 1)))
+        weights_arr = np.zeros_like(px)
+        weights_arr[0, :, :] = weights
+        px *= weights_arr
+        py *= weights_arr
+
+        return px, py
+
 # HGT ------------------------------------------------------------------------ #
 print('z200')
 scale = [-300,-250,-200,-150,-100,-50,-25,0,25,50,100,150,200,250,300]
@@ -266,12 +321,29 @@ for s in seasons:
             num_case = len(case.time)
             comp = case.mean('time') - neutro.mean('time')
             comp_var = comp['var']
+
+            if fast_waf:
+                aux = neutro.sel(lat=slice(-80,-25))
+                sinlat = np.sin(aux.lat.values * 3.14 / 180)
+                f = f_aux * sinlat
+                psiclim = g / np.transpose(np.tile(f, (360, 1))) * \
+                          aux.mean('time')+1e09
+
+                aux = comp.sel(lat=slice(-80, -25))
+                psianom = g / np.transpose(np.tile(f, (360, 1))) * aux
+                px, py = ComputeWaf(psiclim, psianom)
+            else:
+                px = None
+                py = None
+
             Plot(comp, comp_var, levels=scale,
                  cmap=cbar, dpi=dpi, step=1, name_fig='hgt_' + c + '_' + s,
                  title='Mean Composite - CFSv2 - ' + s + '\n' +
                        title_case[c_count] + '\n' + ' ' + 'HGT 200hPa'
                        + ' - ' + 'Cases: ' + str(num_case),
-                 save=save)
+                 save=save,
+                 waf=fast_waf, px=px, py=py, waf_scale=1, waf_qlimite=80,
+                 data_ref_waf=aux, step_waf=4)
 
             spread = case - comp
             spread = spread.std('time')

@@ -1427,6 +1427,13 @@ def PlotWAFCountours(comp, comp_var, title='Fig', name_fig='Fig',
         # mask array
         px_mask = ma.array(px, mask=M)
         py_mask = ma.array(py, mask=M)
+
+        Q99 = np.nanpercentile(np.sqrt(np.add(np.power(px, 2),
+                                              np.power(py, 2))), 90)
+        M = np.sqrt(np.add(np.power(px, 2), np.power(py, 2))) > Q99
+        # mask array
+        px_mask = ma.array(px_mask, mask=M)
+        py_mask = ma.array(py_mask, mask=M)
         # plot vectors
         lons, lats = np.meshgrid(comp.lon.values, comp.lat.values)
         ax.quiver(lons[::step_waf, ::step_waf],
