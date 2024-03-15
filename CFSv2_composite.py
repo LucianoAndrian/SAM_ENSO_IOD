@@ -149,7 +149,6 @@ def PlotSST(comp, levels = np.linspace(-1,1,11), cmap='RdBu',
     else:
         plt.show()
 
-
 def PlotPP_T(comp, levels, cmap, title, name_fig, dpi, save, out_dir):
     import matplotlib.pyplot as plt
     fig_size = (5, 6)
@@ -306,6 +305,25 @@ if fast_waf:
 print('z200')
 scale = [-300,-250,-200,-150,-100,-50,-25,0,25,50,100,150,200,250,300]
 scale_cont= [-300,-250,-200,-150,-100,-50,-25,25,50,100,150,200,250,300]
+cases_date_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/' \
+                 'events_dates/'
+from ENSO_IOD_Funciones import SelectVariables
+def SelectEventsHGT(c):
+    s = 'SON'
+    try:
+        aux_cases = xr.open_dataset(
+            cases_date_dir + c + '_f_' + s + '.nc') \
+            .rename({'__xarray_dataarray_variable__': 'index'})
+    except:
+        aux_cases = xr.open_dataset(
+            cases_date_dir + c + '_f_' + s + '.nc') \
+            .rename({'sst': 'index'})
+
+    data_hgt_s = xr.open_dataset(cases_dir + 'hgt_no_anom_SON.nc')
+
+    case_events = SelectVariables(aux_cases, data_hgt_s)
+    return case_events
+
 # ---------------------------------------------------------------------------- #
 for s in seasons:
     neutro = xr.open_dataset(
@@ -323,18 +341,30 @@ for s in seasons:
             comp_var = comp['var']
 
             if fast_waf:
-                aux = neutro.sel(lat=slice(-80,-25))
-                sinlat = np.sin(aux.lat.values * 3.14 / 180)
-                f = f_aux * sinlat
-                psiclim = g / np.transpose(np.tile(f, (360, 1))) * \
-                          aux.mean('time')+1e09
+                case_clim=0
+                # case_clim = SelectEventsHGT(c)
+                # case_clim = Weights(case_clim.__mul__(9.80665))
+                # case_clim = case_clim.sel(lat=slice(-80,-25))\
+                #     .rename({'hgt':'var'})
+                # neutro_no_anom = \
+                #     xr.open_dataset(cases_dir + 'hgt_neutro_no_anoms_SON.nc')
 
-                aux = comp.sel(lat=slice(-80, -25))
-                psianom = g / np.transpose(np.tile(f, (360, 1))) * aux
-                px, py = ComputeWaf(psiclim, psianom)
+                # neutro_no_anom = Weights(neutro_no_anom.__mul__(9.80665))
+                # aux = neutro_no_anom.sel(lat=slice(-80,-25))\
+                #     .rename({'hgt':'var'})
+
+                # sinlat = np.sin(case_clim.lat.values * 3.14 / 180)
+                # f = f_aux * sinlat
+                # psiclim = g / np.transpose(np.tile(f, (360, 1))) * \
+                #           case_clim.mean('time')
+                #
+                # aux = comp.sel(lat=slice(-80, -25))
+                # psianom = 1 / np.transpose(np.tile(f, (360, 1))) * aux
+                # px, py = ComputeWaf(psiclim, psianom)
             else:
                 px = None
                 py = None
+                aux = None
 
             Plot(comp, comp_var, levels=scale,
                  cmap=cbar, dpi=dpi, step=1, name_fig='hgt_' + c + '_' + s,
@@ -342,7 +372,7 @@ for s in seasons:
                        title_case[c_count] + '\n' + ' ' + 'HGT 200hPa'
                        + ' - ' + 'Cases: ' + str(num_case),
                  save=save,
-                 waf=fast_waf, px=px, py=py, waf_scale=1, waf_qlimite=80,
+                 waf=fast_waf, px=px, py=py, waf_scale=10, waf_qlimite=80,
                  data_ref_waf=aux, step_waf=4)
 
             spread = case - comp
