@@ -235,7 +235,7 @@ def DMI(per = 0, filter_bwa = True, filter_harmonic = True,
 
     ##################################### DATA #####################################
     # ERSSTv5
-    sst = xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc")
+    sst = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
     dataname = 'ERSST'
     ##################################### Pre-processing #####################################
     iodw = sst.sel(lat=slice(10.0, -10.0), lon=western_io,
