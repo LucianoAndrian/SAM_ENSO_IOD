@@ -1,9 +1,12 @@
 """
 test campos sinteticos a partir de mlr
+No hay correlación xq no da nada nuevo
 """
 ################################################################################
+save = True
+################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/mlr/'
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/mlr_test/'
 era5_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/1940_2020/'
 t_pp_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_obs_d_w_c/'
 ################################################################################
@@ -14,28 +17,34 @@ import statsmodels.api as sm
 from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2, CreateDirectory, \
     PlotReg
 import Scales_Cbars
+from eofs.xarray import Eof
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import matplotlib.path as mpath
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 import warnings
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 ################################################################################
-save = False
 if save:
-    dpi = 300
+    dpi = 100 # no es pa tanto la cosa
 else:
     dpi = 100
 ################################################################################
 def NormSD(serie):
     return serie / serie.std('time')
 
-
 def RemoveEffect(predictand, predictor):
-    model = sm.OLS(predictand, predictor)
+    try:
+        model = sm.OLS(predictand.values, predictor.values)
+    except:
+        model = sm.OLS(predictand, predictor)
+
     result = model.fit()
     predictand_res = predictand - result.predict()
     return predictand_res
-
 
 def regression_func(target_values, *predictor_values):
     predictors_list = list(predictor_values)
@@ -52,13 +61,12 @@ def compute_regression(variable, *index):
         regression_func,
         variable, *index,
         input_core_dims=input_core_dims,
-        output_core_dims=[['predict'],['coefficients'], ['pvalues']],
+        output_core_dims=[['coefficients'], ['time'], ['pvalues']],
         output_dtypes=[float, float, float],
         vectorize=True
         #dask='parallelized' +21 seg
     )
     return coef_dataset, predict, pvalues
-
 
 def MakerMaskSig(data, pvalue):
     mask_sig = data.where(data <= pvalue)
@@ -125,6 +133,98 @@ def SelectSeason_and_Variable(sam, dmi, n34, VarName, mm):
     var_season = xr.open_dataset(path + file)
 
     return sam_season, dmi_season, n34_season, var_season
+
+def plot_stereo(dataarray, variance, n, title, save, name_fig, dpi):
+    import Scales_Cbars
+    cbar = Scales_Cbars.get_cbars('hgt200')
+
+    scale = [-300,-250, -200, -150, -100, -50, -25,
+             0, 25, 50, 100, 150, 200, 250, 300]
+    fig, ax = plt.subplots(dpi=dpi,
+        subplot_kw={'projection': ccrs.SouthPolarStereo(central_longitude=0)})
+
+    lons = dataarray.lon
+    lats = dataarray.lat
+    field = dataarray.values
+    try:
+        cf = ax.contourf(lons, lats, field[0, :, :],
+                         transform=ccrs.PlateCarree(),
+                         cmap=cbar, levels=scale, extend='both')
+        ax.contour(lons, lats, field[0, :, :], transform=ccrs.PlateCarree(),
+                   colors='k', levels=scale)
+    except:
+        cf = ax.contourf(lons, lats, field,
+                         transform=ccrs.PlateCarree(),
+                         cmap=cbar, levels=scale, extend='both')
+        ax.contour(lons, lats, field, transform=ccrs.PlateCarree(),
+                   colors='k', levels=scale)
+
+    cbar = plt.colorbar(cf, ax=ax, orientation='vertical', fraction=0.05,
+                        pad=0.1)
+    cbar.set_label('Values')
+
+    ax.set_extent([-180, 180, -20, -90], crs=ccrs.PlateCarree())
+    ax.add_feature(cfeature.COASTLINE, edgecolor='#4F514F')
+    gls = ax.gridlines(draw_labels=True, crs=ccrs.PlateCarree(), lw=0.3,
+                           color="gray",
+                           y_inline=True, xlocs=range(-180, 180, 30),
+                           ylocs=np.arange(-80, -20, 20))
+    r_extent = .8e7
+    ax.set_xlim(-r_extent, r_extent)
+    ax.set_ylim(-r_extent, r_extent)
+    circle_path = mpath.Path.unit_circle()
+    circle_path = mpath.Path(circle_path.vertices.copy() * r_extent,
+                             circle_path.codes.copy())
+    ax.set_boundary(circle_path)
+    ax.set_frame_on(True)
+
+    plt.draw()
+    plt.title(title +' EOF '+ str(n) +' - ' + str(variance[n-1]) + '%')
+    if save:
+        print('save: ' + out_dir + name_fig + '.jpg')
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
+    else:
+        plt.show()
+
+def Compute(indices, indices_name, name, save, dpi):
+    if len(indices)==3:
+        mlr_params, mlr_pred, mlr_pv = \
+            compute_regression(var_p, indices[0], indices[1], indices[2])
+        count = [1,2,3]
+
+    elif len(indices)==2:
+        mlr_params, mlr_pred, mlr_pv = \
+            compute_regression(var_p, indices[0], indices[1])
+        count = [1, 2]
+
+    elif len(indices)==1:
+        mlr_params, mlr_pred, mlr_pv = \
+            compute_regression(var_p, indices[0])
+        count = [1]
+    else:
+        print('Error: indices')
+        return
+
+    for n, n_count in zip(indices_name, count):
+        Plot(mlr_params, mlr_pv, 0.1,
+             f"{VarName} - {name} - {n} Coef. - {s_name}",
+             f"{VarName}_{name}_{n.lower()}_c_{s_name}",
+             dpi, save, n_count, VarName)
+
+    mlr_pred = mlr_pred.transpose('time', 'lat', 'lon')
+    solver = Eof(xr.DataArray(mlr_pred['var']))
+    eof = solver.eofsAsCovariance(neofs=3)
+    #pcs = solver.pcs()
+
+    var_per = np.around(solver.varianceFraction(neigs=3).values*100,1)
+    for i in [0,1,2]:
+        aux = eof[i]
+        plot_stereo(aux, var_per, i+1,
+                    title=f"{VarName} - {name} - {s_name} - ",
+                    save=save, dpi=dpi,
+                    name_fig=f"{VarName}_EOF_{name}_{s_name})")
+
 ################################################################################
 # indices
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
@@ -133,27 +233,16 @@ sam = sam.rolling(time=3, center=True).mean()
 dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
            sst_anom_sd=False, opposite_signs_criteria=False)[2]
 
-aux = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
+aux = xr.open_dataset(
+    "/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
-
 ################################################################################
-# periodos = [[1940, 2020],[1958, 1978], [1983, 2004], [1970, 1989], [1990, 2009],
-#             [1990,2020]]
 periodos = [[1940, 2020]]
-
-# for VarName in ['hgt200']:
-#     for mm, s_name in zip([10], ['SON']):
-#         for p in periodos:
-#
 VarName= 'hgt200'
 mm = 10
 s_name = 'SON'
 p = periodos[0]
-
-print('###########################################################')
-print('Period: ' + str(p[0]) + ' - ' + str(p[1]))
-print('###########################################################')
-
+print('-----------------------------------------------------------------------')
 sam_season, dmi_season, n34_season, var_season = \
     SelectSeason_and_Variable(sam, dmi, n34, VarName, mm)
 
@@ -168,62 +257,40 @@ except:
     var_p['time'] = sam_p.time.values
 
 var_p = var_p.interp(lon=np.arange(0,360,.5), lat=np.arange(-80, 20, .5)[::-1])
+weights = np.sqrt(np.abs(np.cos(np.radians(var_p.lat))))
+var_p = var_p * weights
 
 print('Regression ------------------------------------------------------------')
+dmi_wo_n34 = RemoveEffect(dmi_p, n34_p)
+sam_wo_n34 = RemoveEffect(sam_p, n34_p)
+n34_wo_dmi = RemoveEffect(n34_p, dmi_p)
+sam_wo_dmi = RemoveEffect(sam_p, dmi_p)
+dmi_wo_sam = RemoveEffect(dmi_p, sam_p)
+n34_wo_sam = RemoveEffect(n34_p, sam_p)
 print('-----------------------------------------------------------------------')
-print('N34 full ---------------------------')
-n34_full_params, n34_full_pred, n34_full_pv = compute_regression(var_p, n34_p)
+print('DMI + N34 + SAM -------------------------------------------------------')
+Compute([dmi_p, n34_p, sam_p], ['DMI', 'N34', 'SAM'], 'MLR', save, dpi)
 
-print('N34 without DMI --------------------')
-aux = RemoveEffect(n34_p.values, dmi_p.values)
-n34_wodmi_params, n34_wodmi_pred, n34_wodmi_pv = compute_regression(var_p, aux)
+print('DMI + N34--------------------------------------------------------------')
+Compute([dmi_p, n34_p], ['DMI', 'N34'], 'MLR_DMI-N34', save, dpi)
 
-print('N34 without SAM --------------------')
-aux = RemoveEffect(n34_p.values, sam_p.values)
-n34_wosam_params, n34_wosam_pred, n34_wosam_pv = compute_regression(var_p, aux)
+print('DMI + N34 wo. SAM -----------------------------------------------------')
+Compute([dmi_wo_sam, n34_wo_sam], ['DMI', 'N34'], 'MLR_DMI-N34_woSAM', save, dpi)
 
+print('DMI + SAM--------------------------------------------------------------')
+Compute([dmi_p, sam_p], ['DMI', 'SAM'], 'MLR_DMI-SAM', save, dpi)
+
+print('DMI + SAM wo. N34------------------------------------------------------')
+Compute([dmi_wo_n34, sam_wo_n34], ['DMI', 'SAM'], 'MLR_DMI-SAM_woN34', save, dpi)
+
+print('N34 + SAM--------------------------------------------------------------')
+Compute([n34_p, sam_p], ['N34', 'SAM'], 'MLR_N34-SAM', save, dpi)
+
+print('N34 + SAM wo. DMI------------------------------------------------------')
+Compute([n34_wo_dmi, sam_wo_dmi], ['N34', 'SAM'], 'MLR_N34-SAM_woDMI', save, dpi)
 print('-----------------------------------------------------------------------')
-print('DMI full ---------------------------')
-dmi_full_params, dmi_full_pred, dmi_full_pv = compute_regression(var_p, dmi_p)
-
-print('DMI without N34 --------------------')
-aux = RemoveEffect(dmi_p.values, n34_p.values)
-dmi_won34_params, dmi_won34_pred, dmi_won34_pv = compute_regression(var_p, aux)
-
-print('DMI without SAM --------------------')
-aux = RemoveEffect(dmi_p.values, sam_p.values)
-dmi_wosam_params, dmi_wosam_pred, dmi_wosam_pv = compute_regression(var_p, aux)
-
-print('-----------------------------------------------------------------------')
-print('SAM full ---------------------------')
-sam_full_params, sam_full_pred, sam_full_pv = compute_regression(var_p, sam_p)
-
-print('SAM without N34 --------------------')
-aux = RemoveEffect(sam_p.values, n34_p.values)
-sam_won34_params, sam_won34_pred, sam_won34_pv = compute_regression(var_p, aux)
-
-print('SAM without DMI --------------------')
-aux = RemoveEffect(sam_p.values, sam_p.values)
-sam_wodmi_params, sam_wodmi_pred, sam_wodmi_pv = compute_regression(var_p, aux)
-
-print('-----------------------------------------------------------------------')
-print('-----------------------------------------------------------------------')
-print('DMI + N34 --------------------------')
-mlr_full_params, mlr_full_pred, mlr_full_pv = \
-    compute_regression(var_p, dmi_p, n34_p)
-
-print('DMI + N34 wo. --------------------------')
-dmi_wo_n34 = RemoveEffect(dmi_p.values, n34_p.values)
-n34_wo_dmi = RemoveEffect(n34_p.values, dmi_p.values)
-mlr_wo_params, mlr_wo_pred, mlr_wo_pv = \
-    compute_regression(var_p, dmi_wo_n34, n34_wo_dmi)
-
 print('-----------------------------------------------------------')
 print('done')
 print('-----------------------------------------------------------')
 
-#            Plot(n34_reg, n34_reg_pv, 0.1,
-#                  VarName +' - N34 - ' + s_name + ' - ' + str(p),
-#                  VarName + '_N34_full_'+ s_name + '_' + str(p[0]) + '-' +
-#                  str(p[1]), dpi, save, 0, VarName)
 
