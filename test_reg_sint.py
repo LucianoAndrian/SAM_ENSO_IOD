@@ -223,7 +223,7 @@ def Compute(indices, indices_name, name, save, dpi):
         plot_stereo(aux, var_per, i+1,
                     title=f"{VarName} - {name} - {s_name} - ",
                     save=save, dpi=dpi,
-                    name_fig=f"{VarName}_EOF_{name}_{s_name})")
+                    name_fig=f"{VarName}_EOF{i}_{name}_{s_name}")
 
 ################################################################################
 # indices
