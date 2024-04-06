@@ -157,7 +157,7 @@ def SetLags(x, y, ty, series, parents):
 
 
 def regre(df):
-    X = np.column_stack((np.ones_like(df[df.columns[2:]]), df[df.columns[2:]]))
+    X = np.column_stack((np.ones_like(df[df.columns[1:2]]), df[df.columns[2:]]))
     y = df['y']
 
     # Calcular los coeficientes de la regresión lineal
@@ -171,7 +171,7 @@ def regre(df):
 
 
 def regre_res(df):
-    X = np.column_stack((np.ones_like(df[df.columns[2:]]), df[df.columns[2:]]))
+    X = np.column_stack((np.ones_like(df[df.columns[1:2]]), df[df.columns[2:]]))
     y = df['x']
 
     # Calcular los coeficientes de la regresión lineal
@@ -194,13 +194,13 @@ def resize_serie(s1, len_min):
 
 
 def Compute_PCMCI_MLR(x):
-    target='dmi'
+    target='sam'
     dc2020=False
     lag=0
     # PENDIENTE
     # SETEAR LAAAG!
     x_values = x
-    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values}
+    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values, 'sam':sam3.values}
 
     result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.2, mci_alpha=0.05)
 
@@ -261,11 +261,11 @@ def Compute_PCMCI_MLR(x):
 
     model = sm.OLS(aux_df['c_or'], aux_df[aux_df.columns[1:]]).fit()
 
+    # aca se selecciona el beta asociado al target!
     if model.pvalues[0]<0.05:
         return model.params[0]
     else:
         return np.nan
-
 
 def ComputeByXrUf(c):
     hgt_anom2 = hgt_anom.sel(lat=slice(c[0], c[1]), lon=slice(c[2], c[3]))
@@ -318,6 +318,7 @@ cbar_hgt = colors.ListedColormap(['#9B1C00', '#B9391B', '#CD4838',
 cbar_hgt.set_over('#641B00')
 cbar_hgt.set_under('#012A52')
 cbar_hgt.set_bad(color='white')
+# ---------------------------------------------------------------------------- #
 
 fig = plt.figure(figsize=(7, 3), dpi=100)
 ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
