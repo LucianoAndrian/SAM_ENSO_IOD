@@ -53,7 +53,53 @@ if use_sam:
 hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
 hgt_anom = hgt_anom.sel(time=slice('1940-02-01', '2020-11-01'))
 hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([8,9,10,11]))
+hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([10]))
 
+# ---------------------------------------------------------------------------- #
+def OpenObsDataSet(name, sa=True,
+                   dir= '/pikachu/datos/luciano.andrian/observado/ncfiles/'
+                        'data_no_detrend/'):
+
+    aux = xr.open_dataset(dir + name + '.nc')
+    if sa:
+        aux2 = aux.sel(lon=slice(270, 330), lat=slice(15, -60))
+        if len(aux2.lat) > 0:
+            return aux2
+        else:
+            aux2 = aux.sel(lon=slice(270, 330), lat=slice(-60, 15))
+            return aux2
+    else:
+        return aux
+
+def Detrend(xrda, dim):
+    aux = xrda.polyfit(dim=dim, deg=1)
+    try:
+        trend = xr.polyval(xrda[dim], aux.var_polyfit_coefficients)
+    except:
+        trend = xr.polyval(xrda[dim], aux.polyfit_coefficients)
+    dt = xrda - trend
+    return dt
+
+def Weights(data):
+    weights = np.transpose(np.tile(np.cos(data.lat * np.pi / 180),
+                                   (len(data.lon), 1)))
+    data_w = data * weights
+    return data_w
+
+
+data = OpenObsDataSet(name='pp_pgcc_v2020_1891-2023_1', sa=True)
+data = data.rename({'precip':'var'})
+data_40_20 = data.sel(time=slice('1940-01-16', '2020-12-16'))
+del data
+
+data_40_20 = Weights(data_40_20)
+data_40_20 = data_40_20.sel(lat=slice(20, -80)) # HS
+data_40_20 = data_40_20.rolling(time=3, center=True).mean()
+aux = data_40_20.sel(time=data_40_20.time.dt.month.isin([8,9,10,11]))
+aux = Detrend(aux, 'time')
+
+pp = aux.sel(lat=slice(-15,-30), lon=slice(295,315)).mean(['lon', 'lat'])
+pp['var'][-1]=0
 ################################################################################
 # indices
 # ---------------------------------------------------------------------------- #
@@ -70,6 +116,7 @@ n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 dmi2 = SameDateAs(dmi, hgt_anom)
 n342 = SameDateAs(n34, hgt_anom)
 sam2 = SameDateAs(sam, hgt_anom)
+pp = SameDateAs(pp, hgt_anom)
 
 #sam3 = sam2
 #c = c/c.std()
@@ -79,6 +126,8 @@ sam3 = sam2/sam2.std()
 
 amd = hgt_anom.sel(lon=slice(210,290), lat=slice(-90,-50)).mean(['lon', 'lat'])
 amd = amd/amd.std()
+
+pp = pp/pp.std()
 # Funciones ####################################################################
 def recursive_cut(s1, s2):
     i=1
@@ -303,4 +352,5 @@ def ComputeByXrUf(c):
     return reg_array
 
 
-Compute_PCMCI_MLR(amd['var'].values, 'dmi')
+Compute_PCMCI_MLR(amd['var'].values, 'dmi', True)
+Compute_PCMCI_MLR(pp['var'].values, 'dmi', True)
