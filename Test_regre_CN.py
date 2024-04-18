@@ -93,7 +93,7 @@ data_40_20 = data_40_20.rolling(time=3, center=True).mean()
 aux = data_40_20.sel(time=data_40_20.time.dt.month.isin([8,9,10,11]))
 pp = Detrend(aux, 'time')
 
-pp_serie = pp.sel(lat=slice(-15,-30), lon=slice(295,315)).mean(['lon', 'lat'])
+pp_serie = pp.sel(lat=slice(-30,-40), lon=slice(295,310)).mean(['lon', 'lat'])
 pp_serie['var'][-1]=0
 ################################################################################
 # indices
@@ -121,7 +121,7 @@ dmi3 = dmi2/dmi2.std()
 n343 = n342/n342.std()
 sam3 = sam2/sam2.std()
 
-amd = hgt_anom.sel(lon=slice(210,290), lat=slice(-90,-50)).mean(['lon', 'lat'])
+amd = hgt_anom.sel(lon=slice(210,270), lat=slice(-80,-50)).mean(['lon', 'lat'])
 amd = amd/amd.std()
 hgt_anom = hgt_anom/hgt_anom.std()
 
@@ -155,23 +155,98 @@ def regre(series, intercept, coef=0):
         return coefs_results
 # ---------------------------------------------------------------------------- #
 # idea, a partir de un modelo de causalidad:
-# modelo a dmi --> sam ------------------------------------------------------- #
-series_full = {'c': pp_serie['var'].values, 'dmi': dmi3.values,
-          'n34': n343.values, 'sam': sam3.values}
-series_dmi_n34 = {'c': pp_serie['var'].values, 'dmi': dmi3.values,
-          'n34': n343.values}
-series_n34 = {'c': pp_serie['var'].values, 'n34': n343.values}
-series_n34_sam = {'c': pp_serie['var'].values, 'n34': n343.values,
-                  'sam': sam3.values}
+# modelo A dmi --> sam ------------------------------------------------------- #
 
-regre(series_dmi_n34, True, 'dmi') # Efecto total DMI sobre pp sesa
-regre(series_full, True, 'dmi') # Efecto total DMI sobre pp sesa
 
-regre(series_n34, True, 'n34') # Efecto total N34 sobre pp sesa
-regre(series_full, True, 'n34') # Efecto total N34 sobre pp sesa
-
-regre(series_n34_sam, True, 'sam') # Efecto total SAM sobre pp sesa
-regre(series_full, True, 'sam') # Efecto total SAM sobre pp sesa
 # ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
+result_df = pd.DataFrame(columns=['v_efecto', 'b'])
 
+# ---------------------------------------------------------------------------- #
+for x, x_name in zip([pp_serie, amd], ['pp_serie', 'amd']):
+
+    series_full = {'c': x['var'].values, 'dmi': dmi3.values,
+                   'n34': n343.values, 'sam': sam3.values}
+    series_dmi_total = {'c': x['var'].values, 'dmi': dmi3.values,
+                      'n34': n343.values}
+    series_n34_total = {'c': x['var'].values, 'n34': n343.values}
+    series_sam_total= {'c': x['var'].values, 'n34': n343.values,
+                      'sam': sam3.values}
+
+    series = {'dmi_total':series_dmi_total,
+              'n34_total':series_n34_total,
+              'sam_total':series_sam_total}
+
+
+    for i in ['dmi', 'n34', 'sam']:
+
+        i_total = regre(series[f"{i}_total"], True, i)  # Efecto total i
+        result_df = result_df.append({'v_efecto': f"{i}_total_{x_name}",
+                                      'b':i_total},
+                                     ignore_index=True)
+
+        i_directo = regre(series_full, True, i)  # Efecto directo i
+        result_df = result_df.append({'v_efecto': f"{i}_directo_{x_name}",
+                                      'b':i_directo},
+                                     ignore_index=True)
+print(result_df)
+
+
+def regre2(series, coef):
+    #series= {'c': x, 'dmi': dmi3.values, 'n34': n343.values, 'sam': sam3.values}
+    intercept=True
+    #coef = 'dmi'
+    df = pd.DataFrame(series)
+    if intercept:
+        X = np.column_stack((np.ones_like(df[df.columns[1]]),
+                             df[df.columns[1:]]))
+    else:
+        X = df[df.columns[1:]].values
+    y = df[df.columns[0]]
+
+    coefs = np.linalg.lstsq(X, y, rcond=None)[0]
+
+    coefs_results = {}
+    for ec, e in enumerate(series.keys()):
+        if intercept and ec == 0:
+            e = 'constant'
+        if e != df.columns[0]:
+            if intercept:
+                coefs_results[e] = coefs[ec]
+            else:
+                coefs_results[e] = coefs[ec-1]
+
+    # if isinstance(coef, str):
+    #     return coefs_results[coef]
+    # else:
+    #     return coefs_results
+    return coefs_results[coef]
+
+def pre_regre2(x):
+    series_full = {'c': x, 'dmi': dmi3.values,
+                   'n34': n343.values, 'sam': sam3.values}
+    series_dmi_total = {'c': x, 'dmi': dmi3.values,
+                      'n34': n343.values}
+    series_n34_total = {'c': x, 'n34': n343.values}
+    series_sam_total= {'c': x, 'n34': n343.values,
+                      'sam': sam3.values}
+
+    series = {'dmi_total':series_dmi_total,
+              'n34_total':series_n34_total,
+              'sam_total':series_sam_total}
+    coef = 'sam'
+    return regre2(series_full, coef)
+    return regre2(series[f"{coef}_total"], coef)
+
+def compute_regression(variable):
+    input_core_dims = [['time']]
+
+    coef_dataset = xr.apply_ufunc(
+        pre_regre2,
+        variable,
+        input_core_dims=[['time']],
+        vectorize=True)
+        #output_dtypes=[float])
+    return coef_dataset
+
+a = compute_regression(pp['var'])
+plt.imshow(a, cmap='RdBu');plt.colorbar();plt.show()
