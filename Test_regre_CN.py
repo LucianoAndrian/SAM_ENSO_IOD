@@ -162,40 +162,144 @@ def regre(series, intercept, coef=0):
 result_df = pd.DataFrame(columns=['v_efecto', 'b'])
 
 # ---------------------------------------------------------------------------- #
-for x, x_name in zip([pp_serie, amd], ['pp_serie', 'amd']):
+def AUX_select_actors(actor_list, set_series, serie_to_set):
+    serie_to_set2 = serie_to_set.copy()
+    for key in set_series:
+        serie_to_set2[key] = actor_list[key]
+    return serie_to_set2
 
-    series_full = {'c': x['var'].values, 'dmi': dmi3.values,
-                   'n34': n343.values, 'sam': sam3.values}
-    series_dmi_total = {'c': x['var'].values, 'dmi': dmi3.values,
-                      'n34': n343.values}
-    series_n34_total = {'c': x['var'].values, 'n34': n343.values}
-    series_sam_total= {'c': x['var'].values, 'n34': n343.values,
-                      'sam': sam3.values}
+def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
+              set_series_n34_total, set_series_sam_total,
+              set_series_dmi_directo=None,
+              set_series_n34_directo=None,
+              set_series_sam_directo=None):
 
-    series = {'dmi_total':series_dmi_total,
-              'n34_total':series_n34_total,
-              'sam_total':series_sam_total}
+    result_df = pd.DataFrame(columns=['v_efecto', 'b'])
+
+    for x, x_name in zip([pp_serie, amd], ['pp_serie', 'amd']):
+
+        pre_serie = {'c': x['var'].values}
+        series_directo = AUX_select_actors(actor_list, set_series_directo,
+                                           pre_serie)
+
+        series_dmi_total = AUX_select_actors(
+            actor_list, set_series_dmi_total, pre_serie)
+
+        series_n34_total = AUX_select_actors(
+            actor_list, set_series_n34_total, pre_serie)
+
+        series_sam_total = AUX_select_actors(
+            actor_list, set_series_sam_total, pre_serie)
+
+        series_directo_particular = {}
+        if set_series_dmi_directo is not None:
+            series_dmi_directo = AUX_select_actors(
+                actor_list, set_series_dmi_directo, pre_serie)
+            series_directo_particular['dmi_directo'] = series_dmi_directo
+
+        if set_series_n34_directo is not None:
+            series_n34_directo = AUX_select_actors(
+                actor_list, set_series_n34_directo, pre_serie)
+            series_directo_particular['n34_directo'] = series_n34_directo
+
+        if set_series_sam_directo is not None:
+            series_sam_directo = AUX_select_actors(
+                actor_list, set_series_sam_directo, pre_serie)
+            series_directo_particular['sam_directo'] = series_sam_directo
 
 
-    for i in ['dmi', 'n34', 'sam']:
+        series = {'dmi_total': series_dmi_total,
+                  'n34_total': series_n34_total,
+                  'sam_total': series_sam_total}
 
-        i_total = regre(series[f"{i}_total"], True, i)  # Efecto total i
-        result_df = result_df.append({'v_efecto': f"{i}_total_{x_name}",
-                                      'b':i_total},
-                                     ignore_index=True)
+        for i in ['dmi', 'n34', 'sam']:
 
-        i_directo = regre(series_full, True, i)  # Efecto directo i
-        result_df = result_df.append({'v_efecto': f"{i}_directo_{x_name}",
-                                      'b':i_directo},
-                                     ignore_index=True)
-print(result_df)
+            # Efecto total i --------------------------------------------------#
+            i_total = regre(series[f"{i}_total"], True, i)
+            result_df = result_df.append({'v_efecto': f"{i}_TOTAL_{x_name}",
+                                          'b': i_total},
+                                         ignore_index=True)
+            # Efecto directo i ------------------------------------------------#
+            try:
+                i_directo = regre(
+                    series_directo_particular[f"{i}_directo"], True, i)
+            except:
+                i_directo = regre(series_directo, True, i)
 
+
+            result_df = result_df.append({'v_efecto': f"{i}_DIRECTO_{x_name}",
+                                          'b': i_directo},
+                                         ignore_index=True)
+        # -------------------------------------------------------------------- #
+    print(result_df)
+# ---------------------------------------------------------------------------- #
+
+actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'sam':sam3.values}
+# ---------------------------------------------------------------------------- #
+# Modelo A: N34->IOD, N34->SAM (todos a C) #####################################
+# A1 IOD->SAM ---------------------------------------------------------------- #
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi', 'n34'],
+          set_series_n34_total=['n34'],
+          set_series_sam_total=['dmi', 'n34', 'sam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+# ---------------------------------------------------------------------------- #
+# A2 IOD<-SAM ---------------------------------------------------------------- #
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi', 'n34', 'sam'],
+          set_series_n34_total=['n34'],
+          set_series_sam_total=['n34', 'sam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+# ---------------------------------------------------------------------------- #
+# A3 IOD<->SAM --------------------------------------------------------------- #
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi', 'n34', 'sam'],
+          set_series_n34_total=['dmi', 'n34', 'sam'],
+          set_series_sam_total=['n34', 'sam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# Modelo B: N34<-IOD, N34->SAM (todos a C) #####################################
+# A1 IOD->SAM ---------------------------------------------------------------- #
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi'],
+          set_series_n34_total=['dmi', 'n34'],
+          set_series_sam_total=['dmi', 'n34', 'sam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+# ---------------------------------------------------------------------------- #
+# A2 IOD<-SAM ---------------------------------------------------------------- #
+#"Can't determine causal effects for cyclic models"
+# Se crea un ciclo IOD->N34->SAM->IOD que no permite detectar efectos causales
+
+# ---------------------------------------------------------------------------- #
+# A3 IOD<->SAM --------------------------------------------------------------- #
+# No se pueden evaluar los efectos totales de DMI y N34
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi', 'n34', 'sam'],
+          set_series_n34_total=['dmi', 'n34', 'sam'],
+          set_series_sam_total=['dmi', 'n34', 'sam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+
+################################################################################
+################################################################################
 
 def regre2(series, coef):
-    #series= {'c': x, 'dmi': dmi3.values, 'n34': n343.values, 'sam': sam3.values}
+
     intercept=True
-    #coef = 'dmi'
+
     df = pd.DataFrame(series)
+
     if intercept:
         X = np.column_stack((np.ones_like(df[df.columns[1]]),
                              df[df.columns[1:]]))
@@ -215,10 +319,6 @@ def regre2(series, coef):
             else:
                 coefs_results[e] = coefs[ec-1]
 
-    # if isinstance(coef, str):
-    #     return coefs_results[coef]
-    # else:
-    #     return coefs_results
     return coefs_results[coef]
 
 def pre_regre2(x):
@@ -235,17 +335,15 @@ def pre_regre2(x):
               'sam_total':series_sam_total}
     coef = 'sam'
     return regre2(series_full, coef)
-    return regre2(series[f"{coef}_total"], coef)
+    #return regre2(series[f"{coef}_total"], coef)
 
 def compute_regression(variable):
-    input_core_dims = [['time']]
 
     coef_dataset = xr.apply_ufunc(
         pre_regre2,
         variable,
         input_core_dims=[['time']],
         vectorize=True)
-        #output_dtypes=[float])
     return coef_dataset
 
 a = compute_regression(pp['var'])
