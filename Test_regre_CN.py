@@ -2,7 +2,7 @@
 Testeos conceptuales de CN a partir de modelos de regresión
 """
 ################################################################################
-save=False
+save=True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 ################################################################################
 import os
@@ -219,6 +219,36 @@ def pre_regre_ufunc(x, modelo, coef, modo):
         set_series_sam_total = ['dmi', 'n34', 'sam']
         set_series_n34_directo = None
         set_series_dmi_directo = None
+        set_series_sam_directo = None
+
+    # Modelo C1
+    if modelo.upper() == 'C1':
+        set_series_directo = ['dmi', 'n34', 'sam']
+        set_series_dmi_total = ['dmi']
+        set_series_n34_total = ['dmi', 'n34']
+        set_series_sam_total = ['n34', 'sam']
+        set_series_n34_directo = ['dmi', 'n34']
+        set_series_dmi_directo = None
+        set_series_sam_directo = ['n34', 'sam']
+
+    # Modelo C2
+    elif modelo.upper() == 'C2':
+        set_series_directo = ['dmi', 'n34', 'sam']
+        set_series_dmi_total = ['dmi', 'n34']
+        set_series_n34_total = ['n34']
+        set_series_sam_total = ['dmi', 'n34', 'sam']
+        set_series_n34_directo = ['dmi', 'n34']
+        set_series_dmi_directo = None
+        set_series_sam_directo = ['n34', 'sam']
+
+    # Modelo C3
+    elif modelo.upper() == 'C3':
+        set_series_directo = ['dmi', 'n34', 'sam']
+        set_series_dmi_total = ['dmi', 'n34']
+        set_series_n34_total = ['dmi', 'n34']
+        set_series_sam_total = ['n34', 'sam']
+        set_series_n34_directo = ['dmi', 'n34']
+        set_series_dmi_directo = ['dmi', 'n34']
         set_series_sam_directo = None
 
 
@@ -461,6 +491,35 @@ CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
           set_series_sam_directo=None)
 
 print('#######################################################################')
+print('Modelo C: SAM -x- IOD (todos a C))')
+print('C1 IOD->N34 -----------------------------------------------------------')
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi'],
+          set_series_n34_total=['dmi', 'n34'],
+          set_series_sam_total=['n34', 'sam'],
+          set_series_n34_directo=['dmi', 'n34'],
+          set_series_dmi_directo=None,
+          set_series_sam_directo=['n34', 'sam'])
+
+print('C2 IOD<-N34 -----------------------------------------------------------')
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi', 'n34'],
+          set_series_n34_total=['n34'],
+          set_series_sam_total=['dmi', 'n34', 'sam'],
+          set_series_n34_directo=['dmi', 'n34'],
+          set_series_dmi_directo=None,
+          set_series_sam_directo=['n34', 'sam'])
+
+print('C2 IOD<->N34 ----------------------------------------------------------')
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+          set_series_dmi_total=['dmi', 'n34'],
+          set_series_n34_total=['dmi', 'n34'],
+          set_series_sam_total=['n34', 'sam'],
+          set_series_n34_directo=['dmi', 'n34'],
+          set_series_dmi_directo=['dmi', 'n34'],
+          set_series_sam_directo=None)
+
+print('#######################################################################')
 print('Mapas...')
 print('#######################################################################')
 # Lo mismo en mapas
@@ -471,14 +530,10 @@ hgt_cmap = get_cbars('hgt200')
 pp_cmap = get_cbars('pp')
 
 for v, v_name, mapa in zip([hgt_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
-    print(v_name)
     v_cmap = get_cbars(v_name)
     for actor in ['dmi', 'n34', 'sam']:
-        print(actor)
-        for modelo in ['A1', 'A2', 'A3', 'B1', 'B3']:
-            print(modelo)
+        for modelo in ['A1', 'A2', 'A3', 'B1', 'B3', 'C1', 'C2', 'C3']:
             for modo in ['total', 'directo']:
-                print(modo)
 
                 name_fig = f"{v_name}_Mod{modelo}_Efecto_{modo}_{actor}"
                 titulo = f"{v_name}_Mod{modelo} Efecto {modo} {actor}"
