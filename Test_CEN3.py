@@ -53,7 +53,7 @@ if use_sam:
 hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
 hgt_anom = hgt_anom.sel(time=slice('1940-02-01', '2020-11-01'))
 hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([8,9,10,11]))
-hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([10]))
+#hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([10]))
 
 # ---------------------------------------------------------------------------- #
 def OpenObsDataSet(name, sa=True,
@@ -251,7 +251,8 @@ def Compute_PCMCI_MLR(x, target, pcmci_results=False):
     # PENDIENTE
     # SETEAR LAAAG!
     x_values = x
-    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values, 'sam':sam3.values}
+    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values,
+              'sam':sam3.values}
 
     result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.2, mci_alpha=0.05)
     if pcmci_results:

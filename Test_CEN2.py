@@ -30,7 +30,7 @@ from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 ################################################################################
 save=False
-use_sam=False
+use_sam=True
 ################################################################################
 # ---------------------------------------------------------------------------- #
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
@@ -52,7 +52,7 @@ if use_sam:
 #hgt_anom2 = hgt_anom.sel(lat=slice(-80, 0), lon=slice(60, 70))
 hgt_anom = hgt_anom.rolling(time=3, center=True).mean()
 hgt_anom = hgt_anom.sel(time=slice('1940-02-01', '2020-11-01'))
-hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([8,9,10,11]))
+hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([9,10,11]))
 ################################################################################
 # indices
 # ---------------------------------------------------------------------------- #
@@ -75,6 +75,8 @@ sam2 = SameDateAs(sam, hgt_anom)
 dmi3 = dmi2/dmi2.std()
 n343 = n342/n342.std()
 sam3 = sam2/sam2.std()
+
+hgt_anom = hgt_anom/hgt_anom.std()
 #------------------------------------------------------------------------------#
 ################################################################################
 # Funciones ####################################################################
@@ -194,18 +196,19 @@ def resize_serie(s1, len_min):
 
 
 def Compute_PCMCI_MLR(x):
-    target='sam'
-    dc2020=False
+    target='dmi'
+    dc2020=True
     lag=0
     # PENDIENTE
     # SETEAR LAAAG!
     x_values = x
-    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values, 'sam':sam3.values}
+    series = {'c': x_values, 'dmi': dmi3.values, 'n34': n343.values,
+              'sam':sam3.values}
 
     result_df = PCMCI(series=series, tau_max=2, pc_alpha=0.2, mci_alpha=0.05)
 
     actors_parents=[]
-    for actor in ['c', 'dmi', 'n34']:
+    for actor in ['c', 'dmi', 'n34', 'sam']:
         aux_df = result_df.loc[result_df['Target'] == actor]
         links = list(aux_df['Actor'])
 
@@ -220,14 +223,16 @@ def Compute_PCMCI_MLR(x):
                      series=series, parents=own_links)
 
         if actor == 'c':
-            actors_parents.append(regre(df)) #0
+            # regre(df) estima 'c' a partir de sus own_links c_t
+            actors_parents.append(regre(df))  # 0
+
         elif actor == target:
-            actors_parents.append(regre(df)) #1
-            actors_parents.append(regre_res(df)) #2
+            actors_parents.append(regre(df))  # 1 target_t
+            actors_parents.append(regre_res(df))  # 2 residuo de target_t
         else:
-            actors_parents.append(df['x'].values) #3
-            actors_parents.append(regre(df)) # 4
-            actors_parents.append(regre_res(df)) #5
+            actors_parents.append(df['x'].values)  # 3, 6 series orignales
+            actors_parents.append(regre(df))  # 4, 7 series_t
+            actors_parents.append(regre_res(df))  # 5, 8 residuos
 
 
     # longitud de las series =
@@ -326,15 +331,16 @@ crs_latlon = ccrs.PlateCarree()
 
 ax.set_extent([30, 330, -80, 0], crs=crs_latlon)
 
-im = ax.contourf(aux_xr.lon, aux_xr.lat, aux_xr['var'],
-                 levels=[-150, -100, -75, -50, -25, -15,
-                         0, 15, 25, 50, 75, 100, 150],
+im = ax.contourf(aux_xr['var'].lon, aux_xr['var'].lat, aux_xr['var'],
+                 levels=[-1, -.8, -.6, -.4, -.2, -.1, 0,
+                         .1, .2, .4, .6, .8, 1],
                  transform=crs_latlon, cmap=cbar_hgt, extend='both')
 
-values = ax.contour(aux_xr.lon, aux_xr.lat, aux_xr['var'],
-                    levels=[-150, -100, -75, -50, -25, -15,
-                         0, 15, 25, 50, 75, 100, 150],
+values = ax.contour(aux_xr['var'].lon, aux_xr['var'].lat, aux_xr['var'],
+                    levels=[-1, -.8, -.6, -.4, -.2, -.1,
+                            .1, .2, .4, .6, .8, 1],
                     transform=crs_latlon, colors='k', linewidths=1)
+
 cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
 cb.ax.tick_params(labelsize=8)
 ax.add_feature(cartopy.feature.LAND, facecolor='#d9d9d9')
