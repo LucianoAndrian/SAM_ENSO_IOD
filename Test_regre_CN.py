@@ -104,8 +104,9 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
 
     result_df = pd.DataFrame(columns=['v_efecto', 'b'])
 
-    for x, x_name in zip([pp_serie, amd], ['pp_serie', 'amd']):
-
+    #for x, x_name in zip([pp_serie, amd], ['pp_serie', 'amd']):
+    for x, x_name in zip([amd], ['amd']):
+        print('test0')
         pre_serie = {'c': x['var'].values}
         series_directo = AUX_select_actors(actor_list, set_series_directo,
                                            pre_serie)
@@ -118,7 +119,7 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
 
         series_sam_total = AUX_select_actors(
             actor_list, set_series_sam_total, pre_serie)
-
+        print('test1')
         series_directo_particular = {}
         if set_series_dmi_directo is not None:
             series_dmi_directo = AUX_select_actors(
@@ -134,19 +135,30 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
             series_sam_directo = AUX_select_actors(
                 actor_list, set_series_sam_directo, pre_serie)
             series_directo_particular['sam_directo'] = series_sam_directo
-
-
+        print('test2')
+        if ('asam' in set_series_directo):
+            aux_actors = ['dmi', 'n34', 'asam']
+            aux_sam = 'asam'
+        elif ('ssam' in set_series_directo):
+            aux_actors = ['dmi', 'n34', 'ssam']
+            aux_sam = 'ssam'
+        else:
+            aux_actors = ['dmi', 'n34', 'sam']
+            aux_sam = 'sam'
+        print('test3')
         series = {'dmi_total': series_dmi_total,
                   'n34_total': series_n34_total,
-                  'sam_total': series_sam_total}
-
-        for i in ['dmi', 'n34', 'sam']:
-
+                  aux_sam + '_total': series_sam_total}
+        print(aux_actors)
+        print(aux_sam)
+        for i in aux_actors:
+            print(i)
             # Efecto total i --------------------------------------------------#
             i_total = regre(series[f"{i}_total"], True, i)
             result_df = result_df.append({'v_efecto': f"{i}_TOTAL_{x_name}",
                                           'b': i_total},
                                          ignore_index=True)
+            print('test4')
             # Efecto directo i ------------------------------------------------#
             try:
                 i_directo = regre(
@@ -164,10 +176,10 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
 def pre_regre_ufunc(x, modelo, coef, modo):
     pre_serie = {'c': x}
 
-    actor_list = {'dmi': dmi3.values, 'n34': n343.values, 'sam': sam3.values}
-
     # modelo A1
     if modelo.upper() == 'A1':
+        actor_list = {'dmi': dmi3.values, 'n34': n343.values,
+                      'sam': sam3.values}
         set_series_directo = ['dmi', 'n34', 'sam']
         set_series_dmi_total = ['dmi', 'n34']
         set_series_n34_total = ['n34']
@@ -175,82 +187,46 @@ def pre_regre_ufunc(x, modelo, coef, modo):
         set_series_n34_directo = None
         set_series_dmi_directo = None
         set_series_sam_directo = None
+        aux_sam = 'sam'
 
-    # modelo A2
-    elif modelo.upper() == 'A2':
-        set_series_directo = ['dmi', 'n34', 'sam']
-        set_series_dmi_total = ['dmi', 'n34', 'sam']
-        set_series_n34_total = ['n34']
-        set_series_sam_total = ['n34', 'sam']
-        set_series_n34_directo = None
-        set_series_dmi_directo = None
-        set_series_sam_directo = None
-
-    # modelo A3
-    elif modelo.upper() == 'A3':
-        set_series_directo = ['dmi', 'n34', 'sam']
-        set_series_dmi_total = ['dmi', 'n34', 'sam']
-        set_series_n34_total = ['dmi', 'n34', 'sam']
-        set_series_sam_total = ['n34', 'sam']
-        set_series_n34_directo = None
-        set_series_dmi_directo = None
-        set_series_sam_directo = None
-
-    # modelo B1
-    elif modelo.upper() == 'B1':
-        set_series_directo = ['dmi', 'n34', 'sam']
-        set_series_dmi_total = ['dmi']
-        set_series_n34_total = ['dmi', 'n34']
-        set_series_sam_total = ['dmi', 'n34', 'sam']
-        set_series_n34_directo = None
-        set_series_dmi_directo = None
-        set_series_sam_directo = None
-
-    # Modelo B2
-    elif modelo.upper() == 'B2':
-        print('Modelo B2 no permite establecer efectos causales')
-        return
-
-    # Modelo B3
-    elif modelo.upper() == 'B3':
-        set_series_directo = ['dmi', 'n34', 'sam']
-        set_series_dmi_total = ['dmi', 'n34', 'sam']
-        set_series_n34_total = ['dmi', 'n34', 'sam']
-        set_series_sam_total = ['dmi', 'n34', 'sam']
-        set_series_n34_directo = None
-        set_series_dmi_directo = None
-        set_series_sam_directo = None
-
-    # Modelo C1
-    if modelo.upper() == 'C1':
-        set_series_directo = ['dmi', 'n34', 'sam']
-        set_series_dmi_total = ['dmi']
-        set_series_n34_total = ['dmi', 'n34']
-        set_series_sam_total = ['n34', 'sam']
-        set_series_n34_directo = ['dmi', 'n34']
-        set_series_dmi_directo = None
-        set_series_sam_directo = ['n34', 'sam']
-
-    # Modelo C2
-    elif modelo.upper() == 'C2':
-        set_series_directo = ['dmi', 'n34', 'sam']
+    elif modelo.upper() == 'A1ASAM':
+        actor_list = {'dmi': dmi3.values, 'n34': n343.values,
+                      'asam': asam3.values}
+        set_series_directo = ['dmi', 'n34', 'asam']
         set_series_dmi_total = ['dmi', 'n34']
         set_series_n34_total = ['n34']
-        set_series_sam_total = ['dmi', 'n34', 'sam']
-        set_series_n34_directo = ['dmi', 'n34']
+        set_series_sam_total = ['dmi', 'n34', 'asam']
+        set_series_n34_directo = None
         set_series_dmi_directo = None
-        set_series_sam_directo = ['n34', 'sam']
-
-    # Modelo C3
-    elif modelo.upper() == 'C3':
-        set_series_directo = ['dmi', 'n34', 'sam']
-        set_series_dmi_total = ['dmi', 'n34']
-        set_series_n34_total = ['dmi', 'n34']
-        set_series_sam_total = ['n34', 'sam']
-        set_series_n34_directo = ['dmi', 'n34']
-        set_series_dmi_directo = ['dmi', 'n34']
         set_series_sam_directo = None
+        aux_sam = 'asam'
 
+    elif modelo.upper() == 'A1ASAMWSAM':
+        actor_list = {'dmi': dmi3.values, 'n34': n343.values,
+                      'asam': asam3.values, 'sam':sam3.values}
+        set_series_directo = ['dmi', 'n34', 'asam', 'sam']
+        set_series_dmi_total = ['dmi', 'n34', 'sam']
+        set_series_n34_total = ['n34', 'sam']
+        set_series_sam_total = ['dmi', 'n34', 'asam', 'sam']
+        set_series_n34_directo = None
+        set_series_dmi_directo = None
+        set_series_sam_directo = None
+        aux_sam = 'asam'
+
+    elif modelo.upper() == 'A1ASAMWSSAM':
+        actor_list = {'dmi': dmi3.values, 'n34': n343.values,
+                      'asam': asam3.values, 'ssam': ssam3.values}
+        set_series_directo = ['dmi', 'n34', 'asam', 'ssam']
+        set_series_dmi_total = ['dmi', 'n34', 'ssam']
+        set_series_n34_total = ['n34', 'ssam']
+        set_series_sam_total = ['dmi', 'n34', 'asam', 'ssam']
+        set_series_n34_directo = None
+        set_series_dmi_directo = None
+        set_series_sam_directo = None
+        aux_sam = 'asam'
+    else:
+        print('ningun modelo seleccionado')
+        return None
 
     series_directo = AUX_select_actors(actor_list, set_series_directo,
                                        pre_serie)
@@ -282,7 +258,7 @@ def pre_regre_ufunc(x, modelo, coef, modo):
 
     series = {'dmi_total': series_dmi_total,
               'n34_total': series_n34_total,
-              'sam_total': series_sam_total}
+              aux_sam + '_total': series_sam_total}
 
     if modo.lower() == 'total':
         efecto = regre(series[f"{coef}_total"], True, coef)
@@ -295,6 +271,8 @@ def pre_regre_ufunc(x, modelo, coef, modo):
             efecto = regre(series_directo, True, coef)
 
     return efecto
+
+
 
 def compute_regression(variable, modelo, coef, modo):
 
@@ -401,6 +379,12 @@ hgt_anom = hgt_anom.sel(time=hgt_anom.time.dt.month.isin([10]))
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 sam = sam.rolling(time=3, center=True).mean()
 
+asam = xr.open_dataset(sam_dir + 'asam_700.nc')['mean_estimate']
+asam = asam.rolling(time=3, center=True).mean()
+
+ssam = xr.open_dataset(sam_dir + 'ssam_700.nc')['mean_estimate']
+ssam = ssam.rolling(time=3, center=True).mean()
+
 dmi = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
            sst_anom_sd=False, opposite_signs_criteria=False)[2]
 
@@ -414,6 +398,8 @@ n34 = Nino34CPC(aux, start=1920, end=2020)[0]
 dmi2 = SameDateAs(dmi, hgt_anom)
 n342 = SameDateAs(n34, hgt_anom)
 sam2 = SameDateAs(sam, hgt_anom)
+asam2 = SameDateAs(asam, hgt_anom)
+ssam2 = SameDateAs(ssam, hgt_anom)
 pp = SameDateAs(pp, hgt_anom)
 pp_serie = SameDateAs(pp_serie, hgt_anom)
 
@@ -422,6 +408,8 @@ pp_serie = SameDateAs(pp_serie, hgt_anom)
 dmi3 = dmi2/dmi2.std()
 n343 = n342/n342.std()
 sam3 = sam2/sam2.std()
+asam3 = asam2/asam2.std()
+ssam3 = ssam2/ssam2.std()
 
 amd = hgt_anom.sel(lon=slice(210,270), lat=slice(-80,-50)).mean(['lon', 'lat'])
 amd = amd/amd.std()
@@ -430,10 +418,8 @@ hgt_anom = hgt_anom/hgt_anom.std()
 pp_serie = pp_serie/pp_serie.std()
 pp = pp/pp.std()
 ################################################################################
-# Actores fijos en las redes causales
-actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'sam':sam3.values}
-
 print('#######################################################################')
+actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'sam':sam3.values}
 print('Modelo A: N34->IOD, N34->SAM (todos a C)')
 print('A1 IOD->SAM -----------------------------------------------------------')
 CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
@@ -443,82 +429,27 @@ CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
           set_series_n34_directo=None,
           set_series_dmi_directo=None,
           set_series_sam_directo=None)
-# ---------------------------------------------------------------------------- #
-print('A2 IOD<-SAM -----------------------------------------------------------')
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi', 'n34', 'sam'],
-          set_series_n34_total=['n34'],
-          set_series_sam_total=['n34', 'sam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_sam_directo=None)
-# ---------------------------------------------------------------------------- #
-print('A3 IOD<->SAM ----------------------------------------------------------')
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi', 'n34', 'sam'],
-          set_series_n34_total=['dmi', 'n34', 'sam'],
-          set_series_sam_total=['n34', 'sam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_sam_directo=None)
 
-print('#######################################################################')
-print('Modelo B: N34<-IOD, N34->SAM (todos a C)')
-print('B1 IOD->SAM -----------------------------------------------------------')
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi'],
-          set_series_n34_total=['dmi', 'n34'],
-          set_series_sam_total=['dmi', 'n34', 'sam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_sam_directo=None)
-
-# ---------------------------------------------------------------------------- #
-print('B2 IOD<-SAM -----------------------------------------------------------')
-print("Can't determine causal effects for cyclic models")
-print("Se crea un ciclo IOD->N34->SAM->IOD que "
-      "no permite detectar efectos causales")
-
-# ---------------------------------------------------------------------------- #
-print('B3 IOD<->SAM ----------------------------------------------------------')
-# No se pueden evaluar los efectos totales de DMI y N34
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi', 'n34', 'sam'],
-          set_series_n34_total=['dmi', 'n34', 'sam'],
-          set_series_sam_total=['dmi', 'n34', 'sam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_sam_directo=None)
-
-print('#######################################################################')
-print('Modelo C: SAM -x- IOD (todos a C))')
-print('C1 IOD->N34 -----------------------------------------------------------')
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi'],
-          set_series_n34_total=['dmi', 'n34'],
-          set_series_sam_total=['n34', 'sam'],
-          set_series_n34_directo=['dmi', 'n34'],
-          set_series_dmi_directo=None,
-          set_series_sam_directo=['n34', 'sam'])
-
-print('C2 IOD<-N34 -----------------------------------------------------------')
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+print('Modelo A con A-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM (todos a C)')
+print('A1 IOD->SAM -----------------------------------------------------------')
+actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'asam':asam3.values}
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam'],
           set_series_dmi_total=['dmi', 'n34'],
           set_series_n34_total=['n34'],
-          set_series_sam_total=['dmi', 'n34', 'sam'],
-          set_series_n34_directo=['dmi', 'n34'],
+          set_series_sam_total=['dmi', 'n34', 'asam'],
+          set_series_n34_directo=None,
           set_series_dmi_directo=None,
-          set_series_sam_directo=['n34', 'sam'])
-
-print('C2 IOD<->N34 ----------------------------------------------------------')
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi', 'n34'],
-          set_series_n34_total=['dmi', 'n34'],
-          set_series_sam_total=['n34', 'sam'],
-          set_series_n34_directo=['dmi', 'n34'],
-          set_series_dmi_directo=['dmi', 'n34'],
           set_series_sam_directo=None)
 
+actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'asam':asam3.values,'ssam':ssam3.values}
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam', 'ssam'],
+          set_series_dmi_total=['dmi', 'n34', 'ssam'],
+          set_series_n34_total=['n34', 'ssam'],
+          set_series_sam_total=['dmi', 'n34', 'asam', 'ssam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+# ---------------------------------------------------------------------------- #
 print('#######################################################################')
 print('Mapas...')
 print('#######################################################################')
@@ -529,10 +460,16 @@ hgt_anom2 = hgt_anom.sel(lat=slice(-80,20))
 hgt_cmap = get_cbars('hgt200')
 pp_cmap = get_cbars('pp')
 
-for v, v_name, mapa in zip([hgt_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
+actors_target = {'A1':['dmi', 'n34', 'sam'], 'A1ASAM':['dmi', 'n34', 'asam'],
+                 'A1ASAMwSAM':['dmi', 'n34', 'asam'],
+                 'A1ASAMwSSAM':['dmi', 'n34', 'asam']}
+
+#for v, v_name, mapa in zip([hgt_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
+for v, v_name, mapa in zip([hgt_anom2], ['hgt200'], ['hs']):
     v_cmap = get_cbars(v_name)
-    for actor in ['dmi', 'n34', 'sam']:
-        for modelo in ['A1', 'A2', 'A3', 'B1', 'B3', 'C1', 'C2', 'C3']:
+    for modelo in ['A1', 'A1ASAM', 'A1ASAMwSAM', 'A1ASAMwSSAM']:
+        for actor in actors_target[modelo]:
+
             for modo in ['total', 'directo']:
 
                 name_fig = f"{v_name}_Mod{modelo}_Efecto_{modo}_{actor}"
@@ -544,4 +481,158 @@ for v, v_name, mapa in zip([hgt_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
 print('#######################################################################')
 print('Done')
 print('#######################################################################')
-################################################################################
+# ################################################################################
+# print('A2 IOD<-SAM -----------------------------------------------------------')
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi', 'n34', 'sam'],
+#           set_series_n34_total=['n34'],
+#           set_series_sam_total=['n34', 'sam'],
+#           set_series_n34_directo=None,
+#           set_series_dmi_directo=None,
+#           set_series_sam_directo=None)
+# # ---------------------------------------------------------------------------- #
+# print('A3 IOD<->SAM ----------------------------------------------------------')
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi', 'n34', 'sam'],
+#           set_series_n34_total=['dmi', 'n34', 'sam'],
+#           set_series_sam_total=['n34', 'sam'],
+#           set_series_n34_directo=None,
+#           set_series_dmi_directo=None,
+#           set_series_sam_directo=None)
+#
+# print('#######################################################################')
+# print('Modelo B: N34<-IOD, N34->SAM (todos a C)')
+# print('B1 IOD->SAM -----------------------------------------------------------')
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi'],
+#           set_series_n34_total=['dmi', 'n34'],
+#           set_series_sam_total=['dmi', 'n34', 'sam'],
+#           set_series_n34_directo=None,
+#           set_series_dmi_directo=None,
+#           set_series_sam_directo=None)
+#
+# # ---------------------------------------------------------------------------- #
+# print('B2 IOD<-SAM -----------------------------------------------------------')
+# print("Can't determine causal effects for cyclic models")
+# print("Se crea un ciclo IOD->N34->SAM->IOD que "
+#       "no permite detectar efectos causales")
+#
+# # ---------------------------------------------------------------------------- #
+# print('B3 IOD<->SAM ----------------------------------------------------------')
+# # No se pueden evaluar los efectos totales de DMI y N34
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi', 'n34', 'sam'],
+#           set_series_n34_total=['dmi', 'n34', 'sam'],
+#           set_series_sam_total=['dmi', 'n34', 'sam'],
+#           set_series_n34_directo=None,
+#           set_series_dmi_directo=None,
+#           set_series_sam_directo=None)
+#
+# print('#######################################################################')
+# print('Modelo C: SAM -x- IOD (todos a C))')
+# print('C1 IOD->N34 -----------------------------------------------------------')
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi'],
+#           set_series_n34_total=['dmi', 'n34'],
+#           set_series_sam_total=['n34', 'sam'],
+#           set_series_n34_directo=['dmi', 'n34'],
+#           set_series_dmi_directo=None,
+#           set_series_sam_directo=['n34', 'sam'])
+#
+# print('C2 IOD<-N34 -----------------------------------------------------------')
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi', 'n34'],
+#           set_series_n34_total=['n34'],
+#           set_series_sam_total=['dmi', 'n34', 'sam'],
+#           set_series_n34_directo=['dmi', 'n34'],
+#           set_series_dmi_directo=None,
+#           set_series_sam_directo=['n34', 'sam'])
+#
+# print('C2 IOD<->N34 ----------------------------------------------------------')
+# CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
+#           set_series_dmi_total=['dmi', 'n34'],
+#           set_series_n34_total=['dmi', 'n34'],
+#           set_series_sam_total=['n34', 'sam'],
+#           set_series_n34_directo=['dmi', 'n34'],
+#           set_series_dmi_directo=['dmi', 'n34'],
+#           set_series_sam_directo=None)
+
+
+
+#### ESTO ERA DE LA FUNCION
+
+#
+# # modelo A2
+# elif modelo.upper() == 'A2':
+# set_series_directo = ['dmi', 'n34', 'sam']
+# set_series_dmi_total = ['dmi', 'n34', 'sam']
+# set_series_n34_total = ['n34']
+# set_series_sam_total = ['n34', 'sam']
+# set_series_n34_directo = None
+# set_series_dmi_directo = None
+# set_series_sam_directo = None
+#
+# # modelo A3
+# elif modelo.upper() == 'A3':
+# set_series_directo = ['dmi', 'n34', 'sam']
+# set_series_dmi_total = ['dmi', 'n34', 'sam']
+# set_series_n34_total = ['dmi', 'n34', 'sam']
+# set_series_sam_total = ['n34', 'sam']
+# set_series_n34_directo = None
+# set_series_dmi_directo = None
+# set_series_sam_directo = None
+#
+# # modelo B1
+# elif modelo.upper() == 'B1':
+# set_series_directo = ['dmi', 'n34', 'sam']
+# set_series_dmi_total = ['dmi']
+# set_series_n34_total = ['dmi', 'n34']
+# set_series_sam_total = ['dmi', 'n34', 'sam']
+# set_series_n34_directo = None
+# set_series_dmi_directo = None
+# set_series_sam_directo = None
+#
+# # Modelo B2
+# elif modelo.upper() == 'B2':
+# print('Modelo B2 no permite establecer efectos causales')
+# return
+#
+# # Modelo B3
+# elif modelo.upper() == 'B3':
+# set_series_directo = ['dmi', 'n34', 'sam']
+# set_series_dmi_total = ['dmi', 'n34', 'sam']
+# set_series_n34_total = ['dmi', 'n34', 'sam']
+# set_series_sam_total = ['dmi', 'n34', 'sam']
+# set_series_n34_directo = None
+# set_series_dmi_directo = None
+# set_series_sam_directo = None
+#
+# # Modelo C1
+# if modelo.upper() == 'C1':
+#     set_series_directo = ['dmi', 'n34', 'sam']
+#     set_series_dmi_total = ['dmi']
+#     set_series_n34_total = ['dmi', 'n34']
+#     set_series_sam_total = ['n34', 'sam']
+#     set_series_n34_directo = ['dmi', 'n34']
+#     set_series_dmi_directo = None
+#     set_series_sam_directo = ['n34', 'sam']
+#
+# # Modelo C2
+# elif modelo.upper() == 'C2':
+#     set_series_directo = ['dmi', 'n34', 'sam']
+#     set_series_dmi_total = ['dmi', 'n34']
+#     set_series_n34_total = ['n34']
+#     set_series_sam_total = ['dmi', 'n34', 'sam']
+#     set_series_n34_directo = ['dmi', 'n34']
+#     set_series_dmi_directo = None
+#     set_series_sam_directo = ['n34', 'sam']
+#
+# # Modelo C3
+# elif modelo.upper() == 'C3':
+#     set_series_directo = ['dmi', 'n34', 'sam']
+#     set_series_dmi_total = ['dmi', 'n34']
+#     set_series_n34_total = ['dmi', 'n34']
+#     set_series_sam_total = ['n34', 'sam']
+#     set_series_n34_directo = ['dmi', 'n34']
+#     set_series_dmi_directo = ['dmi', 'n34']
+#     set_series_sam_directo = None
