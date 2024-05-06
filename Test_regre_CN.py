@@ -4,6 +4,7 @@ Testeos conceptuales de CN a partir de modelos de regresión
 ################################################################################
 save=True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
+use_strato_index = True
 ################################################################################
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
@@ -142,6 +143,9 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
         elif ('ssam' in set_series_directo):
             aux_actors = ['dmi', 'n34', 'ssam']
             aux_sam = 'ssam'
+        elif ('strato' in set_series_directo):
+            aux_actors = ['dmi', 'n34', 'strato']
+            aux_sam = 'strato'
         else:
             aux_actors = ['dmi', 'n34', 'sam']
             aux_sam = 'sam'
@@ -224,6 +228,17 @@ def pre_regre_ufunc(x, modelo, coef, modo):
         set_series_dmi_directo = None
         set_series_sam_directo = None
         aux_sam = 'asam'
+    elif modelo.upper() == 'A1STRATO':
+        actor_list = {'dmi': dmi3.values, 'n34': n343.values,
+                      'strato': strato_indice['__xarray_dataarray_variable__'].values}
+        set_series_directo = ['dmi', 'n34', 'strato']
+        set_series_dmi_total = ['dmi', 'n34']
+        set_series_n34_total = ['n34']
+        set_series_sam_total = ['dmi', 'n34', 'strato']
+        set_series_n34_directo = None
+        set_series_dmi_directo = None
+        set_series_sam_directo = None
+        aux_sam = 'strato'
     else:
         print('ningun modelo seleccionado')
         return None
@@ -392,6 +407,12 @@ aux = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/"
                       "sst.mnmean.nc")
 aux = aux.sel(time=slice('1920-01-01', '2020-12-01'))
 n34 = Nino34CPC(aux, start=1920, end=2020)[0]
+
+if use_strato_index:
+    strato_indice = xr.open_dataset('strato_index.nc').rename({'year':'time'})
+    hgt_anom = hgt_anom.sel(time =
+                            hgt_anom.time.dt.year.isin(strato_indice['time']))
+    strato_indice = strato_indice.sel(time = hgt_anom['time.year'])
 # ---------------------------------------------------------------------------- #
 # SameDate y normalización --------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
@@ -441,6 +462,15 @@ CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam'],
           set_series_dmi_directo=None,
           set_series_sam_directo=None)
 
+actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'ssam':ssam3.values}
+CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'ssam'],
+          set_series_dmi_total=['dmi', 'n34'],
+          set_series_n34_total=['n34'],
+          set_series_sam_total=['dmi', 'n34', 'ssam'],
+          set_series_n34_directo=None,
+          set_series_dmi_directo=None,
+          set_series_sam_directo=None)
+
 actor_list = {'dmi':dmi3.values, 'n34':n343.values, 'asam':asam3.values,'ssam':ssam3.values}
 CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam', 'ssam'],
           set_series_dmi_total=['dmi', 'n34', 'ssam'],
@@ -449,6 +479,19 @@ CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam', 'ssam'],
           set_series_n34_directo=None,
           set_series_dmi_directo=None,
           set_series_sam_directo=None)
+
+if use_strato_index:
+    actor_list = {'dmi': dmi3.values, 'n34': n343.values,
+                  'strato': strato_indice['__xarray_dataarray_variable__'].values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'strato'],
+              set_series_dmi_total=['dmi', 'n34'],
+              set_series_n34_total=['n34'],
+              set_series_sam_total=['dmi', 'n34', 'strato'],
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_sam_directo=None)
+
+
 # ---------------------------------------------------------------------------- #
 print('#######################################################################')
 print('Mapas...')
@@ -462,12 +505,14 @@ pp_cmap = get_cbars('pp')
 
 actors_target = {'A1':['dmi', 'n34', 'sam'], 'A1ASAM':['dmi', 'n34', 'asam'],
                  'A1ASAMwSAM':['dmi', 'n34', 'asam'],
-                 'A1ASAMwSSAM':['dmi', 'n34', 'asam']}
+                 'A1ASAMwSSAM':['dmi', 'n34', 'asam'],
+                 'A1STRATO':['dmi', 'n34', 'strato']}
 
 #for v, v_name, mapa in zip([hgt_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
 for v, v_name, mapa in zip([hgt_anom2], ['hgt200'], ['hs']):
     v_cmap = get_cbars(v_name)
-    for modelo in ['A1', 'A1ASAM', 'A1ASAMwSAM', 'A1ASAMwSSAM']:
+    for modelo in ['A1', 'A1ASAM']: #'A1ASAMwSAM', 'A1ASAMwSSAM']:
+    #for modelo in ['A1STRATO']:
         for actor in actors_target[modelo]:
 
             for modo in ['total', 'directo']:

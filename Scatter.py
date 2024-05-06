@@ -15,9 +15,13 @@ from ENSO_IOD_Funciones import DMI, Nino34CPC, SameDateAs
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 ################################################################################
-save = True
-seasons = ['JJA', 'SON']
-mmonth = [7, 10]
+save = False
+# seasons = ['JJA', 'SON']
+# mmonth = [7, 10]
+
+seasons = ['SON']
+mmonth = [10]
+
 
 if save:
     dpi = 300
@@ -53,7 +57,7 @@ def NormSD(serie):
 sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
 
 dmi = DMI(filter_bwa=False, start_per='1920', end_per='2020')[2]
-n34 = Nino34CPC( xr.open_dataset("/pikachu/datos4/Obs/sst/sst.mnmean_2020.nc"),
+n34 = Nino34CPC( xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc"),
                  start=1920, end=2020)[0]
 
 sam = sam.rolling(time=3, center=True).mean()
@@ -64,36 +68,43 @@ n34 = NormSD(SameDateAs(n34, sam))
 
 #------------------------------------------------------------------------------#
 # by seasons
-for s, mm in zip(seasons, mmonth):
-    aux_dmi = dmi.sel(time=dmi.time.dt.month.isin([mm]))
-    aux_n34 = n34.sel(time=n34.time.dt.month.isin([mm]))
-    aux_sam = sam.sel(time=sam.time.dt.month.isin([mm]))
+for sam_component in ['sam', 'asam', 'ssam']:
+    sam = xr.open_dataset(sam_dir + sam_component +'_700.nc')['mean_estimate']
+    sam = sam.rolling(time=3, center=True).mean()
+    sam = NormSD(sam)
 
-    # DMI vs N34
-    aux_r = np.round(pearsonr(aux_dmi, aux_n34), 3)
-    ScatterPlot(aux_dmi, aux_n34, 'DMI', 'N34',
-                'DMI vs N34 - ' + s + ' - r = ' + str(aux_r[0]) +
-                ' pvalue =' + str(aux_r[1]), 'DMI_N34_' + s, dpi, save)
 
-    # SAM vs N34
-    aux_r = np.round(pearsonr(aux_sam, aux_n34), 3)
-    ScatterPlot(aux_sam, aux_n34, 'SAM', 'N34',
-                'SAM vs N34 - ' + s + ' - r = ' + str(aux_r[0]) +
-                ' pvalue =' + str(aux_r[1]),  'SAM_N34_' + s, dpi, save)
 
-    # SAM vs DMI
-    aux_r = np.round(pearsonr(aux_sam, aux_dmi), 3)
-    ScatterPlot(aux_sam, aux_dmi, 'SAM', 'DMI',
-                'SAM vs DMI - ' + s + ' - r = ' + str(aux_r[0]) +
-                ' pvalue = ' + str(aux_r[1]), 'SAM_DMI_' + s, dpi, save)
+    for s, mm in zip(seasons, mmonth):
+        aux_dmi = dmi.sel(time=dmi.time.dt.month.isin([mm]))
+        aux_n34 = n34.sel(time=n34.time.dt.month.isin([mm]))
+        aux_sam = sam.sel(time=sam.time.dt.month.isin([mm]))
 
-# Full
-# DMI vs N34
-ScatterPlot(dmi, n34, 'DMI', 'N34', 'DMI vs N34', 'DMI_N34_', dpi, save)
+        # DMI vs N34
+        aux_r = np.round(pearsonr(aux_dmi, aux_n34), 3)
+        ScatterPlot(aux_dmi, aux_n34, 'DMI', 'N34',
+                    'DMI vs N34 - ' + s + ' - r = ' + str(aux_r[0]) +
+                    ' pvalue =' + str(aux_r[1]), 'DMI_N34_' + s, dpi, save)
 
-# SAM vs N34
-ScatterPlot(sam, n34, 'SAM', 'N34', 'SAM vs N34', 'SAM_N34_', dpi, save)
+        # SAM vs N34
+        aux_r = np.round(pearsonr(aux_sam, aux_n34), 3)
+        ScatterPlot(aux_sam, aux_n34, sam_component, 'N34',
+                    sam_component + ' vs N34 - ' + s + ' - r = ' + str(aux_r[0]) +
+                    ' pvalue =' + str(aux_r[1]),  sam_component + '_N34_' + s, dpi, save)
 
-# SAM vs DMI
-ScatterPlot(sam, dmi, 'SAM', 'DMI', 'SAM vs DMI', 'SAM_DMI_', dpi, save)
+        # SAM vs DMI
+        aux_r = np.round(pearsonr(aux_sam, aux_dmi), 3)
+        ScatterPlot(aux_sam, aux_dmi, sam_component, 'DMI',
+                    sam_component + ' vs DMI - ' + s + ' - r = ' + str(aux_r[0]) +
+                    ' pvalue = ' + str(aux_r[1]), sam_component + '_DMI_' + s, dpi, save)
+
+# # Full
+# # DMI vs N34
+# ScatterPlot(dmi, n34, 'DMI', 'N34', 'DMI vs N34', 'DMI_N34_', dpi, save)
+#
+# # SAM vs N34
+# ScatterPlot(sam, n34, 'SAM', 'N34', 'SAM vs N34', 'SAM_N34_', dpi, save)
+#
+# # SAM vs DMI
+# ScatterPlot(sam, dmi, 'SAM', 'DMI', 'SAM vs DMI', 'SAM_DMI_', dpi, save)
 ################################################################################
