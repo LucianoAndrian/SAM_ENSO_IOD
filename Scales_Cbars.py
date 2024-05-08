@@ -35,7 +35,7 @@ def get_cbars(VarName):
     cbar_t.set_under('#014A9B')
     cbar_t.set_bad(color='white')
 
-    if VarName.lower() == 'hgt200':
+    if 'hgt' in VarName.lower():
         return cbar_hgt
     elif VarName.lower() == 'pp':
         return cbar_pp
@@ -50,7 +50,7 @@ def get_scales(VarName):
 
     scale_reg_t =  [-.6,-.4,-.2,-.1,-.05,0,0.05,0.1,0.2,0.4,0.6]
 
-    if VarName.lower() == 'hgt200':
+    if 'hgt' in VarName.lower():
         return scale_reg_hgt
     elif VarName.lower() == 'pp':
         return scale_reg_pp
