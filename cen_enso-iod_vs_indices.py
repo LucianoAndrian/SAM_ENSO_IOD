@@ -10,10 +10,11 @@ En caso de querer analizar otros deben agregarse a mano en esta funcion.
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
 save = True
-plot_mapas = True
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 use_strato_index = True
-#use_asam_index = False
+plot_mapas = True
+plot_corr_scatter = True
+create_df = True
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 
 # Caja de PP
 pp_lons = [295, 310]
@@ -129,7 +130,8 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
 
     result_df = pd.DataFrame(columns=['v_efecto', 'b'])
 
-    for x, x_name in zip([pp_caja, amd], ['pp_serie', 'amd']):
+    for x, x_name in zip([pp_caja, amd200, amd750],
+                         ['pp_serie', 'amd200', 'adm750']):
 
         pre_serie = {'c': x['var'].values}
         series_directo = AUX_select_actors(actor_list, set_series_directo,
@@ -183,12 +185,7 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
                 actor_list, set_series_3index_directo, pre_serie)
             series_directo_particular['3index_directo'] = series_3index_directo
 
-        # series = {'dmi_total': series_dmi_total,
-        #           'n34_total': series_n34_total,
-        #           aux_3index + '_total': series_3index_total}
-
         for i in aux_actors:
-
             # Efecto total i --------------------------------------------------#
             i_total = regre(series[f"{i}_total"], True, i)
             result_df = result_df.append({'v_efecto': f"{i}_TOTAL_{x_name}",
@@ -204,9 +201,9 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
 
 
             result_df = result_df.append({'v_efecto': f"{i}_DIRECTO_{x_name}",
-                                          'b': i_directo},
-                                         ignore_index=True)
+                                          'b': i_directo}, ignore_index=True)
         # -------------------------------------------------------------------- #
+
     result_df.to_csv(f"{out_dir}{name}.txt", sep='\t', index=False)
     print(result_df)
 
@@ -238,17 +235,29 @@ def pre_regre_ufunc(x, modelo, coef, modo):
         set_series_3index_directo = None
         aux_3index = 'asam'
 
-    elif modelo.upper() == 'AMD':
+    elif modelo.upper() == 'AMD200':
         actor_list = {'dmi': dmi.values, 'n34': n34.values,
-                      'amd': amd['var'].values}
-        set_series_directo = ['dmi', 'n34', 'amd']
+                      'amd200': amd200['var'].values}
+        set_series_directo = ['dmi', 'n34', 'amd200']
         set_series_dmi_total = ['dmi', 'n34']
         set_series_n34_total = ['n34']
-        set_series_3index_total = ['dmi', 'n34', 'amd']
+        set_series_3index_total = ['dmi', 'n34', 'amd200']
         set_series_n34_directo = None
         set_series_dmi_directo = None
         set_series_3index_directo = None
-        aux_3index = 'amd'
+        aux_3index = 'amd200'
+
+    elif modelo.upper() == 'AMD750':
+        actor_list = {'dmi': dmi.values, 'n34': n34.values,
+                      'amd750': amd750['var'].values}
+        set_series_directo = ['dmi', 'n34', 'amd750']
+        set_series_dmi_total = ['dmi', 'n34']
+        set_series_n34_total = ['n34']
+        set_series_3index_total = ['dmi', 'n34', 'amd750']
+        set_series_n34_directo = None
+        set_series_dmi_directo = None
+        set_series_3index_directo = None
+        aux_3index = 'amd750'
 
     elif modelo.upper() == 'A1SSAM':
         actor_list = {'dmi': dmi.values, 'n34': n34.values,
@@ -440,16 +449,32 @@ hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
 hgt = hgt.interp(lon=np.arange(0,360,2), lat=np.arange(-90, 90, 2))
 
 hgt_clim = hgt.sel(time=slice('1979-01-01', '2000-12-01'))
-hgt_anom_or = hgt.groupby('time.month') - \
+hgt200_anom_or = hgt.groupby('time.month') - \
            hgt_clim.groupby('time.month').mean('time')
 
-weights = np.sqrt(np.abs(np.cos(np.radians(hgt_anom_or.lat))))
-hgt_anom_or = hgt_anom_or * weights
+weights = np.sqrt(np.abs(np.cos(np.radians(hgt200_anom_or.lat))))
+hgt200_anom_or = hgt200_anom_or * weights
 
-hgt_anom_or = hgt_anom_or.rolling(time=3, center=True).mean()
-hgt_anom_or = hgt_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
-hgt_anom_or = hgt_anom_or.sel(time=hgt_anom_or.time.dt.month.isin([8,9,10,11]))
-hgt_anom_or = hgt_anom_or.sel(time=hgt_anom_or.time.dt.month.isin([10]))
+hgt200_anom_or = hgt200_anom_or.rolling(time=3, center=True).mean()
+hgt200_anom_or = hgt200_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
+hgt200_anom_or = hgt200_anom_or.sel(
+    time=hgt200_anom_or.time.dt.month.isin([8,9,10,11]))
+hgt200_anom_or = hgt200_anom_or.sel(
+    time=hgt200_anom_or.time.dt.month.isin([10]))
+
+hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT750_40-20.nc')
+hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
+hgt = hgt.interp(lon=np.arange(0,360,2), lat=np.arange(-90, 90, 2))
+
+hgt_clim = hgt.sel(time=slice('1979-01-01', '2000-12-01'))
+hgt750_anom_or = hgt.groupby('time.month') - \
+           hgt_clim.groupby('time.month').mean('time')
+
+weights = np.sqrt(np.abs(np.cos(np.radians(hgt750_anom_or.lat))))
+hgt750_anom_or = hgt750_anom_or * weights
+
+hgt750_anom_or = hgt750_anom_or.rolling(time=3, center=True).mean()
+hgt750_anom_or = hgt750_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
 
 # PP ------------------------------------------------------------------------- #
 pp_or = OpenObsDataSet(name='pp_pgcc_v2020_1891-2023_1', sa=True, dir=dir_pp)
@@ -491,201 +516,226 @@ if use_strato_index:
     strato_indice = xr.open_dataset('strato_index.nc').rename({'year':'time'})
     strato_indice = strato_indice.rename(
         {'__xarray_dataarray_variable__':'var'})
-    hgt_anom_or = hgt_anom_or.sel(time =
-                            hgt_anom_or.time.dt.year.isin(
+    hgt200_anom_or = hgt200_anom_or.sel(time =
+                            hgt200_anom_or.time.dt.year.isin(
                                 strato_indice['time']))
-    strato_indice = strato_indice.sel(time = hgt_anom_or['time.year'])
+    strato_indice = strato_indice.sel(time = hgt200_anom_or['time.year'])
 
 # ---------------------------------------------------------------------------- #
 # SameDate y normalización --------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
-hgt_anom = hgt_anom_or.sel(time=hgt_anom_or.time.dt.month.isin([10]))
+hgt200_anom = hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.month.isin([10]))
 
-dmi = SameDateAs(dmi_or, hgt_anom)
-n34 = SameDateAs(n34_or, hgt_anom)
-sam = SameDateAs(sam_or, hgt_anom)
-asam = SameDateAs(asam_or, hgt_anom)
-ssam = SameDateAs(ssam_or, hgt_anom)
-pp = SameDateAs(pp_or, hgt_anom)
-pp_caja = SameDateAs(pp_caja_or, hgt_anom)
+hgt750_anom = SameDateAs(hgt750_anom_or, hgt200_anom)
+dmi = SameDateAs(dmi_or, hgt200_anom)
+n34 = SameDateAs(n34_or, hgt200_anom)
+sam = SameDateAs(sam_or, hgt200_anom)
+asam = SameDateAs(asam_or, hgt200_anom)
+ssam = SameDateAs(ssam_or, hgt200_anom)
+pp = SameDateAs(pp_or, hgt200_anom)
+pp_caja = SameDateAs(pp_caja_or, hgt200_anom)
 dmi = dmi / dmi.std()
 n34 = n34 / n34.std()
 sam = sam / sam.std()
 asam = asam / asam.std()
 ssam = ssam / ssam.std()
-amd = (hgt_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
-       mean(['lon', 'lat']))
-amd = amd / amd.std()
-hgt_anom = hgt_anom / hgt_anom.std()
+hgt200_anom = hgt200_anom / hgt200_anom.std()
+hgt750_anom = hgt750_anom / hgt750_anom.std()
 pp_caja = pp_caja / pp_caja.std()
 pp = pp / pp.std()
 
+amd200 = (hgt200_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
+       mean(['lon', 'lat']))
+amd200 = amd200 / amd200.std()
+
+amd750 = (hgt750_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
+       mean(['lon', 'lat']))
+amd750 = amd750 / amd750.std()
+
 all_3index = {'sam':sam.values, 'asam':asam.values, 'ssam':ssam.values,
-              'amd':amd['var'].values}
+              'amd200':amd200['var'].values, 'amd750':amd750['var'].values}
 if use_strato_index:
     all_3index['strato'] = strato_indice['var'].values
-
 ################################################################################
-# Correlación ---------------------------------------------------------------- #
-aux_r = np.round(pearsonr(dmi, n34), 3)
-ScatterPlot(dmi, n34, 'DMI', 'N34',
-            f"DMI vs N34 - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"DMI_N34_{per}", dpi, save)
+if plot_corr_scatter:
+    # Correlación ------------------------------------------------------------ #
+    aux_r = np.round(pearsonr(dmi, n34), 3)
+    ScatterPlot(dmi, n34, 'DMI', 'N34',
+                f"DMI vs N34 - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"DMI_N34_{per}", dpi, save)
 
-# ---------------------------------------------------------------------------- #
-aux_r = np.round(pearsonr(dmi, sam), 3)
-ScatterPlot(dmi, asam, 'DMI', 'SAM',
-            f"DMI vs SAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"DMI_SAM_{per}", dpi, save)
+    # ------------------------------------------------------------------------ #
+    aux_r = np.round(pearsonr(dmi, sam), 3)
+    ScatterPlot(dmi, asam, 'DMI', 'SAM',
+                f"DMI vs SAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"DMI_SAM_{per}", dpi, save)
 
-aux_r = np.round(pearsonr(dmi, asam), 3)
-ScatterPlot(dmi, asam, 'DMI', 'ASAM',
-            f"DMI vs ASAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"DMI_SAM_{per}", dpi, save)
+    aux_r = np.round(pearsonr(dmi, asam), 3)
+    ScatterPlot(dmi, asam, 'DMI', 'ASAM',
+                f"DMI vs ASAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"DMI_SAM_{per}", dpi, save)
 
-aux_r = np.round(pearsonr(dmi, ssam), 3)
-ScatterPlot(dmi, asam, 'DMI', 'SSAM',
-            f"DMI vs SSAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"DMI_SSAM_{per}", dpi, save)
+    aux_r = np.round(pearsonr(dmi, ssam), 3)
+    ScatterPlot(dmi, asam, 'DMI', 'SSAM',
+                f"DMI vs SSAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"DMI_SSAM_{per}", dpi, save)
 
-aux_r = np.round(pearsonr(dmi, amd['var'].values), 3)
-ScatterPlot(dmi, amd['var'].values, 'DMI', 'AMD',
-            f"DMI vs AMD - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"DMI_AMD_{per}", dpi, save)
+    aux_r = np.round(pearsonr(dmi, amd200['var'].values), 3)
+    ScatterPlot(dmi, amd200['var'].values, 'DMI', 'AMD200',
+                f"DMI vs AMD200 - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"DMI_200_{per}", dpi, save)
 
+    aux_r = np.round(pearsonr(dmi, amd750['var'].values), 3)
+    ScatterPlot(dmi, amd750['var'].values, 'DMI', 'AMD750',
+                f"DMI vs AMD750 - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"DMI_750_{per}", dpi, save)
 
-# ---------------------------------------------------------------------------- #
-aux_r = np.round(pearsonr(n34, sam), 3)
-ScatterPlot(n34, asam, 'n34', 'SAM',
-            f"N34 vs SAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"N34_SAM_{per}", dpi, save)
+    # ------------------------------------------------------------------------ #
+    aux_r = np.round(pearsonr(n34, sam), 3)
+    ScatterPlot(n34, asam, 'n34', 'SAM',
+                f"N34 vs SAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"N34_SAM_{per}", dpi, save)
 
-aux_r = np.round(pearsonr(n34, asam), 3)
-ScatterPlot(n34, asam, 'n34', 'ASAM',
-            f"N34 vs ASAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"N34_SAM_{per}", dpi, save)
+    aux_r = np.round(pearsonr(n34, asam), 3)
+    ScatterPlot(n34, asam, 'n34', 'ASAM',
+                f"N34 vs ASAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"N34_SAM_{per}", dpi, save)
 
-aux_r = np.round(pearsonr(n34, ssam), 3)
-ScatterPlot(n34, asam, 'n34', 'SSAM',
-            f"N34 vs SSAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"N34_sSAM_{per}", dpi, save)
+    aux_r = np.round(pearsonr(n34, ssam), 3)
+    ScatterPlot(n34, asam, 'n34', 'SSAM',
+                f"N34 vs SSAM - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"N34_sSAM_{per}", dpi, save)
 
-aux_r = np.round(pearsonr(n34, amd['var'].values), 3)
-ScatterPlot(n34, amd['var'].values, 'N34', 'AMD',
-            f"N34 vs AMD - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-            f"N34_AMD_{per}", dpi, save)
+    aux_r = np.round(pearsonr(n34, amd200['var'].values), 3)
+    ScatterPlot(n34, amd200['var'].values, 'N34', 'AMD200',
+                f"N34 vs AMD200 - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"N34_AMD200_{per}", dpi, save)
 
-plt.close('all')
-# ---------------------------------------------------------------------------- #
-
-if use_strato_index:
-    aux_r = np.round(pearsonr(dmi, strato_indice['var'].values), 3)
-    ScatterPlot(dmi, strato_indice['var'].values, 'DMI', 'STRATO',
-                f"DMI vs STRATO - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-                f"DMI_STRATO_{per}", dpi, save)
-
-    aux_r = np.round(pearsonr(n34, strato_indice['var'].values), 3)
-    ScatterPlot(n34, strato_indice['var'].values, 'N34', 'STRATO',
-                f"N34 vs STRATO - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-                f"N34_STRATO_{per}", dpi, save)
-
-    aux_r = np.round(pearsonr(sam, strato_indice['var'].values), 3)
-    ScatterPlot(sam, strato_indice['var'].values, 'SAM', 'STRATO',
-                f"SAM vs STRATO - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-                f"SAM_STRATO_{per}", dpi, save)
-
-    aux_r = np.round(pearsonr(ssam, strato_indice['var'].values), 3)
-    ScatterPlot(ssam, strato_indice['var'].values, 'SSAM', 'STRATO',
-                f"SSAM vs STRATO - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-                f"SSAM_STRATO_{per}", dpi, save)
-
-    aux_r = np.round(pearsonr(asam, strato_indice['var'].values), 3)
-    ScatterPlot(asam, strato_indice['var'].values, 'ASAM', 'STRATO',
-                f"ASAM vs STRATO - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-                f"ASAM_STRATO_{per}", dpi, save)
-
-    aux_r = np.round(pearsonr(strato_indice['var'].values, amd['var'].values), 3)
-    ScatterPlot(strato_indice['var'].values, amd['var'].values, 'STRATO', 'AMD',
-                f"STRATO vs AMD - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
-                f"STRATO_AMD_{per}", dpi, save)
-
+    aux_r = np.round(pearsonr(n34, amd750['var'].values), 3)
+    ScatterPlot(n34, amd750['var'].values, 'N34', 'AMD750',
+                f"N34 vs AMD750 - {per} - r = {aux_r[0]} pvalue = {aux_r[1]}",
+                f"N34_AMD750_{per}", dpi, save)
     plt.close('all')
+    # ------------------------------------------------------------------------ #
+
+    if use_strato_index:
+        aux_r = np.round(pearsonr(dmi, strato_indice['var'].values), 3)
+        ScatterPlot(dmi, strato_indice['var'].values, 'DMI', 'STRATO',
+                    f"DMI vs STRATO - {per} - r = {aux_r[0]} "
+                    f"pvalue = {aux_r[1]}", f"DMI_STRATO_{per}", dpi, save)
+
+        aux_r = np.round(pearsonr(n34, strato_indice['var'].values), 3)
+        ScatterPlot(n34, strato_indice['var'].values, 'N34', 'STRATO',
+                    f"N34 vs STRATO - {per} - r = {aux_r[0]} "
+                    f"pvalue = {aux_r[1]}", f"N34_STRATO_{per}", dpi, save)
+
+        aux_r = np.round(pearsonr(sam, strato_indice['var'].values), 3)
+        ScatterPlot(sam, strato_indice['var'].values, 'SAM', 'STRATO',
+                    f"SAM vs STRATO - {per} - r = {aux_r[0]} "
+                    f"pvalue = {aux_r[1]}", f"SAM_STRATO_{per}", dpi, save)
+
+        aux_r = np.round(pearsonr(ssam, strato_indice['var'].values), 3)
+        ScatterPlot(ssam, strato_indice['var'].values, 'SSAM', 'STRATO',
+                    f"SSAM vs STRATO - {per} - r = {aux_r[0]} "
+                    f"pvalue = {aux_r[1]}", f"SSAM_STRATO_{per}", dpi, save)
+
+        aux_r = np.round(pearsonr(asam, strato_indice['var'].values), 3)
+        ScatterPlot(asam, strato_indice['var'].values, 'ASAM', 'STRATO',
+                    f"ASAM vs STRATO - {per} - r = {aux_r[0]}"
+                    f" pvalue = {aux_r[1]}", f"ASAM_STRATO_{per}", dpi, save)
+
+        aux_r = np.round(pearsonr(strato_indice['var'].values,
+                                  amd200['var'].values), 3)
+        ScatterPlot(strato_indice['var'].values, amd200['var'].values,
+                    'STRATO', 'AMD200',
+                    f"STRATO vs AMD200 - {per} - r = {aux_r[0]}"
+                    f" pvalue = {aux_r[1]}", f"STRATO_AMD200_{per}", dpi, save)
+
+        aux_r = np.round(pearsonr(strato_indice['var'].values,
+                                  amd750['var'].values), 3)
+        ScatterPlot(strato_indice['var'].values, amd750['var'].values,
+                    'STRATO', 'AMD750',
+                    f"STRATO vs AMD750 - {per} - r = {aux_r[0]} "
+                    f"pvalue = {aux_r[1]}", f"STRATO_AMD750_{per}", dpi, save)
+
+        plt.close('all')
+
 # ---------------------------------------------------------------------------- #
 ################################################################################
 # CEN ------------------------------------------------------------------------ #
-print('#######################################################################')
-print('Modelo A_SIMPLE: N34->IOD (todos a C)')
-actor_list = {'dmi':dmi.values, 'n34':n34.values}
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34'],
-          set_series_dmi_total=['dmi', 'n34'],
-          set_series_n34_total=['n34'],
-          set_series_3index_total=None,
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_3index_directo=None,
-          name=f"A_SIMPLE_{per}")
-
-print('Modelo A: N34->IOD, N34->SAM (todos a C)')
-print('A1 IOD->SAM -----------------------------------------------------------')
-actor_list = {'dmi':dmi.values, 'n34':n34.values, 'sam':sam.values}
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'sam'],
-          set_series_dmi_total=['dmi', 'n34'],
-          set_series_n34_total=['n34'],
-          set_series_3index_total=['dmi', 'n34', 'sam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_3index_directo=None,
-          name=f"A1_{per}")
-
-
-print('Modelo A con A-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM (todos a C)')
-actor_list = {'dmi':dmi.values, 'n34':n34.values, 'asam':asam.values}
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam'],
-          set_series_dmi_total=['dmi', 'n34'],
-          set_series_n34_total=['n34'],
-          set_series_3index_total=['dmi', 'n34', 'asam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_3index_directo=None,
-          name=f"A1wA-SAM_{per}")
-
-print('Modelo A con S-SAM: N34->IOD, N34->S-SAM, IOD->S-SAM (todos a C)')
-actor_list = {'dmi':dmi.values, 'n34':n34.values, 'ssam':ssam.values}
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'ssam'],
-          set_series_dmi_total=['dmi', 'n34'],
-          set_series_n34_total=['n34'],
-          set_series_3index_total=['dmi', 'n34', 'ssam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_3index_directo=None,
-          name=f"A1wS-SAM_{per}")
-
-print('Modelo A con A-SAM y S-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM y S-SAM '
-      'independdiente (todos a C)')
-actor_list = {'dmi':dmi.values, 'n34':n34.values, 'asam':asam.values,
-              'ssam':ssam.values}
-CN_Effect(actor_list,  set_series_directo = ['dmi', 'n34', 'asam', 'ssam'],
-          set_series_dmi_total=['dmi', 'n34', 'ssam'],
-          set_series_n34_total=['n34', 'ssam'],
-          set_series_3index_total=['dmi', 'n34', 'asam', 'ssam'],
-          set_series_n34_directo=None,
-          set_series_dmi_directo=None,
-          set_series_3index_directo=None,
-          name=f"A1wASAM_SSAM_{per}")
-
-if use_strato_index:
-    print('Modelo A con Strato index: N34->IOD, N34->strato_index, '
-          'IOD->strato_index independdiente (todos a C)')
-    actor_list = {'dmi': dmi.values, 'n34': n34.values,
-                  'strato': strato_indice['var'].values}
-    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'strato'],
+if create_df:
+    print('###################################################################')
+    print('Modelo A_SIMPLE: N34->IOD (todos a C)')
+    actor_list = {'dmi': dmi.values, 'n34': n34.values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34'],
               set_series_dmi_total=['dmi', 'n34'],
               set_series_n34_total=['n34'],
-              set_series_3index_total=['dmi', 'n34', 'strato'],
+              set_series_3index_total=None,
               set_series_n34_directo=None,
               set_series_dmi_directo=None,
               set_series_3index_directo=None,
-              name=f"A1STRATO_{per}")
+              name=f"A_SIMPLE_{per}")
+
+    print('Modelo A: N34->IOD, N34->SAM (todos a C)')
+    print('A1 IOD->SAM -------------------------------------------------------')
+    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'sam': sam.values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'sam'],
+              set_series_dmi_total=['dmi', 'n34'],
+              set_series_n34_total=['n34'],
+              set_series_3index_total=['dmi', 'n34', 'sam'],
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_3index_directo=None,
+              name=f"A1_{per}")
+
+    print('Modelo A con A-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM (todos a C)')
+    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'asam': asam.values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'asam'],
+              set_series_dmi_total=['dmi', 'n34'],
+              set_series_n34_total=['n34'],
+              set_series_3index_total=['dmi', 'n34', 'asam'],
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_3index_directo=None,
+              name=f"A1wA-SAM_{per}")
+
+    print('Modelo A con S-SAM: N34->IOD, N34->S-SAM, IOD->S-SAM (todos a C)')
+    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'ssam'],
+              set_series_dmi_total=['dmi', 'n34'],
+              set_series_n34_total=['n34'],
+              set_series_3index_total=['dmi', 'n34', 'ssam'],
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_3index_directo=None,
+              name=f"A1wS-SAM_{per}")
+
+    print('Modelo A con A-SAM y S-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM y'
+          ' S-SAM independdiente (todos a C)')
+    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'asam': asam.values,
+                  'ssam': ssam.values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'asam', 'ssam'],
+              set_series_dmi_total=['dmi', 'n34', 'ssam'],
+              set_series_n34_total=['n34', 'ssam'],
+              set_series_3index_total=['dmi', 'n34', 'asam', 'ssam'],
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_3index_directo=None,
+              name=f"A1wASAM_SSAM_{per}")
+
+    if use_strato_index:
+        print('Modelo A con Strato index: N34->IOD, N34->strato_index, '
+              'IOD->strato_index independdiente (todos a C)')
+        actor_list = {'dmi': dmi.values, 'n34': n34.values,
+                      'strato': strato_indice['var'].values}
+        CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'strato'],
+                  set_series_dmi_total=['dmi', 'n34'],
+                  set_series_n34_total=['n34'],
+                  set_series_3index_total=['dmi', 'n34', 'strato'],
+                  set_series_n34_directo=None,
+                  set_series_dmi_directo=None,
+                  set_series_3index_directo=None,
+                  name=f"A1STRATO_{per}")
 
 # ---------------------------------------------------------------------------- #
 if plot_mapas:
@@ -693,9 +743,12 @@ if plot_mapas:
     print('Mapas...')
     print('###################################################################')
 
-    hgt_anom2 = hgt_anom.sel(lat=slice(-80, 20))
+    hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
+    hgt750_anom2 = hgt750_anom.sel(lat=slice(-80, 20))
+
     hgt_cmap = get_cbars('hgt200')
     pp_cmap = get_cbars('pp')
+
 
     actors_target = {'A_SIMPLE':['dmi', 'n34'],
                      'A1': ['dmi', 'n34', 'sam'],
@@ -703,21 +756,24 @@ if plot_mapas:
                      'A1ASAMwSAM': ['dmi', 'n34', 'asam'],
                      'A1ASAMwSSAM': ['dmi', 'n34', 'asam'],
                      'A1STRATO': ['dmi', 'n34', 'strato'],
-                     'AMD': ['dmi', 'n34', 'amd'],
+                     'AMD200': ['dmi', 'n34', 'amd200'],
+                     'AMD750': ['dmi', 'n34', 'amd750'],
                      'A1SSAM': ['dmi', 'n34', 'ssam']}
 
-    modelos = ['A_SIMPLE','A1', 'A1ASAM', 'A1SSAM', 'A1ASAMwSSAM', 'AMD']
+    modelos = ['A_SIMPLE','A1', 'A1ASAM', 'A1SSAM', 'A1ASAMwSSAM', 'AMD200',
+               'AMD750']
 
     if use_strato_index:
-        modelos = ['A_SIMPLE', 'A1', 'A1ASAM', 'A1SSAM', 'A1ASAMwSSAM', 'AMD',
-                   'A1STRATO']
+        modelos = ['A_SIMPLE', 'A1', 'A1ASAM', 'A1SSAM', 'A1ASAMwSSAM',
+                   'AMD200', 'AMD750', 'A1STRATO']
         per = '1979_2020'
 
-    #for v, v_name, mapa in zip([hgt_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
-    for v, v_name, mapa in zip([hgt_anom2], ['hgt200'], ['hs']):
+    for v, v_name, mapa in zip([hgt200_anom2, hgt750_anom2, pp],
+                               ['hgt200', 'hgt750', 'pp'],
+                               ['hs', 'hs', 'sa']):
+
         v_cmap = get_cbars(v_name)
         for modelo in modelos:
-
             # para no tener ploteos iguales con distinto titulo
             # los graficos de efecto total son siempre iguales
             # y los total y directo del 3er indice son iguales
@@ -749,13 +805,11 @@ if plot_mapas:
                                                               True, i)
 
                             name_fig = (
-                                f"SP{i.upper()}_{v_name}_Mod{modelo}_Efecto_"
-                                f"{modo}_{actor}_{per}")
+                                f"SP_{i.upper()}_{v_name}_Mod{modelo}_{per}")
 
                             titulo = (
                                 f"Strenght of Indirect pathway of "
-                                f"{i.upper()} - {v_name}_Mod{modelo} Efecto "
-                                f"{modo} {actor} - {per}")
+                                f"{i.upper()} - {v_name}_Mod{modelo} - {per}")
 
                             Plot(strenght_pathway, v_cmap, mapa, save, dpi,
                                  titulo, name_fig, out_dir)
