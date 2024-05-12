@@ -35,12 +35,32 @@ def get_cbars(VarName):
     cbar_t.set_under('#014A9B')
     cbar_t.set_bad(color='white')
 
+    cbar_snr = colors.ListedColormap(['#070B4F', '#2E07AC', '#387AE4',
+                                      '#6FFE9B', '#FFFFFF', '#FFFFFF',
+                                      '#FFFFFF', '#FEB77E', '#CA3E72',
+                                      '#782281', '#251255'])
+    cbar_snr.set_over('#251255')
+    cbar_snr.set_under('#070B4F')
+    cbar_snr.set_bad(color='white')
+
+    cbar_snr2 = colors.ListedColormap(['#070B4F', '#2E07AC', '#387AE4',
+                                      '#4DC1C9', '#6FFE9B', '#FFFFFF',
+                                      '#FEB77E', '#F6777A', '#CA3E72',
+                                      '#782281', '#251255'])
+    cbar_snr2.set_over('#251255')
+    cbar_snr2.set_under('#070B4F')
+    cbar_snr2.set_bad(color='white')
+
     if 'hgt' in VarName.lower():
         return cbar_hgt
     elif VarName.lower() == 'pp':
         return cbar_pp
     elif VarName.lower() == 't':
         return cbar_t
+    elif VarName.lower() == 'snr':
+        return cbar_snr
+    elif VarName.lower() == 'snr2':
+        return cbar_snr2
 
 # scales #######################################################################
 def get_scales(VarName):
