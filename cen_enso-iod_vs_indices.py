@@ -12,8 +12,8 @@ En caso de querer analizar otros deben agregarse a mano en esta funcion.
 save = True
 use_strato_index = True
 plot_mapas = True
-plot_corr_scatter = True
-create_df = True
+plot_corr_scatter = False
+create_df = False
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 
 # Caja de PP
@@ -748,7 +748,7 @@ if plot_mapas:
 
     hgt_cmap = get_cbars('hgt200')
     pp_cmap = get_cbars('pp')
-
+    sp_cmap = get_cbars('snr2')
 
     actors_target = {'A_SIMPLE':['dmi', 'n34'],
                      'A1': ['dmi', 'n34', 'sam'],
@@ -811,8 +811,26 @@ if plot_mapas:
                                 f"Strenght of Indirect pathway of "
                                 f"{i.upper()} - {v_name}_Mod{modelo} - {per}")
 
-                            Plot(strenght_pathway, v_cmap, mapa, save, dpi,
+                            Plot(strenght_pathway, sp_cmap, mapa, save, dpi,
                                  titulo, name_fig, out_dir)
+
+                    if modelo == 'A_SIMPLE' and modo== 'directo' \
+                            and actor == 'dmi':
+
+                        aux_actor_list = {'dmi':dmi.values}
+                        aux_actor_list['n34'] = n34.values
+                        strenght_pathway = efecto * regre(aux_actor_list,
+                                                           True, 'n34')
+                        name_fig = (
+                            f"SP_n34-dmi_{v_name}_Mod{modelo}_{per}")
+
+                        titulo = (
+                            f"Strenght of Indirect pathway of "
+                            f"N34-DMI - {v_name}_Mod{modelo} - {per}")
+
+                        Plot(strenght_pathway, sp_cmap, mapa, save, dpi,
+                             titulo, name_fig, out_dir)
+
 print('-----------------------------------------------------------------------')
 print('done')
 print('out_dir: /pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/')
