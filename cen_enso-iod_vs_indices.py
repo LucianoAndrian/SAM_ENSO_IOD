@@ -126,14 +126,18 @@ def CN_Effect(actor_list, set_series_directo, set_series_dmi_total,
               set_series_dmi_directo=None,
               set_series_n34_directo=None,
               set_series_3index_directo=None,
-              name = 'cn_result'):
+              name = 'cn_result', variables={}):
 
     result_df = pd.DataFrame(columns=['v_efecto', 'b'])
 
-    for x, x_name in zip([pp_caja, amd200, amd750],
-                         ['pp_serie', 'amd200', 'adm750']):
+    for x_name in variables.keys():
+        x = variables[x_name]
 
-        pre_serie = {'c': x['var'].values}
+        try:
+            pre_serie = {'c': x['var'].values}
+        except:
+            pre_serie = {'c': x.values}
+
         series_directo = AUX_select_actors(actor_list, set_series_directo,
                                            pre_serie)
 
@@ -664,6 +668,7 @@ if plot_corr_scatter:
 ################################################################################
 # CEN ------------------------------------------------------------------------ #
 if create_df:
+    variables = {'pp_serie':pp_caja, 'amd200':amd200, 'adm750':amd750}
     print('###################################################################')
     print('Modelo A_SIMPLE: N34->IOD (todos a C)')
     actor_list = {'dmi': dmi.values, 'n34': n34.values}
@@ -674,7 +679,31 @@ if create_df:
               set_series_n34_directo=None,
               set_series_dmi_directo=None,
               set_series_3index_directo=None,
-              name=f"A_SIMPLE_{per}")
+              name=f"A_SIMPLE_{per}",
+              variables=variables)
+
+    variables = {'ssam': ssam, 'asam': asam}
+    actor_list = {'dmi': dmi.values, 'n34': n34.values}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34'],
+              set_series_dmi_total=['dmi', 'n34'],
+              set_series_n34_total=['n34'],
+              set_series_3index_total=None,
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_3index_directo=None,
+              name=f"A_SIMPLE_vs_sams{per}",
+              variables=variables)
+
+    variables = {'strato': strato_indice}
+    CN_Effect(actor_list, set_series_directo=['dmi', 'n34'],
+              set_series_dmi_total=['dmi', 'n34'],
+              set_series_n34_total=['n34'],
+              set_series_3index_total=None,
+              set_series_n34_directo=None,
+              set_series_dmi_directo=None,
+              set_series_3index_directo=None,
+              name=f"A_SIMPLE_vs_STRATO_{per}",
+              variables=variables)
 
     print('Modelo A: N34->IOD, N34->SAM (todos a C)')
     print('A1 IOD->SAM -------------------------------------------------------')
@@ -686,7 +715,8 @@ if create_df:
               set_series_n34_directo=None,
               set_series_dmi_directo=None,
               set_series_3index_directo=None,
-              name=f"A1_{per}")
+              name=f"A1_{per}",
+              variables=variables)
 
     print('Modelo A con A-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM (todos a C)')
     actor_list = {'dmi': dmi.values, 'n34': n34.values, 'asam': asam.values}
@@ -697,7 +727,8 @@ if create_df:
               set_series_n34_directo=None,
               set_series_dmi_directo=None,
               set_series_3index_directo=None,
-              name=f"A1wA-SAM_{per}")
+              name=f"A1wA-SAM_{per}",
+              variables=variables)
 
     print('Modelo A con S-SAM: N34->IOD, N34->S-SAM, IOD->S-SAM (todos a C)')
     actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values}
@@ -708,7 +739,8 @@ if create_df:
               set_series_n34_directo=None,
               set_series_dmi_directo=None,
               set_series_3index_directo=None,
-              name=f"A1wS-SAM_{per}")
+              name=f"A1wS-SAM_{per}",
+              variables=variables)
 
     print('Modelo A con A-SAM y S-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM y'
           ' S-SAM independdiente (todos a C)')
@@ -721,7 +753,8 @@ if create_df:
               set_series_n34_directo=None,
               set_series_dmi_directo=None,
               set_series_3index_directo=None,
-              name=f"A1wASAM_SSAM_{per}")
+              name=f"A1wASAM_SSAM_{per}",
+              variables=variables)
 
     if use_strato_index:
         print('Modelo A con Strato index: N34->IOD, N34->strato_index, '
@@ -735,7 +768,19 @@ if create_df:
                   set_series_n34_directo=None,
                   set_series_dmi_directo=None,
                   set_series_3index_directo=None,
-                  name=f"A1STRATO_{per}")
+                  name=f"A1STRATO_{per}",
+                  variables=variables)
+
+        variables = {'ssam': ssam, 'asam': asam}
+        CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'strato'],
+                  set_series_dmi_total=['dmi', 'n34'],
+                  set_series_n34_total=['n34'],
+                  set_series_3index_total=['dmi', 'n34', 'strato'],
+                  set_series_n34_directo=None,
+                  set_series_dmi_directo=None,
+                  set_series_3index_directo=None,
+                  name=f"A1STRATO_vs_sam_{per}",
+                  variables=variables)
 
 # ---------------------------------------------------------------------------- #
 if plot_mapas:
