@@ -11,7 +11,7 @@ En caso de querer analizar otros deben agregarse a mano en esta funcion.
 # Seteos generales ----------------------------------------------------------- #
 save = True
 use_strato_index = True
-plot_mapas = True
+plot_mapas = False
 plot_corr_scatter = False
 create_df = False
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
@@ -705,42 +705,42 @@ if create_df:
               name=f"A_SIMPLE_vs_STRATO_{per}",
               variables=variables)
 
-    print('Modelo A: N34->IOD, N34->SAM (todos a C)')
-    print('A1 IOD->SAM -------------------------------------------------------')
-    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'sam': sam.values}
-    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'sam'],
-              set_series_dmi_total=['dmi', 'n34'],
-              set_series_n34_total=['n34'],
-              set_series_3index_total=['dmi', 'n34', 'sam'],
-              set_series_n34_directo=None,
-              set_series_dmi_directo=None,
-              set_series_3index_directo=None,
-              name=f"A1_{per}",
-              variables=variables)
+    # print('Modelo A: N34->IOD, N34->SAM (todos a C)')
+    # print('A1 IOD->SAM -------------------------------------------------------')
+    # actor_list = {'dmi': dmi.values, 'n34': n34.values, 'sam': sam.values}
+    # CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'sam'],
+    #           set_series_dmi_total=['dmi', 'n34'],
+    #           set_series_n34_total=['n34'],
+    #           set_series_3index_total=['dmi', 'n34', 'sam'],
+    #           set_series_n34_directo=None,
+    #           set_series_dmi_directo=None,
+    #           set_series_3index_directo=None,
+    #           name=f"A1_{per}",
+    #           variables=variables)
 
-    print('Modelo A con A-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM (todos a C)')
-    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'asam': asam.values}
-    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'asam'],
-              set_series_dmi_total=['dmi', 'n34'],
-              set_series_n34_total=['n34'],
-              set_series_3index_total=['dmi', 'n34', 'asam'],
-              set_series_n34_directo=None,
-              set_series_dmi_directo=None,
-              set_series_3index_directo=None,
-              name=f"A1wA-SAM_{per}",
-              variables=variables)
+    # print('Modelo A con A-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM (todos a C)')
+    # actor_list = {'dmi': dmi.values, 'n34': n34.values, 'asam': asam.values}
+    # CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'asam'],
+    #           set_series_dmi_total=['dmi', 'n34'],
+    #           set_series_n34_total=['n34'],
+    #           set_series_3index_total=['dmi', 'n34', 'asam'],
+    #           set_series_n34_directo=None,
+    #           set_series_dmi_directo=None,
+    #           set_series_3index_directo=None,
+    #           name=f"A1wA-SAM_{per}",
+    #           variables=variables)
 
-    print('Modelo A con S-SAM: N34->IOD, N34->S-SAM, IOD->S-SAM (todos a C)')
-    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values}
-    CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'ssam'],
-              set_series_dmi_total=['dmi', 'n34'],
-              set_series_n34_total=['n34'],
-              set_series_3index_total=['dmi', 'n34', 'ssam'],
-              set_series_n34_directo=None,
-              set_series_dmi_directo=None,
-              set_series_3index_directo=None,
-              name=f"A1wS-SAM_{per}",
-              variables=variables)
+    # print('Modelo A con S-SAM: N34->IOD, N34->S-SAM, IOD->S-SAM (todos a C)')
+    # actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values}
+    # CN_Effect(actor_list, set_series_directo=['dmi', 'n34', 'ssam'],
+    #           set_series_dmi_total=['dmi', 'n34'],
+    #           set_series_n34_total=['n34'],
+    #           set_series_3index_total=['dmi', 'n34', 'ssam'],
+    #           set_series_n34_directo=None,
+    #           set_series_dmi_directo=None,
+    #           set_series_3index_directo=None,
+    #           name=f"A1wS-SAM_{per}",
+    #           variables=variables)
 
     print('Modelo A con A-SAM y S-SAM: N34->IOD, N34->A-SAM, IOD->A-SAM y'
           ' S-SAM independdiente (todos a C)')
@@ -880,4 +880,33 @@ print('-----------------------------------------------------------------------')
 print('done')
 print('out_dir: /pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/')
 print('-----------------------------------------------------------------------')
+################################################################################
+# Testeos rapidos
+variables_full = {'ssam': ssam, 'dmi':dmi, 'n34':n34, 'asam':asam,
+                  'strato':strato_indice['var'].values}
+
+variables = {'ssam': ssam, 'dmi':dmi, 'n34':n34}
+print(regre(variables, True, 'dmi'))
+print(regre(variables_full, True, 'dmi'))
+
+variables = {'ssam': ssam, 'n34':n34}
+print(regre(variables, True, 'n34'))
+variables_test = {'ssam': ssam, 'n34':n34, 'asam':asam}
+print(regre(variables_test, True, 'n34'))
+print(regre(variables_full, True, 'n34'))
+
+variables = {'ssam': ssam, 'dmi':dmi, 'n34':n34,
+             'strato':strato_indice['var'].values}
+print(regre(variables, True, 'strato'))
+print(regre(variables_full, True, 'strato'))
+
+print(regre(variables_full, True, 'asam'))
+
+
+variables = {'asam': asam, 'dmi':dmi, 'n34':n34,
+             'strato':strato_indice['var'].values}
+print(regre(variables, True, 'n34'))
+
+variables = {'asam': asam, 'n34':n34}
+print(regre(variables, True, 'n34'))
 ################################################################################
