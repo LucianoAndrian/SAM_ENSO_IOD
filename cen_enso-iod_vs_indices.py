@@ -881,6 +881,23 @@ print('done')
 print('out_dir: /pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/')
 print('-----------------------------------------------------------------------')
 ################################################################################
+# Test VIF
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+print('Variance Inflation Factor (VIF)')
+df = pd.DataFrame({
+    #'strato': strato,
+    'n34': n34,
+    'dmi': dmi,
+})
+X = sm.add_constant(df)
+vif = pd.DataFrame()
+vif['Variable'] = X.columns
+vif['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+print(vif)
+if (vif['VIF'].values>5).mean() == 0:
+    print('No existe multicolinealidad')
+
 # Testeos rapidos
 variables_full = {'ssam': ssam, 'dmi':dmi, 'n34':n34, 'asam':asam,
                   'strato':strato_indice['var'].values}
