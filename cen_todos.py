@@ -315,7 +315,8 @@ if use_strato_index:
 
 ################################################################################
 actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
-              'asam': asam.values, 'strato':strato_indice['var'].values}
+              'asam': asam.values, 'strato':strato_indice['var'].values,
+              'sam' : sam.values}
 
 # cen DMI, N34, STRATO, ASAM --> SSAM ---------------------------------------- #
 CN_Effect_2(actor_list,
@@ -344,3 +345,40 @@ CN_Effect_2(actor_list,
             set_series_totales = {'n34':['n34']},
             variables = {'dmi':dmi})
 ################################################################################
+
+CN_Effect_2(actor_list,
+            set_series_directo = ['n34', 'dmi', 'strato', 'ssam'],
+            set_series_totales = {'ssam':['dmi', 'n34', 'strato', 'ssam']},
+            variables = {'sam':sam})
+
+
+
+
+dmi_or = dmi_or.sel(time=dmi_or.time.dt.year.isin(strato_indice.time.values))
+n34_or = n34_or.sel(time=n34_or.time.dt.year.isin(strato_indice.time.values))
+asam_or = asam_or.sel(time=asam_or.time.dt.year.isin(strato_indice.time.values))
+ssam_or = ssam_or.sel(time=ssam_or.time.dt.year.isin(strato_indice.time.values))
+
+dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([9]))
+n34 = n34_or.sel(time=n34_or.time.dt.month.isin([9]))
+asam = asam_or.sel(time=asam_or.time.dt.month.isin([10]))
+ssam = ssam_or.sel(time=ssam_or.time.dt.month.isin([10]))
+ssam0 = ssam_or.sel(time=ssam_or.time.dt.month.isin([7]))
+# pp = SameDateAs(pp_or, hgt200_anom)
+# pp_caja = SameDateAs(pp_caja_or, hgt200_anom)
+dmi = dmi / dmi.std()
+n34 = n34 / n34.std()
+#sam = sam / sam.std()
+asam = asam / asam.std()
+ssam = ssam / ssam.std()
+ssam0 = ssam0 / ssam0.std()
+
+# cen N34 --> DMI  ----------------------------------------------------------- #
+################################################################################
+actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
+              'asam': asam.values, 'strato':strato_indice['var'].values,
+              'sam': sam.values}
+CN_Effect_2(actor_list,
+            set_series_directo = ['ssam'],
+            set_series_totales = {'ssam0':['ssam0']},
+            variables = {'dmi':dmi})
