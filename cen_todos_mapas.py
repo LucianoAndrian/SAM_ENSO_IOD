@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # Seteos generales ----------------------------------------------------------- #
 save = True
 use_strato_index = True
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect2/'
 
 # Caja de PP
 pp_lons = [295, 310]
@@ -123,7 +123,6 @@ def AUX_select_actors(actor_list, set_series, serie_to_set):
     for key in set_series:
         serie_to_set2[key] = actor_list[key]
     return serie_to_set2
-
 
 def CN_Effect_2(actor_list, set_series_directo, set_series_totales,
                 variables, set_series_directo_particulares = None):
@@ -260,6 +259,57 @@ def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir):
         plt.show()
     plt.show()
 
+def Compute_CEN_and_Plot(variables, name_variables, maps,
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=False, factores_sp=None, aux_name=''):
+    if save:
+        dpi = 200
+    else:
+        dpi = 70
+
+    for v, v_name, mapa in zip(variables,
+                               name_variables,
+                               maps):
+        v_cmap = get_cbars(v_name)
+
+        for a in actors_and_sets_total:
+            sets_total = actors_and_sets_total[a]
+            aux = compute_regression(v['var'], sets_total, coef=a)
+
+            titulo = f"{a} efecto total  {aux_name}"
+            name_fig = f"{a}_efecto_TOTAL_{aux_name}"
+
+            Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+
+            try:
+                sets_direc = actors_and_sets_direc[a]
+                aux = compute_regression(v['var'], sets_direc, coef=a)
+
+                titulo = f"{a} efecto directo  {aux_name}"
+                name_fig = f"{a}_efecto_DIRECTO_{aux_name}"
+
+                Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+
+                if factores_sp is not None:
+                    sp_cmap = get_cbars('snr2')
+
+                    try:
+                        factores_sp_a = factores_sp[a]
+
+                        for f_sp in factores_sp_a.keys():
+                            aux_f_sp = factores_sp_a[f_sp]
+
+                            titulo = f"{a} SP Indirecto via {f_sp} {aux_name}"
+                            name_fig = f"{a}_SP_indirecto_{f_sp}_{aux_name}"
+
+                            Plot(aux_f_sp * aux, sp_cmap, mapa, save, dpi,
+                                 titulo, name_fig, out_dir)
+                    except:
+                        pass
+
+            except:
+                print('Sin efecto directo')
+
 ################################################################################
 """
 HGT y PP no se usan aún
@@ -378,11 +428,9 @@ all_3index = {'sam':sam.values, 'asam':asam.values, 'ssam':ssam.values,
 if use_strato_index:
     all_3index['strato'] = strato_indice['var'].values
 
-
 ################################################################################
 def pre_regre_ufunc(x, sets, coef):
     """
-
     :param x: target, punto de grilla
     :param sets: str de actores separados por : eg. sets = 'dmi:n34'
     :param coef: 'str' coef del que se quiere beta. eg. 'dmi'
@@ -403,7 +451,6 @@ def pre_regre_ufunc(x, sets, coef):
     return efecto
 
 def compute_regression(x, sets, coef):
-
     coef_dataset = xr.apply_ufunc(
         pre_regre_ufunc, x, sets,  coef,
         input_core_dims=[['time'],[], []],
@@ -412,6 +459,9 @@ def compute_regression(x, sets, coef):
 
 hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
 
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# Mod P1
 actors_and_sets_total = {'dmi':'dmi:n34',
                          'n34': 'n34',
                          'strato':'dmi:n34:strato',
@@ -424,22 +474,51 @@ actors_and_sets_direc = {'dmi':'dmi:n34:strato:asam:ssam',
                          'asam':'dmi:n34:strato:asam:ssam:sam',
                          'ssam':'dmi:n34:strato:asam:ssam:sam'}
 
-for v, v_name, mapa in zip([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa']):
-    v_cmap = get_cbars(v_name)
-    for a in actors_and_sets_total:
+factores_sp = {'strato' : {'dmi-strato':0.29,
+                           'n34-strato':-0.14,
+                           'n34-dmi-strato':0.635*-0.14},
+               'asam' : {'dmi-asam':-0.216, 'dmi-strato-asam':0.29*-0.228,
+                        'n34-dmi-asam':0.635*-0.216, 'n34-asam':-0.439},
+               'ssam' : {'dmi-strato-ssam': 0.29 * -0.565,
+                        'n34-dmi-strato-ssam': 0.635*0.29*-0.565},
+               'sam' : {'n34-asam-sam':-0.439*0.239,
+                        'dmi-strato-ssam-sam':0.29*-0.565*0.85,
+                        'n34-dmi-strato-ssam-sam':0.29*-0.565*0.85*0.635}}
 
-        sets_total = actors_and_sets_total[a]
-        aux = compute_regression(v['var'], sets_total, coef=a)
+Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                     actors_and_sets_total, actors_and_sets_direc, save=save,
+                     factores_sp=factores_sp, aux_name='ModP1')
 
-        titulo = f"{a} efecto total"
-        name_fig = f"{a}_efecto_TOTAL"
+# ---------------------------------------------------------------------------- #
+# Mod P2
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'strato':'dmi:n34:strato',
+                         'asam':'dmi:n34:strato:ssam:asam',
+                         'ssam':'dmi:n34:strato:ssam',
+                         'sam':'dmi:n34:strato:ssam:asam:sam'}
 
-        Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+actors_and_sets_direc = {'dmi':'dmi:n34:strato:asam:ssam',
+                         'n34':'dmi:n34:strato:asam:ssam',
+                         'strato':'dmi:n34:strato:asam:ssam',
+                         'asam':'dmi:n34:strato:asam:ssam:sam',
+                         'ssam':'dmi:n34:strato:asam:ssam:sam',
+                         'sam':'dmi:n34:strato:ssam:asam:sam'}
 
-        sets_direc = actors_and_sets_direc[a]
-        aux = compute_regression(v['var'], sets_direc, coef=a)
+factores_sp = {'strato' : {'dmi-strato':0.29,
+                           'n34-strato':-0.14,
+                           'n34-dmi-strato':0.635*-0.14},
+               'asam' : {'dmi-asam':-0.216, 'dmi-strato-asam':0.29*-0.228,
+                        'n34-dmi-asam':0.635*-0.216, 'n34-asam':-0.439},
+               'ssam' : {'dmi-strato-ssam': 0.29 * -0.565,
+                        'n34-dmi-strato-ssam': 0.635*0.29*-0.565},
+               'sam' : {'n34-asam-sam':-0.439*0.239,
+                        'dmi-strato-ssam-sam':0.29*-0.565*0.85,
+                        'n34-dmi-strato-ssam-sam':0.29*-0.565*0.85*0.635}}
 
-        titulo = f"{a} efecto directo"
-        name_fig = f"{a}_efecto_DIRECTO"
+Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                     actors_and_sets_total, actors_and_sets_direc, save=save,
+                     factores_sp=factores_sp, aux_name='ModP2')
 
-        Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
