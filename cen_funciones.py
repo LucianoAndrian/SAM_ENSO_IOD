@@ -66,6 +66,37 @@ def regre(series, intercept, coef=0, filter_significance=True, alpha=1):
     else:
         return results
 
+
+def regre_forplot(series, intercept, coef=0, alpha=1):
+    #, filter_significance=True, alpha=1):
+    df = pd.DataFrame(series)
+    if intercept:
+        X = sm.add_constant(df[df.columns[1:]])
+    else:
+        X = df[df.columns[1:]]
+    y = df[df.columns[0]]
+
+    model = sm.OLS(y, X).fit()
+    coefs_results = model.params
+    p_values = model.pvalues
+    # t_values = model.tvalues
+
+    results_sig = {}
+    results_all = {}
+    # p_val = {}
+    # t_val = {}
+    for col in df.columns[1:]:
+        if p_values[col] <= alpha:
+            results_sig[col] = coefs_results[col]
+        else:
+            results_sig[col] = None
+
+        results_all[col] = coefs_results[col]
+
+    if isinstance(coef, str):
+        return results_sig.get(coef, 0), results_all.get(coef, 0)
+    else:
+        return results_sig, results_all
 #
 #
 # from scipy.stats import t as t_dist
@@ -193,7 +224,8 @@ def CN_Effect_2(actor_list, set_series_directo, set_series_totales,
 
 
 
-def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir):
+def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir,
+         step=1, data_ctn=None):
 
     if mapa.lower() == 'sa':
         fig_size = (5, 6)
@@ -209,34 +241,56 @@ def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir):
         yticks = np.arange(-80, 20, 10)
         contour = True
 
+    levels = [-1, -.8, -.6, -.4, -.2, -.1, 0, .1, .2, .4, .6, .8, 1]
+
     fig = plt.figure(figsize=fig_size, dpi=dpi)
     ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
     crs_latlon = ccrs.PlateCarree()
 
     ax.set_extent(extent, crs=crs_latlon)
 
-    im = ax.contourf(data.lon, data.lat, data,
-                     levels=[-1, -.8, -.6, -.4, -.2, -.1, 0,
-                             .1, .2, .4, .6, .8, 1],
+    if data_ctn is not None:
+        levels_ctn = levels.copy()
+        try:
+            if isinstance(levels_ctn, np.ndarray):
+                levels_ctn = levels_ctn[levels_ctn != 0]
+            else:
+                levels_ctn.remove(0)
+        except:
+            pass
+
+
+        ax.contour(data.lon.values[::step], data.lat.values[::step],
+                   data_ctn[::step, ::step], linewidths=0.8,
+                   levels=levels_ctn, transform=crs_latlon,
+                   colors='black')
+
+    im = ax.contourf(data.lon.values[::step], data.lat.values[::step],
+                     data[::step, ::step],
+                     levels=levels,
                      transform=crs_latlon, cmap=cmap, extend='both')
 
-    if contour:
-        values = ax.contour(data.lon, data.lat, data,
-                            levels=[-1, -.8, -.6, -.4, -.2, -.1,
-                                    .1, .2, .4, .6, .8, 1],
-                            transform=crs_latlon, colors='k', linewidths=1)
-
     cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
+
     cb.ax.tick_params(labelsize=8)
-    ax.add_feature(cartopy.feature.LAND, facecolor='#d9d9d9')
-    ax.add_feature(cartopy.feature.COASTLINE)
-    ax.gridlines(crs=crs_latlon, linewidth=0.3, linestyle='-')
+
+    ax.add_feature(cartopy.feature.LAND, facecolor='white', linewidth=0.5)
+    # ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.2)
+    ax.coastlines(color='k', linestyle='-', alpha=1, linewidth=0.2,
+                  resolution='110m')
+    gl = ax.gridlines(draw_labels=False, linewidth=0.3, linestyle='-',
+                      zorder=20)
+    gl.ylocator = plt.MultipleLocator(20)
     lon_formatter = LongitudeFormatter(zero_direction_label=True)
     lat_formatter = LatitudeFormatter()
     ax.xaxis.set_major_formatter(lon_formatter)
     ax.yaxis.set_major_formatter(lat_formatter)
+
+    ax.set_extent(extent, crs=crs_latlon)
     ax.set_xticks(xticks, crs=crs_latlon)
     ax.set_yticks(yticks, crs=crs_latlon)
+
+    ax.tick_params(width=0.5, pad=1)
     ax.tick_params(labelsize=7)
     plt.title(titulo, fontsize=10)
     plt.tight_layout()

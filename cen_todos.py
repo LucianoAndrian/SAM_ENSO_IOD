@@ -31,7 +31,7 @@ warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2
-from cen_funciones import AUX_select_actors, CN_Effect_2
+from cen_funciones import CN_Effect_2
 # import matplotlib.pyplot as plt
 # import cartopy.feature
 # from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -203,166 +203,168 @@ actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
               'asam': asam.values, 'strato':strato_indice['var'].values,
               'sam' : sam.values}
 
-
 # CEN DMI, N34 Strato -------------------------------------------------------- #
-CN_Effect_2(actor_list,
-            set_series_directo = ['dmi', 'n34'],
-            set_series_totales = {'dmi':['dmi', 'n34'],
-                                  'n34':['n34']},
-            variables = {'strato':strato_indice['var']}, alpha=0.15, sig=True)
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34'],
+                set_series_totales={'dmi': ['dmi', 'n34'],
+                                    'n34': ['n34']},
+                variables={'strato': strato_indice['var']}, alpha=i,
+                sig=True)
+
 # CEN DMI, N34 SSAM ---------------------------------------------------------- #
-CN_Effect_2(actor_list,
-            set_series_directo = ['dmi', 'n34'],
-            set_series_totales = {'dmi':['dmi', 'n34'],
-                                  'n34':['n34']},
-            variables = {'ssam':ssam}, alpha=0.05, sig=True)
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34'],
+                set_series_totales={'dmi': ['dmi', 'n34'],
+                                    'n34': ['n34']},
+                variables={'ssam': ssam}, alpha=i, sig=True)
 
 # CEN DMI, N34 SSAM STRATO  -------------------------------------------------- #
-CN_Effect_2(actor_list,
-            set_series_directo = ['dmi', 'n34', 'strato'],
-            set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-                                  'strato': ['dmi','n34', 'strato']},
-            variables = {'ssam':ssam}, sig=True, alpha=0.05)
-
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34', 'strato'],
+                set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34'],
+                                    'strato': ['dmi', 'n34', 'strato']},
+                variables={'ssam': ssam}, sig=True, alpha=i)
 
 # CEN DMI, N34 asam ---------------------------------------------------------- #
-CN_Effect_2(actor_list,
-            set_series_directo = ['dmi', 'n34'],
-            set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34']},
-            variables = {'asam':asam}, sig=True, alpha=0.05)
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34'],
+                set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34']},
+                variables={'asam': asam}, sig=True, alpha=i)
 
 # CEN DMI, N34 asam STRATO  -------------------------------------------------- #
-CN_Effect_2(actor_list,
-            set_series_directo = ['dmi', 'n34', 'strato'],
-            set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-                                  'strato': ['dmi','n34', 'strato']},
-            variables = {'asam':asam}, sig=True, alpha=0.05)
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34', 'strato'],
+                set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34'],
+                                    'strato': ['dmi', 'n34', 'strato']},
+                variables={'asam': asam}, sig=True, alpha=i)
+
+################################################################################
+# lags
+hgt200_anom = hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.month.isin([10]))
+hgt750_anom = SameDateAs(hgt750_anom_or, hgt200_anom)
+# DMI y N34 en ASO
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
+import warnings
+warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
+from shapely.errors import ShapelyDeprecationWarning
+warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+
+#for l in [10,9,8,7,6,5,4,3]:
+dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([10]))
+dmi = dmi.sel(time=dmi.time.dt.year.isin(hgt200_anom.time.dt.year))
+
+    # years_to_remove = [2019, 1997, 1994, 2015, 2006, 2009, 2010, 2008, 1996,
+    #                    2016, 1998, 2005, 2001,1982]
+    # aux_dmi = dmi.sel(time=~dmi['time.year'].isin(years_to_remove))
+    # aux_asam = asam.sel(time=~asam['time.year'].isin(years_to_remove))
+    #
+    # fig, ax = plt.subplots(dpi=dpi)
+    # # todos
+    # ax.scatter(x=aux_asam, y=aux_dmi, marker='.',
+    #            s=20, edgecolor='k', color='dimgray', alpha=1)
+    # for i, txt in enumerate(aux_dmi.time.dt.year.values):
+    #     ax.annotate(txt, (aux_asam.values[i], aux_dmi.values[i]))
+    # plt.title(f"lag {l}: {round(pearsonr(aux_dmi, aux_asam)[0],3)} "
+    #           f"{round(pearsonr(aux_dmi, aux_asam)[1],3)}")
+    # plt.show()
 
 
+n34 = SameDateAs(n34_or, dmi)
+sam = SameDateAs(sam_or, hgt200_anom)
+asam = SameDateAs(asam_or, hgt200_anom)
+ssam = SameDateAs(ssam_or, hgt200_anom)
 
+pp = SameDateAs(pp_or, hgt200_anom)
+pp_caja = SameDateAs(pp_caja_or, hgt200_anom)
+dmi = dmi / dmi.std()
+n34 = n34 / n34.std()
+sam = sam / sam.std()
+asam = asam / asam.std()
+ssam = ssam / ssam.std()
+hgt200_anom = hgt200_anom / hgt200_anom.std()
+hgt750_anom = hgt750_anom / hgt750_anom.std()
+pp_caja = pp_caja / pp_caja.std()
+pp = pp / pp.std()
 
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-#
-# # cen DMI, N34, STRATO --> ASAM -x- SSAM ------------------------------------- #
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'asam', 'strato'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato'],
-#                                   'asam':['dmi', 'n34', 'strato', 'asam']},
-#             variables = {'ssam':ssam}, sig=True, alpha=0.05)
-#
-#
-# # cen DMI, N34, STRATO, SSAM --> ASAM ---------------------------------------- #
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'ssam', 'strato'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato'],
-#                                   'ssam':['dmi', 'n34', 'strato', 'ssam']},
-#             variables = {'asam':asam}, sig=False, alpha=0.05)
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'ssam', 'strato'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato'],
-#                                   'ssam':['dmi', 'n34', 'strato', 'ssam']},
-#             variables = {'asam':asam}, sig=True, alpha=0.10)
-#
-#
-#
-# # cen DMI, N34, STRATO, SSAM ASAM --> SAM ------------------------------------ #
-# # con ASAM --> SSAM
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'ssam', 'strato', 'asam'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato'],
-#                                   'asam':['dmi', 'n34', 'strato', 'asam'],
-#                                   'ssam':['asam', 'ssam']},
-#             set_series_directo_particulares={'dmi':['asam', 'ssam', 'dmi'],
-#                                              'n34':['asam', 'ssam', 'n34'],
-#                                              'strato':['asam', 'ssam', 'strato'],
-#                                              'asam': ['dmi', 'n34', 'ssam',
-#                                                       'strato', 'asam'],
-#                                              'ssam':['ssam','asam']},
-#             variables = {'sam':sam}, sig=True, alpha=0.05)
-#
-#
-# # con SSAM --> ASAM
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'ssam', 'strato', 'asam'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato'],
-#                                   'ssam':['dmi', 'n34', 'strato', 'ssam'],
-#                                   'asam':['asam', 'ssam']},
-#             set_series_directo_particulares={'dmi':['asam', 'ssam', 'dmi'],
-#                                              'n34':['asam', 'ssam', 'n34'],
-#                                              'strato':['asam', 'ssam', 'strato'],
-#                                              'ssam': ['dmi', 'n34', 'ssam',
-#                                                       'strato', 'asam'],
-#                                              'asam':['ssam','asam']},
-#             variables = {'sam':sam}, sig=True, alpha=0.05)
-#
-#
-# ######################
-# # test
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'strato'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato']},
-#             variables = {'ssam':ssam}, sig=True, alpha=0.05)
-#############
-#############
-#############
-# # cen DMI, N34, STRATO --> ASAM -------------------------------------------- #
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34', 'strato'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34'],
-#                                   'strato':['dmi', 'n34', 'strato']},
-#             variables = {'asam':asam})
-#
-# # cen DMI, N34 --> STRATO -------------------------------------------------- #
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['dmi', 'n34'],
-#             set_series_totales = {'dmi':['dmi', 'n34'], 'n34':['n34']},
-#             variables = {'strato':strato_indice['var']})
-#
-# # cen N34 --> DMI  --------------------------------------------------------- #
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['n34'],
-#             set_series_totales = {'n34':['n34']},
-#             variables = {'dmi':dmi})
-# ##############################################################################
-#
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['n34', 'dmi', 'strato', 'ssam'],
-#             set_series_totales = {'ssam':['dmi', 'n34', 'strato', 'ssam']},
-#             variables = {'sam':sam})
-#
-#
-# dmi_or = dmi_or.sel(time=dmi_or.time.dt.year.isin(strato_indice.time.values))
-# n34_or = n34_or.sel(time=n34_or.time.dt.year.isin(strato_indice.time.values))
-# asam_or = asam_or.sel(time=asam_or.time.dt.year.isin(strato_indice.time.values))
-# ssam_or = ssam_or.sel(time=ssam_or.time.dt.year.isin(strato_indice.time.values))
-#
-# dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([9]))
-# n34 = n34_or.sel(time=n34_or.time.dt.month.isin([9]))
-# asam = asam_or.sel(time=asam_or.time.dt.month.isin([10]))
-# ssam = ssam_or.sel(time=ssam_or.time.dt.month.isin([10]))
-# ssam0 = ssam_or.sel(time=ssam_or.time.dt.month.isin([7]))
-# # pp = SameDateAs(pp_or, hgt200_anom)
-# # pp_caja = SameDateAs(pp_caja_or, hgt200_anom)
-# dmi = dmi / dmi.std()
-# n34 = n34 / n34.std()
-# #sam = sam / sam.std()
-# asam = asam / asam.std()
-# ssam = ssam / ssam.std()
-# ssam0 = ssam0 / ssam0.std()
-#
-# # cen N34 --> DMI  ----------------------------------------------------------- #
-# ################################################################################
-# actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
-#               'asam': asam.values, 'strato':strato_indice['var'].values,
-#               'sam': sam.values}
-# CN_Effect_2(actor_list,
-#             set_series_directo = ['ssam'],
-#             set_series_totales = {'ssam0':['ssam0']},
-#             variables = {'dmi':dmi})
+amd200 = (hgt200_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
+       mean(['lon', 'lat']))
+amd200 = amd200 / amd200.std()
+
+amd750 = (hgt750_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
+       mean(['lon', 'lat']))
+amd750 = amd750 / amd750.std()
+
+all_3index = {'sam':sam.values, 'asam':asam.values, 'ssam':ssam.values,
+              'amd200':amd200['var'].values, 'amd750':amd750['var'].values}
+if use_strato_index:
+    all_3index['strato'] = strato_indice['var'].values
+
+################################################################################
+actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
+              'asam': asam.values, 'strato':strato_indice['var'].values,
+              'sam' : sam.values}
+
+# CEN DMI, N34 --------------------------------------------------------------- #
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi'],
+                set_series_totales={'dmi': ['dmi']},
+                variables={'n34': n34}, alpha=i,
+                sig=True)
+
+# CEN DMI, N34 Strato -------------------------------------------------------- #
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34'],
+                set_series_totales={'dmi': ['dmi', 'n34'],
+                                    'n34': ['n34']},
+                variables={'strato': strato_indice['var']}, alpha=i,
+                sig=True)
+
+# CEN DMI, N34 SSAM ---------------------------------------------------------- #
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34'],
+                set_series_totales={'dmi': ['dmi', 'n34'],
+                                    'n34': ['n34']},
+                variables={'ssam': ssam}, alpha=i, sig=True)
+
+# CEN DMI, N34 SSAM STRATO  -------------------------------------------------- #
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34', 'strato'],
+                set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34'],
+                                    'strato': ['dmi', 'n34', 'strato']},
+                variables={'ssam': ssam}, sig=True, alpha=i)
+
+# CEN DMI, N34 asam ---------------------------------------------------------- #
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34'],
+                set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34']},
+                variables={'asam': asam}, sig=True, alpha=i)
+
+# CEN DMI, N34 asam STRATO  -------------------------------------------------- #
+for i in [0.05, 0.1, 0.15]:
+    print(f"significancia {i}")
+    CN_Effect_2(actor_list,
+                set_series_directo=['dmi', 'n34', 'strato'],
+                set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34'],
+                                    'strato': ['dmi', 'n34', 'strato']},
+                variables={'asam': asam}, sig=True, alpha=i)

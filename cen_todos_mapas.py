@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
-save = True
+save = False
 use_strato_index = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect2/'
 
@@ -38,7 +38,7 @@ warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from Scales_Cbars import get_cbars
-from cen_funciones import AUX_select_actors, Plot, regre
+from cen_funciones import AUX_select_actors, Plot, regre_forplot
 ################################################################################
 if save:
     dpi = 200
@@ -172,6 +172,11 @@ hgt200_anom = hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.month.isin([10]))
 hgt750_anom = SameDateAs(hgt750_anom_or, hgt200_anom)
 dmi = SameDateAs(dmi_or, hgt200_anom)
 n34 = SameDateAs(n34_or, hgt200_anom)
+
+dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([8]))
+dmi = dmi.sel(time=dmi.time.dt.year.isin(hgt200_anom.time.dt.year))
+n34 = SameDateAs(n34_or, dmi)
+
 sam = SameDateAs(sam_or, hgt200_anom)
 asam = SameDateAs(asam_or, hgt200_anom)
 ssam = SameDateAs(ssam_or, hgt200_anom)
@@ -201,7 +206,7 @@ if use_strato_index:
     all_3index['strato'] = strato_indice['var'].values
 
 ################################################################################
-def pre_regre_ufunc(x, sets, coef, sig=False, alpha=0.05):
+def pre_regre_ufunc(x, sets, coef, alpha):#, sig=False, alpha=0.05):
     """
     :param x: target, punto de grilla
     :param sets: str de actores separados por : eg. sets = 'dmi:n34'
@@ -218,25 +223,26 @@ def pre_regre_ufunc(x, sets, coef, sig=False, alpha=0.05):
                   'sam': sam.values}
 
     series_select = AUX_select_actors(actor_list, sets_list, pre_serie)
-    efecto = regre(series_select, False, coef,
-                   filter_significance=sig,
-                   alpha=alpha)
-    return efecto
+    efecto_sig, efecto_all = regre_forplot(series_select, True, coef, alpha)
 
-def compute_regression(x, sets, coef, sig=False, alpha=0.05):
-    coef_dataset = xr.apply_ufunc(
-        pre_regre_ufunc, x, sets, coef, sig, alpha,
-        input_core_dims=[['time'],[], [], [], []],
+    return efecto_sig, efecto_all
+
+def compute_regression(x, sets, coef, alpha):
+    coef_dataset, pval_dataset = xr.apply_ufunc(
+        pre_regre_ufunc, x, sets, coef, alpha,
+        input_core_dims=[['time'],[], [], []],
+        output_core_dims=[[], []],
+        output_dtypes=[float, float],
         vectorize=True)
 
-    return coef_dataset
+    return coef_dataset, pval_dataset
 
 hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
 
 def Compute_CEN_and_Plot(variables, name_variables, maps,
                          actors_and_sets_total, actors_and_sets_direc,
                          save=False, factores_sp=None, aux_name='',
-                         sig=False, alpha=0.05):
+                         alpha=0.05):
     if save:
         dpi = 100
     else:
@@ -250,23 +256,25 @@ def Compute_CEN_and_Plot(variables, name_variables, maps,
 
         for a in actors_and_sets_total:
             sets_total = actors_and_sets_total[a]
-            aux = compute_regression(v['var'], sets_total, coef=a,
-                                         sig=sig, alpha=alpha)
+            aux_sig, aux_all = compute_regression(v['var'], sets_total, coef=a,
+                                             alpha=alpha)
 
             titulo = f"{v_name} - {a} efecto total  {aux_name}"
             name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
 
-            Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+            Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir,
+                 data_ctn=aux_all)
 
             try:
                 sets_direc = actors_and_sets_direc[a]
-                aux = compute_regression(v['var'], sets_direc, coef=a,
-                                         sig=sig, alpha=alpha)
+                aux_sig, aux_all = compute_regression(v['var'], sets_direc, coef=a,
+                                                 alpha=alpha)
 
                 titulo = f"{v_name} - {a} efecto directo  {aux_name}"
                 name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
 
-                Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+                Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
+                     out_dir, data_ctn=aux_all)
 
                 if factores_sp is not None:
                     sp_cmap = get_cbars('snr2')
@@ -282,8 +290,8 @@ def Compute_CEN_and_Plot(variables, name_variables, maps,
                             name_fig = (f"{v_name}_{a}_SP_indirecto_{f_sp}_"
                                         f"{aux_name}")
 
-                            Plot(aux_f_sp * aux, sp_cmap, mapa, save, dpi,
-                                 titulo, name_fig, out_dir)
+                            Plot(aux_f_sp * aux_sig, sp_cmap, mapa, save, dpi,
+                                 titulo, name_fig, out_dir, data_ctn=aux_all)
                     except:
                         pass
 
@@ -308,7 +316,7 @@ factores_sp = {'asam' : {'dmi-asam':-0.28,
 
 Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                      actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP1', sig=True, alpha=0.10)
+                     factores_sp=None, aux_name='ModP1', alpha=0.10)
 
 # ---------------------------------------------------------------------------- #
 # DMI, N34, ASAM + strato ---------------------------------------------------- #
@@ -332,8 +340,7 @@ factores_sp = {'asam' : {'dmi-asam':-0.216,
 
 Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                      actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP1_strato',
-                     sig=True, alpha=0.10)
+                     factores_sp=None, aux_name='ModP1_strato', alpha=0.10)
 
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
@@ -352,8 +359,7 @@ factores_sp = {'ssam' : {'dmi-ssam':-0.28,
 
 Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                      actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP2',
-                     sig=True, alpha=0.10)
+                     factores_sp=None, aux_name='ModP2', alpha=0.10)
 
 # ---------------------------------------------------------------------------- #
 # DMI, N34, ssam + strato ---------------------------------------------------- #
@@ -374,8 +380,7 @@ factores_sp = {'ssam' : {'strato-ssam':-0.658,
 
 Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                      actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP2_strato',
-                     sig=True, alpha=0.10)
+                     factores_sp=None, aux_name='ModP2_strato', alpha=0.10)
 
 # ---------------------------------------------------------------------------- #
 # Mod Full ASAM -x- SSAM
@@ -406,7 +411,8 @@ factores_sp = {'strato' : {'dmi-strato':0.29,
 
 Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                      actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=factores_sp, aux_name='ModFull_ASAMxSSAM')
+                     factores_sp=factores_sp, aux_name='ModFull_ASAMxSSAM',
+                     alpha=0.10)
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
