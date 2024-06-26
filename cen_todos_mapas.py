@@ -33,21 +33,12 @@ warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2
-
-import matplotlib.pyplot as plt
-import cartopy.feature
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-import cartopy.crs as ccrs
 import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-
-# import matplotlib.pyplot as plt
-# import cartopy.feature
-# from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-# import cartopy.crs as ccrs
 from Scales_Cbars import get_cbars
+from cen_funciones import AUX_select_actors, Plot, regre
 ################################################################################
 if save:
     dpi = 200
@@ -90,225 +81,6 @@ def Weights(data):
                                    (len(data.lon), 1)))
     data_w = data * weights
     return data_w
-
-# Regre y CN Effects --------------------------------------------------------- #
-def regre(series, intercept, coef=0):
-    df = pd.DataFrame(series)
-    if intercept:
-        X = np.column_stack((np.ones_like(df[df.columns[1]]),
-                             df[df.columns[1:]]))
-    else:
-        X = df[df.columns[1:]].values
-    y = df[df.columns[0]]
-
-    coefs = np.linalg.lstsq(X, y, rcond=None)[0]
-
-    coefs_results = {}
-    for ec, e in enumerate(series.keys()):
-        if intercept and ec == 0:
-            e = 'constant'
-        if e != df.columns[0]:
-            if intercept:
-                coefs_results[e] = coefs[ec]
-            else:
-                coefs_results[e] = coefs[ec-1]
-
-    if isinstance(coef, str):
-        return coefs_results[coef]
-    else:
-        return coefs_results
-
-def AUX_select_actors(actor_list, set_series, serie_to_set):
-    serie_to_set2 = serie_to_set.copy()
-    for key in set_series:
-        serie_to_set2[key] = actor_list[key]
-    return serie_to_set2
-
-def CN_Effect_2(actor_list, set_series_directo, set_series_totales,
-                variables, set_series_directo_particulares = None):
-
-    """
-    Versión de CN_Effect general
-    :param actor_list: dict con todos las series que se van a utilizar menos
-    la/s serie/s target
-    :param set_series_directo: list con los nombres de las series que se deben
-     incluir en regre para el efecto directo que se usará si
-    set_series_directo_particulares = None.(En muchos casos es igual para todos)
-    :param set_series_totales: dict, indicando nombre de la serie y predictandos
-    de regre incluyendo la misma serie
-    :param set_series_directo_particulares: idem anterior para efectos directos
-    que no puedan ser cuantificados con set_series_directo
-    :param variables: dict con las series target
-    :return: dataframe indicando los efectos totales y directos de cada parent
-    hacia las seires target
-    """
-
-    for k in variables.keys():
-        if k in set_series_directo or k in set_series_totales:
-            if set_series_directo_particulares is not None:
-                if k in set_series_directo_particulares:
-                    print('Error: Variables no puede incluir ser un parent')
-                    return
-            print('Error: Variables no puede incluir ser un parent')
-            return
-
-    result_df = pd.DataFrame(columns=['v_efecto', 'b'])
-
-    for x_name in variables.keys():
-        x = variables[x_name]
-
-        try:
-            pre_serie = {'c': x['var'].values}
-        except:
-            pre_serie = {'c': x.values}
-
-        series_directo = AUX_select_actors(actor_list, set_series_directo,
-                                           pre_serie)
-
-        series_totales = {}
-        actors = []
-        for k in set_series_totales.keys():
-            actors.append(k)
-
-            series_totales[k] = AUX_select_actors(actor_list,
-                                                  set_series_totales[k],
-                                                  pre_serie)
-
-            if set_series_directo_particulares is not None:
-                series_directas_particulares = {}
-                series_directas_particulares[k] = \
-                    AUX_select_actors(actor_list,
-                                      set_series_directo_particulares[k],
-                                      pre_serie)
-
-        if all(actor in series_totales for actor in actors):
-            for i in actors:
-                # Efecto total i --------------------------------------------- #
-                i_total = regre(series_totales[i], True, i)
-                result_df = result_df.append({'v_efecto': f"{i}_TOTAL_{x_name}",
-                                              'b': i_total}, ignore_index=True)
-
-                # Efecto directo i ------------------------------------------- #
-                try:
-                    i_directo = regre(
-                        series_directas_particulares[i], True, i)
-                except:
-                    i_directo = regre(series_directo, True, i)
-
-                result_df = result_df.append(
-                    {'v_efecto': f"{i}_DIRECTO_{x_name}", 'b': i_directo},
-                    ignore_index=True)
-        else:
-            print('Error: faltan actors en las series')
-
-
-    print(result_df)
-    return result_df
-
-def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir):
-
-    if mapa.lower() == 'sa':
-        fig_size = (5, 6)
-        extent = [270, 330, -60, 20]
-        xticks = np.arange(270, 330, 10)
-        yticks = np.arange(-60, 40, 20)
-        contour = False
-
-    elif mapa.lower() == 'hs':
-        fig_size = (9, 3.5)
-        extent = [0, 359, -80, 20]
-        xticks = np.arange(0, 360, 30)
-        yticks = np.arange(-80, 20, 10)
-        contour = True
-
-    fig = plt.figure(figsize=fig_size, dpi=dpi)
-    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
-    crs_latlon = ccrs.PlateCarree()
-
-    ax.set_extent(extent, crs=crs_latlon)
-
-    im = ax.contourf(data.lon, data.lat, data,
-                     levels=[-1, -.8, -.6, -.4, -.2, -.1, 0,
-                             .1, .2, .4, .6, .8, 1],
-                     transform=crs_latlon, cmap=cmap, extend='both')
-
-    if contour:
-        values = ax.contour(data.lon, data.lat, data,
-                            levels=[-1, -.8, -.6, -.4, -.2, -.1,
-                                    .1, .2, .4, .6, .8, 1],
-                            transform=crs_latlon, colors='k', linewidths=1)
-
-    cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
-    cb.ax.tick_params(labelsize=8)
-    ax.add_feature(cartopy.feature.LAND, facecolor='#d9d9d9')
-    ax.add_feature(cartopy.feature.COASTLINE)
-    ax.gridlines(crs=crs_latlon, linewidth=0.3, linestyle='-')
-    lon_formatter = LongitudeFormatter(zero_direction_label=True)
-    lat_formatter = LatitudeFormatter()
-    ax.xaxis.set_major_formatter(lon_formatter)
-    ax.yaxis.set_major_formatter(lat_formatter)
-    ax.set_xticks(xticks, crs=crs_latlon)
-    ax.set_yticks(yticks, crs=crs_latlon)
-    ax.tick_params(labelsize=7)
-    plt.title(titulo, fontsize=10)
-    plt.tight_layout()
-    if save:
-        plt.savefig(out_dir + name_fig + '.jpg')
-        plt.close()
-    else:
-        plt.show()
-    plt.show()
-
-def Compute_CEN_and_Plot(variables, name_variables, maps,
-                         actors_and_sets_total, actors_and_sets_direc,
-                         save=False, factores_sp=None, aux_name=''):
-    if save:
-        dpi = 200
-    else:
-        dpi = 70
-
-    for v, v_name, mapa in zip(variables,
-                               name_variables,
-                               maps):
-        v_cmap = get_cbars(v_name)
-
-        for a in actors_and_sets_total:
-            sets_total = actors_and_sets_total[a]
-            aux = compute_regression(v['var'], sets_total, coef=a)
-
-            titulo = f"{a} efecto total  {aux_name}"
-            name_fig = f"{a}_efecto_TOTAL_{aux_name}"
-
-            Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
-
-            try:
-                sets_direc = actors_and_sets_direc[a]
-                aux = compute_regression(v['var'], sets_direc, coef=a)
-
-                titulo = f"{a} efecto directo  {aux_name}"
-                name_fig = f"{a}_efecto_DIRECTO_{aux_name}"
-
-                Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
-
-                if factores_sp is not None:
-                    sp_cmap = get_cbars('snr2')
-
-                    try:
-                        factores_sp_a = factores_sp[a]
-
-                        for f_sp in factores_sp_a.keys():
-                            aux_f_sp = factores_sp_a[f_sp]
-
-                            titulo = f"{a} SP Indirecto via {f_sp} {aux_name}"
-                            name_fig = f"{a}_SP_indirecto_{f_sp}_{aux_name}"
-
-                            Plot(aux_f_sp * aux, sp_cmap, mapa, save, dpi,
-                                 titulo, name_fig, out_dir)
-                    except:
-                        pass
-
-            except:
-                print('Sin efecto directo')
 
 ################################################################################
 """
@@ -429,7 +201,7 @@ if use_strato_index:
     all_3index['strato'] = strato_indice['var'].values
 
 ################################################################################
-def pre_regre_ufunc(x, sets, coef):
+def pre_regre_ufunc(x, sets, coef, sig=False, alpha=0.05):
     """
     :param x: target, punto de grilla
     :param sets: str de actores separados por : eg. sets = 'dmi:n34'
@@ -446,79 +218,195 @@ def pre_regre_ufunc(x, sets, coef):
                   'sam': sam.values}
 
     series_select = AUX_select_actors(actor_list, sets_list, pre_serie)
-    efecto = regre(series_select, True, coef)
-
+    efecto = regre(series_select, False, coef,
+                   filter_significance=sig,
+                   alpha=alpha)
     return efecto
 
-def compute_regression(x, sets, coef):
+def compute_regression(x, sets, coef, sig=False, alpha=0.05):
     coef_dataset = xr.apply_ufunc(
-        pre_regre_ufunc, x, sets,  coef,
-        input_core_dims=[['time'],[], []],
+        pre_regre_ufunc, x, sets, coef, sig, alpha,
+        input_core_dims=[['time'],[], [], [], []],
         vectorize=True)
+
     return coef_dataset
 
 hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
 
+def Compute_CEN_and_Plot(variables, name_variables, maps,
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=False, factores_sp=None, aux_name='',
+                         sig=False, alpha=0.05):
+    if save:
+        dpi = 100
+    else:
+        dpi = 70
+
+    for v, v_name, mapa in zip(variables,
+                               name_variables,
+                               maps):
+
+        v_cmap = get_cbars(v_name)
+
+        for a in actors_and_sets_total:
+            sets_total = actors_and_sets_total[a]
+            aux = compute_regression(v['var'], sets_total, coef=a,
+                                         sig=sig, alpha=alpha)
+
+            titulo = f"{v_name} - {a} efecto total  {aux_name}"
+            name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
+
+            Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+
+            try:
+                sets_direc = actors_and_sets_direc[a]
+                aux = compute_regression(v['var'], sets_direc, coef=a,
+                                         sig=sig, alpha=alpha)
+
+                titulo = f"{v_name} - {a} efecto directo  {aux_name}"
+                name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
+
+                Plot(aux, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir)
+
+                if factores_sp is not None:
+                    sp_cmap = get_cbars('snr2')
+
+                    try:
+                        factores_sp_a = factores_sp[a]
+
+                        for f_sp in factores_sp_a.keys():
+                            aux_f_sp = factores_sp_a[f_sp]
+
+                            titulo = (f"{v_name} - {a} SP Indirecto via {f_sp} "
+                                      f"{aux_name}")
+                            name_fig = (f"{v_name}_{a}_SP_indirecto_{f_sp}_"
+                                        f"{aux_name}")
+
+                            Plot(aux_f_sp * aux, sp_cmap, mapa, save, dpi,
+                                 titulo, name_fig, out_dir)
+                    except:
+                        pass
+
+            except:
+                print('Sin efecto directo')
+
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
-# Mod P1
+# DMI, N34, ASAM
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'asam':'dmi:n34:asam'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:asam',
+                         'n34':'dmi:n34:asam',
+                         'asam':'dmi:n34:asam'}
+
+factores_sp = {'asam' : {'dmi-asam':-0.28,
+                         'n34-dmi-asam':0.635 * -0.28,
+                         'n34-asam':-0.40},
+               'dmi':{'n34-dmi':0.635}}
+
+Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                     actors_and_sets_total, actors_and_sets_direc, save=save,
+                     factores_sp=None, aux_name='ModP1', sig=True, alpha=0.10)
+
+# ---------------------------------------------------------------------------- #
+# DMI, N34, ASAM + strato ---------------------------------------------------- #
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'asam':'dmi:n34:asam:strato',
+                         'strato':'dmi:n34:strato'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:asam:strato',
+                         'n34':'dmi:n34:asam:strato',
+                         'asam':'dmi:n34:asam:strato',
+                         'strato':'dmi:n34:asam:strato'}
+
+factores_sp = {'asam' : {'dmi-asam':-0.216,
+                         'n34-dmi-asam':0.635*-0.216,
+                         'n34-asam':0.439,
+                         'strato-asam':-0.228},
+               'dmi':{'n34-dmi':0.635},
+               'strato':{'dmi-strato':0.29,
+                         'n34-strato':-0.14}}
+
+Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                     actors_and_sets_total, actors_and_sets_direc, save=save,
+                     factores_sp=None, aux_name='ModP1_strato',
+                     sig=True, alpha=0.10)
+
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# DMI, N34, ssam
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'ssam':'dmi:n34:ssam'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:ssam',
+                         'n34':'dmi:n34:ssam',
+                         'ssam':'dmi:n34:ssam'}
+
+factores_sp = {'ssam' : {'dmi-ssam':-0.28,
+                         'n34-dmi-ssam':0.635*-0.28},
+               'dmi':{'n34-dmi':0.635}}
+
+Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                     actors_and_sets_total, actors_and_sets_direc, save=save,
+                     factores_sp=None, aux_name='ModP2',
+                     sig=True, alpha=0.10)
+
+# ---------------------------------------------------------------------------- #
+# DMI, N34, ssam + strato ---------------------------------------------------- #
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'ssam':'dmi:n34:ssam:strato',
+                         'strato':'dmi:n34:strato'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:ssam:strato',
+                         'n34':'dmi:n34:ssam:strato',
+                         'ssam':'dmi:n34:ssam:strato',
+                         'strato':'dmi:n34:ssam:strato'}
+
+factores_sp = {'ssam' : {'strato-ssam':-0.658,
+                         'dmi-strato-ssam':0.29 * -0.658,
+                         'n34-dmi-strato-ssam':0.29 * -0.658*0.635},
+               'dmi':{'n34-dmi':0.635}}
+
+Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                     actors_and_sets_total, actors_and_sets_direc, save=save,
+                     factores_sp=None, aux_name='ModP2_strato',
+                     sig=True, alpha=0.10)
+
+# ---------------------------------------------------------------------------- #
+# Mod Full ASAM -x- SSAM
 actors_and_sets_total = {'dmi':'dmi:n34',
                          'n34': 'n34',
                          'strato':'dmi:n34:strato',
                          'asam':'dmi:n34:strato:asam',
-                         'ssam':'dmi:n34:ssam:asam:strato'}
+                         'ssam':'dmi:n34:ssam:strato'}
 
 actors_and_sets_direc = {'dmi':'dmi:n34:strato:asam:ssam',
                          'n34':'dmi:n34:strato:asam:ssam',
                          'strato':'dmi:n34:strato:asam:ssam',
-                         'asam':'dmi:n34:strato:asam:ssam:sam',
-                         'ssam':'dmi:n34:strato:asam:ssam:sam'}
+                         'asam':'dmi:n34:strato:asam',
+                         'ssam':'dmi:n34:ssam:strato'}
 
 factores_sp = {'strato' : {'dmi-strato':0.29,
                            'n34-strato':-0.14,
                            'n34-dmi-strato':0.635*-0.14},
-               'asam' : {'dmi-asam':-0.216, 'dmi-strato-asam':0.29*-0.228,
-                        'n34-dmi-asam':0.635*-0.216, 'n34-asam':-0.439},
+               'asam' : {'dmi-asam':-0.216,
+                         'dmi-strato-asam':0.29*-0.228,
+                         'n34-dmi-asam':0.635*-0.216,
+                         'n34-asam':-0.439,
+                         'strato-asam':-0.228},
                'ssam' : {'dmi-strato-ssam': 0.29 * -0.565,
-                        'n34-dmi-strato-ssam': 0.635*0.29*-0.565},
-               'sam' : {'n34-asam-sam':-0.439*0.239,
-                        'dmi-strato-ssam-sam':0.29*-0.565*0.85,
-                        'n34-dmi-strato-ssam-sam':0.29*-0.565*0.85*0.635}}
+                         'n34-dmi-strato-ssam': 0.635*0.29*-0.658,
+                         'strato-ssam': -0.658},
+               'dmi': {'n34-dmi': 0.635}}
 
 Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                      actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=factores_sp, aux_name='ModP1')
-
+                     factores_sp=factores_sp, aux_name='ModFull_ASAMxSSAM')
 # ---------------------------------------------------------------------------- #
-# Mod P2
-actors_and_sets_total = {'dmi':'dmi:n34',
-                         'n34': 'n34',
-                         'strato':'dmi:n34:strato',
-                         'asam':'dmi:n34:strato:ssam:asam',
-                         'ssam':'dmi:n34:strato:ssam',
-                         'sam':'dmi:n34:strato:ssam:asam:sam'}
-
-actors_and_sets_direc = {'dmi':'dmi:n34:strato:asam:ssam',
-                         'n34':'dmi:n34:strato:asam:ssam',
-                         'strato':'dmi:n34:strato:asam:ssam',
-                         'asam':'dmi:n34:strato:asam:ssam:sam',
-                         'ssam':'dmi:n34:strato:asam:ssam:sam',
-                         'sam':'dmi:n34:strato:ssam:asam:sam'}
-
-factores_sp = {'strato' : {'dmi-strato':0.29,
-                           'n34-strato':-0.14,
-                           'n34-dmi-strato':0.635*-0.14},
-               'asam' : {'dmi-asam':-0.216, 'dmi-strato-asam':0.29*-0.228,
-                        'n34-dmi-asam':0.635*-0.216, 'n34-asam':-0.439},
-               'ssam' : {'dmi-strato-ssam': 0.29 * -0.565,
-                        'n34-dmi-strato-ssam': 0.635*0.29*-0.565},
-               'sam' : {'n34-asam-sam':-0.439*0.239,
-                        'dmi-strato-ssam-sam':0.29*-0.565*0.85,
-                        'n34-dmi-strato-ssam-sam':0.29*-0.565*0.85*0.635}}
-
-Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
-                     actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=factores_sp, aux_name='ModP2')
-
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
