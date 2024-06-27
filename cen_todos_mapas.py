@@ -3,8 +3,6 @@ Redes cusales ENSO, IOD, SAM, ASAM, STRATO
 
 pasado en limpio sólo para la red mas grande que incluye tdo
 """
-import matplotlib.pyplot as plt
-
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
 save = False
@@ -132,7 +130,7 @@ pp_or = Detrend(pp_or, 'time')
 
 # Caja PP
 pp_caja_or = pp_or.sel(lat=slice(pp_lats[0], pp_lats[1]),
-                  lon=slice(pp_lons[0],pp_lons[1])).mean(['lon', 'lat'])
+                       lon=slice(pp_lons[0],pp_lons[1])).mean(['lon', 'lat'])
 pp_caja_or['var'][-1]=0 # aca nse que pasa.
 
 # ---------------------------------------------------------------------------- #
@@ -256,19 +254,19 @@ def Compute_CEN_and_Plot(variables, name_variables, maps,
 
         for a in actors_and_sets_total:
             sets_total = actors_and_sets_total[a]
-            aux_sig, aux_all = compute_regression(v['var'], sets_total, coef=a,
-                                             alpha=alpha)
+            aux_sig, aux_all = compute_regression(v['var'], sets_total,
+                                                  coef=a, alpha=alpha)
 
             titulo = f"{v_name} - {a} efecto total  {aux_name}"
             name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
 
-            Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig, out_dir,
-                 data_ctn=aux_all)
+            Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
+                 out_dir, data_ctn=aux_all)
 
             try:
                 sets_direc = actors_and_sets_direc[a]
-                aux_sig, aux_all = compute_regression(v['var'], sets_direc, coef=a,
-                                                 alpha=alpha)
+                aux_sig, aux_all = compute_regression(v['var'], sets_direc,
+                                                      coef=a, alpha=alpha)
 
                 titulo = f"{v_name} - {a} efecto directo  {aux_name}"
                 name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
