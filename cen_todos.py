@@ -6,7 +6,7 @@ pasado en limpio sólo para la red mas grande que incluye tdo
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
 save = False
-use_strato_index = False
+use_strato_index = True
 use_u50 = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 
@@ -83,14 +83,14 @@ def Weights(data):
 
 def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
                          pp_or, dmi_or, n34_or, asam_or, ssam_or, sam_or,
-                         strato_indice, years_to_remove=None):
+                         u50_or, strato_indice, years_to_remove=None):
 
     # lag_target
     hgt200_anom = hgt200_anom_or.sel(
         time=hgt200_anom_or.time.dt.month.isin([lag_target]))
     if strato_indice is not None:
-        hgt200_anom = hgt200_anom_or.sel(
-            time=hgt200_anom_or.time.dt.year.isin([strato_indice.time]))
+        hgt200_anom = hgt200_anom.sel(
+            time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
 
     pp = SameDateAs(pp_or, hgt200_anom)
     sam = SameDateAs(sam_or, hgt200_anom)
@@ -131,17 +131,16 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
                       'asam': asam.values,
                       'strato': strato_indice['var'].values,
-                      'sam': sam.values, 'u50': u50['var'].values}
+                      'sam': sam.values, 'u50': u50.values}
 
 
     else:
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
                       'asam': asam.values,
                       'strato': None,
-                      'sam': sam.values, 'u50': u50['var'].values}
+                      'sam': sam.values, 'u50': u50.values}
 
     return hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34, actor_list
-
 
 def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
                           variables, sig, alpha_sig):
@@ -160,9 +159,6 @@ def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
 
     return df_final
 ################################################################################
-"""
-HGT y PP no se usan aún
-"""
 # HGT ------------------------------------------------------------------------ #
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
@@ -177,10 +173,6 @@ hgt200_anom_or = hgt200_anom_or * weights
 
 hgt200_anom_or = hgt200_anom_or.rolling(time=3, center=True).mean()
 hgt200_anom_or = hgt200_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
-hgt200_anom_or = hgt200_anom_or.sel(
-    time=hgt200_anom_or.time.dt.month.isin([8,9,10,11]))
-hgt200_anom_or = hgt200_anom_or.sel(
-    time=hgt200_anom_or.time.dt.month.isin([10]))
 
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT750_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
@@ -239,7 +231,7 @@ if use_strato_index:
     hgt200_anom_or2 = hgt200_anom_or.sel(time =
                             hgt200_anom_or.time.dt.year.isin(
                                 strato_indice['time']))
-    strato_indice = strato_indice.sel(time = hgt200_anom_or2['time.year'])
+    strato_indice = strato_indice.sel(time = range(1979,2021))
 else:
     strato_indice = None
 
@@ -257,6 +249,7 @@ if use_u50:
     u50_or = Detrend(u50_or, 'time')
     u50_or = u50_or.sel(expver=1).drop('expver')
     u50_or = u50_or.mean('lon')
+    u50_or = xr.DataArray(u50_or['var'].drop('lat'))
 
 ################################################################################
 # Comparación u50 vs strato caja
@@ -268,24 +261,24 @@ hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
                          lag_strato=10,
                          hgt200_anom_or=hgt200_anom_or,  pp_or=pp_or,
                          dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
-                         ssam_or=ssam_or, sam_or=sam_or,
+                         ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
                          strato_indice=strato_indice,
-                         years_to_remove=None)
+                         years_to_remove=[2002, 2019])
 
 print('DMI, N34 - STRATO -----------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
                       set_series_directo=['dmi', 'n34'],
                       set_series_totales={'dmi': ['dmi', 'n34'],
                                           'n34': ['n34']},
-                      variables={'strato':strato_indice2['var']},
+                      variables={'strato' : strato_indice2['var']},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
-print('DMI, N34 - STRATO -----------------------------------------------------')
+print('DMI, N34 - U50 --------------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
                       set_series_directo=['dmi', 'n34'],
                       set_series_totales={'dmi': ['dmi', 'n34'],
                                           'n34': ['n34']},
-                      variables={'u50' : u50['var']},
+                      variables={'u50' : u50},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
 # ---------------------------------------------------------------------------- #
@@ -294,13 +287,13 @@ aux_alpha_CN_Effect_2(actor_list,
                       set_series_directo=['dmi', 'n34'],
                       set_series_totales={'dmi': ['dmi', 'n34'],
                                           'n34': ['n34']},
-                      variables={'ssam': ssam},
+                      variables={'ssam' : ssam},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 print('DMI, N34, STRATO - SSAM -----------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
                       set_series_directo=['dmi', 'n34', 'strato'],
                       set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34'],
-                                    'strato': ['dmi', 'n34', 'strato']},
+                                    'strato' : ['dmi', 'n34', 'strato']},
                       variables={'ssam': ssam},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 print('DMI, N34, U50 - SSAM --------------------------------------------------')
@@ -320,13 +313,14 @@ aux_alpha_CN_Effect_2(actor_list,
                       variables={'asam': asam},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
-print('DMI, N34, SRATO - ASAM ------------------------------------------------')
+print('DMI, N34, STRATO - ASAM -----------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
                       set_series_directo=['dmi', 'n34', 'strato'],
                       set_series_totales={'dmi': ['dmi', 'n34'], 'n34': ['n34'],
                                     'strato': ['dmi', 'n34', 'strato']},
                       variables={'asam': asam},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+
 print('DMI, N34, U50 - ASAM --------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
                       set_series_directo=['dmi', 'n34', 'u50'],
@@ -341,14 +335,14 @@ aux_alpha_CN_Effect_2(actor_list,
 # Periodo 1940-2020
 ################################################################################
 hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
-    auxSetLags_ActorList(lag_target=10,
-                         lag_dmin34=10,
-                         lag_strato=10,
+    auxSetLags_ActorList(lag_target=11,
+                         lag_dmin34=8,
+                         lag_strato=9,
                          hgt200_anom_or=hgt200_anom_or,  pp_or=pp_or,
                          dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
                          ssam_or=ssam_or, sam_or=sam_or,
                          strato_indice=None,
-                         years_to_remove=None)
+                         years_to_remove=[2002,2019])
 
 print('DMI, N34 - U50 --------------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
@@ -358,14 +352,21 @@ aux_alpha_CN_Effect_2(actor_list,
                       variables={'u50' : u50['var']},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
-# ---------------------------------------------------------------------------- #
-print('DMI, N34 - SSAM -------------------------------------------------------')
+print('DMI, N34 --------------------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
-                      set_series_directo=['dmi', 'n34'],
-                      set_series_totales={'dmi': ['dmi', 'n34'],
-                                          'n34': ['n34']},
-                      variables={'ssam': ssam},
+                      set_series_directo=['dmi'],
+                      set_series_totales={'dmi': ['dmi']},
+                      variables={'n34' : n34},
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+
+# ---------------------------------------------------------------------------- #
+# print('DMI, N34 - SSAM -------------------------------------------------------')
+# aux_alpha_CN_Effect_2(actor_list,
+#                       set_series_directo=['dmi', 'n34'],
+#                       set_series_totales={'dmi': ['dmi', 'n34'],
+#                                           'n34': ['n34']},
+#                       variables={'ssam': ssam},
+#                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
 print('DMI, N34, U50 - SSAM --------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
@@ -376,13 +377,13 @@ aux_alpha_CN_Effect_2(actor_list,
                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
 # ---------------------------------------------------------------------------- #
-print('DMI, N34 - ASAM -------------------------------------------------------')
-aux_alpha_CN_Effect_2(actor_list,
-                      set_series_directo=['dmi', 'n34'],
-                      set_series_totales={'dmi': ['dmi', 'n34'],
-                                          'n34': ['n34']},
-                      variables={'asam': asam},
-                      sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+# print('DMI, N34 - ASAM -------------------------------------------------------')
+# aux_alpha_CN_Effect_2(actor_list,
+#                       set_series_directo=['dmi', 'n34'],
+#                       set_series_totales={'dmi': ['dmi', 'n34'],
+#                                           'n34': ['n34']},
+#                       variables={'asam': asam},
+#                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
 print('DMI, N34, U50 - ASAM --------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,

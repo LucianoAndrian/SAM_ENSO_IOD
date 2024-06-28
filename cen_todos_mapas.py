@@ -5,8 +5,9 @@ pasado en limpio sólo para la red mas grande que incluye tdo
 """
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
-save = False
+save = True
 use_strato_index = True
+use_u50 = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect2/'
 
 # Caja de PP
@@ -37,6 +38,8 @@ from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from Scales_Cbars import get_cbars
 from cen_funciones import AUX_select_actors, Plot, regre_forplot
+
+from CEN_ufunc import CEN_ufunc
 ################################################################################
 if save:
     dpi = 200
@@ -80,10 +83,69 @@ def Weights(data):
     data_w = data * weights
     return data_w
 
+def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
+                         pp_or, dmi_or, n34_or, asam_or, ssam_or, sam_or,
+                         u50_or, strato_indice, years_to_remove=None):
+
+    # lag_target
+    hgt200_anom = hgt200_anom_or.sel(
+        time=hgt200_anom_or.time.dt.month.isin([lag_target]))
+    if strato_indice is not None:
+        hgt200_anom = hgt200_anom.sel(
+            time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
+
+    pp = SameDateAs(pp_or, hgt200_anom)
+    sam = SameDateAs(sam_or, hgt200_anom)
+    asam = SameDateAs(asam_or, hgt200_anom)
+    ssam = SameDateAs(ssam_or, hgt200_anom)
+
+    # lag_dmin34
+    dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([lag_dmin34]))
+    dmi = dmi.sel(time=dmi.time.dt.year.isin(hgt200_anom.time.dt.year))
+    n34 = SameDateAs(n34_or, dmi)
+
+    # lag_strato
+    u50 = u50_or.sel(time=u50_or.time.dt.month.isin([lag_strato]))
+    u50 = u50.sel(time=u50.time.dt.year.isin(hgt200_anom.time.dt.year))
+
+    dmi = dmi / dmi.std()
+    n34 = n34 / n34.std()
+    sam = sam / sam.std()
+    asam = asam / asam.std()
+    ssam = ssam / ssam.std()
+    u50 = u50 / u50.std()
+    hgt200_anom = hgt200_anom / hgt200_anom.std()
+    pp = pp / pp.std()
+
+    hgt200_anom = hgt200_anom.sel(
+        time=~hgt200_anom.time.dt.year.isin(years_to_remove))
+    pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
+    sam = sam.sel(time=~sam.time.dt.year.isin(years_to_remove))
+    asam = asam.sel(time=~asam.time.dt.year.isin(years_to_remove))
+    ssam = ssam.sel(time=~ssam.time.dt.year.isin(years_to_remove))
+    n34 = n34.sel(time=~n34.time.dt.year.isin(years_to_remove))
+    dmi = dmi.sel(time=~dmi.time.dt.year.isin(years_to_remove))
+    u50 = u50.sel(time=~u50.time.dt.year.isin(years_to_remove))
+
+    if strato_indice is not None:
+        strato_indice = strato_indice.sel(
+            time=~strato_indice.time.isin(years_to_remove))
+        actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
+                      'asam': asam.values,
+                      'strato': strato_indice['var'].values,
+                      'sam': sam.values, 'u50': u50.values}
+
+
+    else:
+        actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
+                      'asam': asam.values,
+                      'strato': None,
+                      'sam': sam.values, 'u50': u50.values}
+
+    return hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34, actor_list
+
+
 ################################################################################
-"""
-HGT y PP no se usan aún
-"""
 # HGT ------------------------------------------------------------------------ #
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
@@ -98,10 +160,6 @@ hgt200_anom_or = hgt200_anom_or * weights
 
 hgt200_anom_or = hgt200_anom_or.rolling(time=3, center=True).mean()
 hgt200_anom_or = hgt200_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
-hgt200_anom_or = hgt200_anom_or.sel(
-    time=hgt200_anom_or.time.dt.month.isin([8,9,10,11]))
-hgt200_anom_or = hgt200_anom_or.sel(
-    time=hgt200_anom_or.time.dt.month.isin([10]))
 
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT750_40-20.nc')
 hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
@@ -157,192 +215,81 @@ if use_strato_index:
     strato_indice = xr.open_dataset('strato_index.nc').rename({'year':'time'})
     strato_indice = strato_indice.rename(
         {'__xarray_dataarray_variable__':'var'})
-    hgt200_anom_or = hgt200_anom_or.sel(time =
+    hgt200_anom_or2 = hgt200_anom_or.sel(time =
                             hgt200_anom_or.time.dt.year.isin(
                                 strato_indice['time']))
-    strato_indice = strato_indice.sel(time = hgt200_anom_or['time.year'])
+    strato_indice = strato_indice.sel(time = range(1979,2021))
+else:
+    strato_indice = None
 
-# ---------------------------------------------------------------------------- #
-# SameDate y normalización --------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-hgt200_anom = hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.month.isin([10]))
-
-hgt750_anom = SameDateAs(hgt750_anom_or, hgt200_anom)
-dmi = SameDateAs(dmi_or, hgt200_anom)
-n34 = SameDateAs(n34_or, hgt200_anom)
-
-dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([8]))
-dmi = dmi.sel(time=dmi.time.dt.year.isin(hgt200_anom.time.dt.year))
-n34 = SameDateAs(n34_or, dmi)
-
-sam = SameDateAs(sam_or, hgt200_anom)
-asam = SameDateAs(asam_or, hgt200_anom)
-ssam = SameDateAs(ssam_or, hgt200_anom)
-pp = SameDateAs(pp_or, hgt200_anom)
-pp_caja = SameDateAs(pp_caja_or, hgt200_anom)
-dmi = dmi / dmi.std()
-n34 = n34 / n34.std()
-sam = sam / sam.std()
-asam = asam / asam.std()
-ssam = ssam / ssam.std()
-hgt200_anom = hgt200_anom / hgt200_anom.std()
-hgt750_anom = hgt750_anom / hgt750_anom.std()
-pp_caja = pp_caja / pp_caja.std()
-pp = pp / pp.std()
-
-amd200 = (hgt200_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
-       mean(['lon', 'lat']))
-amd200 = amd200 / amd200.std()
-
-amd750 = (hgt750_anom.sel(lon=slice(210, 270), lat=slice(-80, -50)).
-       mean(['lon', 'lat']))
-amd750 = amd750 / amd750.std()
-
-all_3index = {'sam':sam.values, 'asam':asam.values, 'ssam':ssam.values,
-              'amd200':amd200['var'].values, 'amd750':amd750['var'].values}
-if use_strato_index:
-    all_3index['strato'] = strato_indice['var'].values
+if use_u50:
+    u50_or = xr.open_dataset('/pikachu/datos/luciano.andrian/observado/'
+                           'ncfiles/ERA5/downloaded/ERA5_U50hpa_40-20.mon.nc')
+    u50_or = u50_or.rename({'u': 'var'})
+    u50_or = u50_or.rename({'longitude': 'lon'})
+    u50_or = u50_or.rename({'latitude': 'lat'})
+    u50_or = Weights(u50_or)
+    u50_or = u50_or.sel(lat=-60)
+    u50_or = u50_or - u50_or.mean('time')
+    u50_or = u50_or.rolling(time=3, center=True).mean()
+    #u50 = u50.sel(time=u50.time.dt.month.isin(mm))
+    u50_or = Detrend(u50_or, 'time')
+    u50_or = u50_or.sel(expver=1).drop('expver')
+    u50_or = u50_or.mean('lon')
+    u50_or = xr.DataArray(u50_or['var'].drop('lat'))
 
 ################################################################################
-def pre_regre_ufunc(x, sets, coef, alpha):#, sig=False, alpha=0.05):
-    """
-    :param x: target, punto de grilla
-    :param sets: str de actores separados por : eg. sets = 'dmi:n34'
-    :param coef: 'str' coef del que se quiere beta. eg. 'dmi'
-    :return: regre coef (beta)
-    """
-    pre_serie = {'c': x}
+# ---------------------------------------------------------------------------- #
+# comparación strato vs u50 - en SON
+# ---------------------------------------------------------------------------- #
+hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
+    auxSetLags_ActorList(lag_target=10,
+                         lag_dmin34=10,
+                         lag_strato=10,
+                         hgt200_anom_or=hgt200_anom_or,  pp_or=pp_or,
+                         dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
+                         ssam_or=ssam_or, sam_or=sam_or,
+                         u50_or=u50_or,
+                         strato_indice=strato_indice,
+                         years_to_remove=[2002, 2019])
 
-    parts = sets.split(':')
-    sets_list = [part for part in parts if len(part) > 0]
-
-    actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
-                  'asam': asam.values, 'strato': strato_indice['var'].values,
-                  'sam': sam.values}
-
-    series_select = AUX_select_actors(actor_list, sets_list, pre_serie)
-    efecto_sig, efecto_all = regre_forplot(series_select, True, coef, alpha)
-
-    return efecto_sig, efecto_all
-
-def compute_regression(x, sets, coef, alpha):
-    coef_dataset, pval_dataset = xr.apply_ufunc(
-        pre_regre_ufunc, x, sets, coef, alpha,
-        input_core_dims=[['time'],[], [], []],
-        output_core_dims=[[], []],
-        output_dtypes=[float, float],
-        vectorize=True)
-
-    return coef_dataset, pval_dataset
-
+cen = CEN_ufunc(actor_list)
 hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
 
-def Compute_CEN_and_Plot(variables, name_variables, maps,
-                         actors_and_sets_total, actors_and_sets_direc,
-                         save=False, factores_sp=None, aux_name='',
-                         alpha=0.05):
-    if save:
-        dpi = 100
-    else:
-        dpi = 70
-
-    for v, v_name, mapa in zip(variables,
-                               name_variables,
-                               maps):
-
-        v_cmap = get_cbars(v_name)
-
-        for a in actors_and_sets_total:
-            sets_total = actors_and_sets_total[a]
-            aux_sig, aux_all = compute_regression(v['var'], sets_total,
-                                                  coef=a, alpha=alpha)
-
-            titulo = f"{v_name} - {a} efecto total  {aux_name}"
-            name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
-
-            Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
-                 out_dir, data_ctn=aux_all)
-
-            try:
-                sets_direc = actors_and_sets_direc[a]
-                aux_sig, aux_all = compute_regression(v['var'], sets_direc,
-                                                      coef=a, alpha=alpha)
-
-                titulo = f"{v_name} - {a} efecto directo  {aux_name}"
-                name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
-
-                Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
-                     out_dir, data_ctn=aux_all)
-
-                if factores_sp is not None:
-                    sp_cmap = get_cbars('snr2')
-
-                    try:
-                        factores_sp_a = factores_sp[a]
-
-                        for f_sp in factores_sp_a.keys():
-                            aux_f_sp = factores_sp_a[f_sp]
-
-                            titulo = (f"{v_name} - {a} SP Indirecto via {f_sp} "
-                                      f"{aux_name}")
-                            name_fig = (f"{v_name}_{a}_SP_indirecto_{f_sp}_"
-                                        f"{aux_name}")
-
-                            Plot(aux_f_sp * aux_sig, sp_cmap, mapa, save, dpi,
-                                 titulo, name_fig, out_dir, data_ctn=aux_all)
-                    except:
-                        pass
-
-            except:
-                print('Sin efecto directo')
-
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# DMI, N34, ASAM
+print('DMI, N34 - STRATO -----------------------------------------------------')
 actors_and_sets_total = {'dmi':'dmi:n34',
                          'n34': 'n34',
-                         'asam':'dmi:n34:asam'}
-
-actors_and_sets_direc = {'dmi':'dmi:n34:asam',
-                         'n34':'dmi:n34:asam',
-                         'asam':'dmi:n34:asam'}
-
-factores_sp = {'asam' : {'dmi-asam':-0.28,
-                         'n34-dmi-asam':0.635 * -0.28,
-                         'n34-asam':-0.40},
-               'dmi':{'n34-dmi':0.635}}
-
-Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
-                     actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP1', alpha=0.10)
-
-# ---------------------------------------------------------------------------- #
-# DMI, N34, ASAM + strato ---------------------------------------------------- #
-actors_and_sets_total = {'dmi':'dmi:n34',
-                         'n34': 'n34',
-                         'asam':'dmi:n34:asam:strato',
                          'strato':'dmi:n34:strato'}
 
-actors_and_sets_direc = {'dmi':'dmi:n34:asam:strato',
-                         'n34':'dmi:n34:asam:strato',
-                         'asam':'dmi:n34:asam:strato',
-                         'strato':'dmi:n34:asam:strato'}
+actors_and_sets_direc = {'dmi':'dmi:n34:strato',
+                         'n34':'dmi:n34:strato',
+                         'strato':'dmi:n34:strato'}
 
-factores_sp = {'asam' : {'dmi-asam':-0.216,
-                         'n34-dmi-asam':0.635*-0.216,
-                         'n34-asam':0.439,
-                         'strato-asam':-0.228},
-               'dmi':{'n34-dmi':0.635},
-               'strato':{'dmi-strato':0.29,
-                         'n34-strato':-0.14}}
+factores_sp = None # es irrelevante al quitar los SSW
 
-Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
-                     actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP1_strato', alpha=0.10)
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=None, aux_name='Mod_strato',
+                         alpha=0.10, out_dir=out_dir)
+
+print('DMI, N34 - U50 --------------------------------------------------------')
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'u50':'dmi:n34:u50'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:u50',
+                         'n34':'dmi:n34:u50',
+                         'u50':'dmi:n34:u50'}
+
+factores_sp = None # es irrelevante al quitar los SSW
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=None, aux_name='Mod_u50',
+                         alpha=0.10, out_dir=out_dir)
 
 # ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# DMI, N34, ssam
+print('DMI, N34 - SSAM -------------------------------------------------------')
 actors_and_sets_total = {'dmi':'dmi:n34',
                          'n34': 'n34',
                          'ssam':'dmi:n34:ssam'}
@@ -351,16 +298,19 @@ actors_and_sets_direc = {'dmi':'dmi:n34:ssam',
                          'n34':'dmi:n34:ssam',
                          'ssam':'dmi:n34:ssam'}
 
-factores_sp = {'ssam' : {'dmi-ssam':-0.28,
-                         'n34-dmi-ssam':0.635*-0.28},
-               'dmi':{'n34-dmi':0.635}}
+# factores_sp = {'ssam' : {'dmi-ssam':-0.28,
+#                          'n34-dmi-ssam':0.635*-0.28},
+#                'dmi':{'n34-dmi':0.635}}
 
-Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
-                     actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP2', alpha=0.10)
+factores_sp = None
 
-# ---------------------------------------------------------------------------- #
-# DMI, N34, ssam + strato ---------------------------------------------------- #
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='Mod_DMI-N34-SSAM',  alpha=0.10,
+                         out_dir=out_dir)
+
+print('DMI, N34, STRATO - SSAM -----------------------------------------------')
 actors_and_sets_total = {'dmi':'dmi:n34',
                          'n34': 'n34',
                          'ssam':'dmi:n34:ssam:strato',
@@ -371,17 +321,111 @@ actors_and_sets_direc = {'dmi':'dmi:n34:ssam:strato',
                          'ssam':'dmi:n34:ssam:strato',
                          'strato':'dmi:n34:ssam:strato'}
 
-factores_sp = {'ssam' : {'strato-ssam':-0.658,
-                         'dmi-strato-ssam':0.29 * -0.658,
-                         'n34-dmi-strato-ssam':0.29 * -0.658*0.635},
-               'dmi':{'n34-dmi':0.635}}
+# factores_sp = {'ssam' : {'strato-ssam':-0.658,
+#                          'dmi-strato-ssam':0.29 * -0.658,
+#                          'n34-dmi-strato-ssam':0.29 * -0.658*0.635},
+#                'dmi':{'n34-dmi':0.635}}
+factores_sp = None
 
-Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
-                     actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=None, aux_name='ModP2_strato', alpha=0.10)
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='Mod_DMI-N34-SSAM_STRATO', alpha=0.10,
+                         out_dir=out_dir)
+
+print('DMI, N34, U50 - SSAM --------------------------------------------------')
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'ssam':'dmi:n34:ssam:u50',
+                         'u50':'dmi:n34:u50'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:ssam:u50',
+                         'n34':'dmi:n34:ssam:u50',
+                         'ssam':'dmi:n34:ssam:u50',
+                         'u50':'dmi:n34:ssam:u50'}
+
+# factores_sp = {'ssam' : {'u50-ssam':-0.658,
+#                          'dmi-u50-ssam':0.29 * -0.658,
+#                          'n34-dmi-u50-ssam':0.29 * -0.658*0.635},
+#                'dmi':{'n34-dmi':0.635}}
+factores_sp = None
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='Mod_DMI-N34-SSAM_U50', alpha=0.10,
+                         out_dir=out_dir)
 
 # ---------------------------------------------------------------------------- #
-# Mod Full ASAM -x- SSAM
+print('DMI, N34 - asam -------------------------------------------------------')
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'asam':'dmi:n34:asam'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:asam',
+                         'n34':'dmi:n34:asam',
+                         'asam':'dmi:n34:asam'}
+
+# factores_sp = {'asam' : {'dmi-asam':-0.28,
+#                          'n34-dmi-asam':0.635*-0.28},
+#                'dmi':{'n34-dmi':0.635}}
+factores_sp = None
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='Mod_DMI-N34-asam',  alpha=0.10,
+                         out_dir=out_dir)
+
+print('DMI, N34, STRATO - asam -----------------------------------------------')
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'asam':'dmi:n34:asam:strato',
+                         'strato':'dmi:n34:strato'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:asam:strato',
+                         'n34':'dmi:n34:asam:strato',
+                         'asam':'dmi:n34:asam:strato',
+                         'strato':'dmi:n34:asam:strato'}
+
+# factores_sp = {'asam' : {'strato-asam':-0.658,
+#                          'dmi-strato-asam':0.29 * -0.658,
+#                          'n34-dmi-strato-asam':0.29 * -0.658*0.635},
+#                'dmi':{'n34-dmi':0.635}}
+factores_sp = None
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='Mod_DMI-N34-asam_STRATO', alpha=0.10,
+                         out_dir=out_dir)
+
+print('DMI, N34, U50 - asam --------------------------------------------------')
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'asam':'dmi:n34:asam:u50',
+                         'u50':'dmi:n34:u50'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:asam:u50',
+                         'n34':'dmi:n34:asam:u50',
+                         'asam':'dmi:n34:asam:u50',
+                         'u50':'dmi:n34:asam:u50'}
+
+# factores_sp = {'asam' : {'u50-asam':-0.658,
+#                          'dmi-u50-asam':0.29 * -0.658,
+#                          'n34-dmi-u50-asam':0.29 * -0.658*0.635},
+#                'dmi':{'n34-dmi':0.635}}
+factores_sp = None
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='Mod_DMI-N34-asam_U50', alpha=0.10,
+                         out_dir=out_dir)
+
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+print('Mod Full ASAM -x- SSAM - STRATO ---------------------------------------')
 actors_and_sets_total = {'dmi':'dmi:n34',
                          'n34': 'n34',
                          'strato':'dmi:n34:strato',
@@ -394,23 +438,60 @@ actors_and_sets_direc = {'dmi':'dmi:n34:strato:asam:ssam',
                          'asam':'dmi:n34:strato:asam',
                          'ssam':'dmi:n34:ssam:strato'}
 
-factores_sp = {'strato' : {'dmi-strato':0.29,
-                           'n34-strato':-0.14,
-                           'n34-dmi-strato':0.635*-0.14},
-               'asam' : {'dmi-asam':-0.216,
-                         'dmi-strato-asam':0.29*-0.228,
-                         'n34-dmi-asam':0.635*-0.216,
-                         'n34-asam':-0.439,
-                         'strato-asam':-0.228},
-               'ssam' : {'dmi-strato-ssam': 0.29 * -0.565,
-                         'n34-dmi-strato-ssam': 0.635*0.29*-0.658,
-                         'strato-ssam': -0.658},
-               'dmi': {'n34-dmi': 0.635}}
+# factores_sp = {'strato' : {'dmi-strato':0.29,
+#                            'n34-strato':-0.14,
+#                            'n34-dmi-strato':0.635*-0.14},
+#                'asam' : {'dmi-asam':-0.216,
+#                          'dmi-strato-asam':0.29*-0.228,
+#                          'n34-dmi-asam':0.635*-0.216,
+#                          'n34-asam':-0.439,
+#                          'strato-asam':-0.228},
+#                'ssam' : {'dmi-strato-ssam': 0.29 * -0.565,
+#                          'n34-dmi-strato-ssam': 0.635*0.29*-0.658,
+#                          'strato-ssam': -0.658},
+#                'dmi': {'n34-dmi': 0.635}}
 
-Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
-                     actors_and_sets_total, actors_and_sets_direc, save=save,
-                     factores_sp=factores_sp, aux_name='ModFull_ASAMxSSAM',
-                     alpha=0.10)
+factores_sp = None
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='ModFull_ASAMxSSAM_strato', alpha=0.10,
+                         out_dir=out_dir)
+
+print('Mod Full ASAM -x- SSAM - u50 ------------------------------------------')
+actors_and_sets_total = {'dmi':'dmi:n34',
+                         'n34': 'n34',
+                         'u50':'dmi:n34:u50',
+                         'asam':'dmi:n34:u50:asam',
+                         'ssam':'dmi:n34:ssam:u50'}
+
+actors_and_sets_direc = {'dmi':'dmi:n34:u50:asam:ssam',
+                         'n34':'dmi:n34:u50:asam:ssam',
+                         'u50':'dmi:n34:u50:asam:ssam',
+                         'asam':'dmi:n34:u50:asam',
+                         'ssam':'dmi:n34:ssam:u50'}
+
+# factores_sp = {'u50' : {'dmi-u50':0.29,
+#                            'n34-u50':-0.14,
+#                            'n34-dmi-u50':0.635*-0.14},
+#                'asam' : {'dmi-asam':-0.216,
+#                          'dmi-u50-asam':0.29*-0.228,
+#                          'n34-dmi-asam':0.635*-0.216,
+#                          'n34-asam':-0.439,
+#                          'u50-asam':-0.228},
+#                'ssam' : {'dmi-u50-ssam': 0.29 * -0.565,
+#                          'n34-dmi-u50-ssam': 0.635*0.29*-0.658,
+#                          'u50-ssam': -0.658},
+#                'dmi': {'n34-dmi': 0.635}}
+
+factores_sp = None
+
+cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                         actors_and_sets_total, actors_and_sets_direc,
+                         save=save, factores_sp=factores_sp,
+                         aux_name='ModFull_ASAMxSSAM_u50', alpha=0.10,
+                         out_dir=out_dir)
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
