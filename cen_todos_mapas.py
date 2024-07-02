@@ -36,8 +36,6 @@ import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-from Scales_Cbars import get_cbars
-from cen_funciones import AUX_select_actors, Plot, regre_forplot
 
 from CEN_ufunc import CEN_ufunc
 ################################################################################
@@ -134,7 +132,6 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
                       'asam': asam.values,
                       'strato': strato_indice['var'].values,
                       'sam': sam.values, 'u50': u50.values}
-
 
     else:
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
@@ -287,6 +284,26 @@ cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                          actors_and_sets_total, actors_and_sets_direc,
                          save=save, factores_sp=None, aux_name='Mod_u50',
                          alpha=0.10, out_dir=out_dir)
+
+
+ # ????
+# ---------------------------------------------------------------------------- #
+# Solo con U
+# ---------------------------------------------------------------------------- #
+hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
+    auxSetLags_ActorList(lag_target=10,
+                         lag_dmin34=10,
+                         lag_strato=10,
+                         hgt200_anom_or=hgt200_anom_or,  pp_or=pp_or,
+                         dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
+                         ssam_or=ssam_or, sam_or=sam_or,
+                         u50_or=u50_or,
+                         strato_indice=None,
+                         years_to_remove=[2002, 2019])
+
+cen = CEN_ufunc(actor_list)
+
+
 
 # ---------------------------------------------------------------------------- #
 print('DMI, N34 - SSAM -------------------------------------------------------')
