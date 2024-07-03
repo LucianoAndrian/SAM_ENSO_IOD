@@ -289,7 +289,7 @@ aux_alpha_CN_Effect_2(actor_list,
 lags = {'SON':[10,10,10],
         'ASO-->SON':[10, 9, 10],
         'JAS->ASO-->SON':[10, 8, 9],
-        'JAS-->SON':[10, 8, 10],
+        'JAS-->SON':[10, 8, 8],
         'JAS->ASO-->OND':[11, 8, 9]}
 
 for lag_key in lags.keys():
@@ -305,30 +305,30 @@ for lag_key in lags.keys():
                              ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
-
-    print('DMI, N34 - U50 ----------------------------------------------------')
-    aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi', 'n34'],
-                          set_series_totales={'dmi': ['dmi', 'n34'],
-                                              'n34': ['n34']},
-                          variables={'u50': u50},
-                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-
-    print('DMI, N34 ----------------------------------------------------------')
-    aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi'],
-                          set_series_totales={'dmi': ['dmi']},
-                          variables={'n34': n34},
-                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-
-    # ------------------------------------------------------------------------ #
-    print('DMI, N34 - SSAM ---------------------------------------------------')
-    aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi', 'n34'],
-                          set_series_totales={'dmi': ['dmi', 'n34'],
-                                              'n34': ['n34']},
-                          variables={'ssam': ssam},
-                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    #
+    # print('DMI, N34 - U50 ----------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['dmi', 'n34'],
+    #                       set_series_totales={'dmi': ['dmi', 'n34'],
+    #                                           'n34': ['n34']},
+    #                       variables={'u50': u50},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    #
+    # print('DMI, N34 ----------------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['dmi'],
+    #                       set_series_totales={'dmi': ['dmi']},
+    #                       variables={'n34': n34},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    #
+    # # ------------------------------------------------------------------------ #
+    # print('DMI, N34 - SSAM ---------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['dmi', 'n34'],
+    #                       set_series_totales={'dmi': ['dmi', 'n34'],
+    #                                           'n34': ['n34']},
+    #                       variables={'ssam': ssam},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     print('DMI, N34, U50 - SSAM ----------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,

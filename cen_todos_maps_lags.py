@@ -41,8 +41,6 @@ if save:
     dpi = 200
 else:
     dpi = 70
-
-#per = '1940_2020'
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
@@ -226,7 +224,7 @@ if use_u50:
 lags = {'SON':[10,10,10],
         'ASO-->SON':[10, 9, 10],
         'JAS->ASO-->SON':[10, 8, 9],
-        'JAS-->SON':[10, 8, 10],
+        'JAS-->SON':[10, 8, 8],
         'JAS->ASO-->OND':[11, 8, 9]}
 
 coefs_dmi_u50 = [0.007,-0.04, -0.17, -0.21, -0.17]
@@ -238,7 +236,6 @@ coefs_n34_ssam = [0, -0.02, 0.005, -0.03, -0.34]
 coefs_u50_asam = [0.10, 0.12, 0.20, 0.31, 0.37]
 coefs_u50_ssam = [0.669, 0.667, 0.676, 0.226, 0.636]
 
-print('Mod Full ASAM -x- SSAM - u50 ------------------------------------------')
 for l_count, lag_key in enumerate(lags.keys()):
     seasons_lags = lags[lag_key]
 
@@ -253,20 +250,14 @@ for l_count, lag_key in enumerate(lags.keys()):
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
 
+
     cen = CEN_ufunc(actor_list)
     hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
 
-    actors_and_sets_total = {'dmi': 'dmi:n34',
-                             'n34': 'n34',
-                             'u50': 'dmi:n34:u50',
-                             'asam': 'dmi:n34:u50:asam',
-                             'ssam': 'dmi:n34:ssam:u50'}
 
-    actors_and_sets_direc = {'dmi': 'dmi:n34:u50:asam:ssam',
-                             'n34': 'dmi:n34:u50:asam:ssam',
-                             'u50': 'dmi:n34:u50:asam:ssam',
-                             'asam': 'dmi:n34:u50:asam',
-                             'ssam': 'dmi:n34:ssam:u50'}
+    # Los factores_sp sirven para los 3 modelos ya las relaciones no cambian
+    # entre los actores xq estamos asumiendo asam -x- ssam
+    # la función va tomar los sp que tenga como actores nomas
 
     factores_sp = {'u50': {'dmi->u50': coefs_dmi_u50[l_count],
                            'n34->u50': coefs_n34_u50[l_count]},
@@ -277,10 +268,116 @@ for l_count, lag_key in enumerate(lags.keys()):
                             'n34->asam': coefs_n34_asam[l_count],
                             'u50->asam': coefs_u50_asam[l_count]}}
 
+    # Mod Full ASAM -x- SSAM - u50 ---------------------------------------------
+    # actors_and_sets_total = {'dmi': 'dmi:n34',
+    #                          'n34': 'n34',
+    #                          'u50': 'dmi:n34:u50',
+    #                          'asam': 'dmi:n34:u50:asam',
+    #                          'ssam': 'dmi:n34:ssam:u50'}
+    #
+    # actors_and_sets_direc = {'dmi': 'dmi:n34:u50:asam:ssam',
+    #                          'n34': 'dmi:n34:u50:asam:ssam',
+    #                          'u50': 'dmi:n34:u50:asam:ssam',
+    #                          'asam': 'dmi:n34:u50:asam',
+    #                          'ssam': 'dmi:n34:ssam:u50'}
+    #
+    # cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+    #                          actors_and_sets_total, actors_and_sets_direc,
+    #                          save=save, factores_sp=factores_sp,
+    #                          aux_name=f"Mod_ASAMxSSAM_u50_LAG-{lag_key}",
+    #                          alpha=0.10, out_dir=out_dir)
+
+    # Mod Full ASAM - u50 ------------------------------------------------------
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'u50': 'dmi:n34:u50',
+                             'asam': 'dmi:n34:u50:asam'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:u50:asam',
+                             'n34': 'dmi:n34:u50:asam',
+                             'u50': 'dmi:n34:u50:asam',
+                             'asam': 'dmi:n34:u50:asam'}
+
     cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                              actors_and_sets_total, actors_and_sets_direc,
                              save=save, factores_sp=factores_sp,
-                             aux_name=f"Mod_ASAMxSSAM_u50_LAG-{lag_key}",
+                             aux_name=f"Mod_ASAM_u50_LAG-{lag_key}",
                              alpha=0.10, out_dir=out_dir)
 
+    # Mod Full SSAM - u50 ------------------------------------------------------
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'u50': 'dmi:n34:u50',
+                             'ssam': 'dmi:n34:u50:ssam'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:u50:ssam',
+                             'n34': 'dmi:n34:u50:ssam',
+                             'u50': 'dmi:n34:u50:ssam',
+                             'ssam': 'dmi:n34:u50:ssam'}
+
+    cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp,
+                             aux_name=f"Mod_SSAM_u50_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir)
+
+
+    # Los mapas de regresión de estos modelos simples con lags pueden
+    # ser relevantes
+
+    # Mod dmi, n34 - u50 -------------------------------------------------------
+    factores_sp_u50 = {'u50': {'dmi->u50': coefs_dmi_u50[l_count],
+                               'n34->u50': coefs_n34_u50[l_count]}}
+
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'u50': 'dmi:n34:u50'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:u50',
+                             'n34': 'dmi:n34:u50',
+                             'u50': 'dmi:n34:u50'}
+
+    cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp_u50,
+                             aux_name=f"Mod_u50_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir)
+
+    # Mod dmi, n34 - asam ------------------------------------------------------
+    factores_sp_asam = {'asam': {'dmi->asam': coefs_dmi_asam[l_count],
+                                 'n34->asam': coefs_n34_asam[l_count]}}
+
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'asam': 'dmi:n34:asam'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:asam',
+                             'n34': 'dmi:n34:asam',
+                             'asam': 'dmi:n34:asam'}
+
+    cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp_asam,
+                             aux_name=f"Mod_ASAM_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir)
+
+
+    # Mod dmi, n34 - u50 -------------------------------------------------------
+
+    factores_sp_ssam = {'ssam': {'dmi->ssam': coefs_dmi_ssam[l_count],
+                            'n34->ssam': coefs_n34_ssam[l_count]}}
+
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'ssam': 'dmi:n34:ssam'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:ssam',
+                             'n34': 'dmi:n34:ssam',
+                             'ssam': 'dmi:n34:ssam'}
+
+    cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp_ssam,
+                             aux_name=f"Mod_SSAM_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir)
 ################################################################################
