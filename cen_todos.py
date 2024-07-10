@@ -6,7 +6,7 @@ pasado en limpio sólo para la red mas grande que incluye tdo
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
 save = False
-use_strato_index = True
+use_strato_index = False
 use_u50 = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 
@@ -44,10 +44,10 @@ if save:
 else:
     dpi = 70
 
-if use_strato_index:
-    per = '1979_2020'
-else:
-    per = '1940_2020'
+# if use_strato_index:
+#     per = '1979_2020'
+# else:
+#     per = '1940_2020'
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
@@ -217,7 +217,7 @@ asam_or = asam_or.rolling(time=3, center=True).mean()
 ssam_or = xr.open_dataset(sam_dir + 'ssam_700.nc')['mean_estimate']
 ssam_or = ssam_or.rolling(time=3, center=True).mean()
 
-dmi_or = DMI2(filter_bwa=False, start_per='1920', end_per='2020',
+dmi_or = DMI2(filter_bwa=False, start_per='1959', end_per='2020',
            sst_anom_sd=False, opposite_signs_criteria=False)[2]
 
 sst_aux = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/"
@@ -284,13 +284,16 @@ aux_alpha_CN_Effect_2(actor_list,
 
 ################################################################################
 # Usando U, no STRATO.
-# Periodo 1940-2020
+# Periodo 1959-2020
+hgt200_anom_or =\
+    hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.year.isin(range(1959,2021)))
 
 lags = {'SON':[10,10,10],
-        'ASO-->SON':[10, 9, 10],
-        'JAS->ASO-->SON':[10, 8, 9],
-        'JAS-->SON':[10, 8, 8],
-        'JAS->ASO-->OND':[11, 8, 9]}
+        'ASO--SON':[10, 9, 10],
+        'JAS_ASO--SON':[10, 8, 9],
+        'JAS--SON':[10, 8, 8],
+        'JAS_ASO--OND':[11, 8, 9],
+        'JAS--SON2':[10, 8, 10]}
 
 for lag_key in lags.keys():
     seasons_lags = lags[lag_key]
@@ -305,22 +308,22 @@ for lag_key in lags.keys():
                              ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
-    #
-    # print('DMI, N34 - U50 ----------------------------------------------------')
-    # aux_alpha_CN_Effect_2(actor_list,
-    #                       set_series_directo=['dmi', 'n34'],
-    #                       set_series_totales={'dmi': ['dmi', 'n34'],
-    #                                           'n34': ['n34']},
-    #                       variables={'u50': u50},
-    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-    #
-    # print('DMI, N34 ----------------------------------------------------------')
-    # aux_alpha_CN_Effect_2(actor_list,
-    #                       set_series_directo=['dmi'],
-    #                       set_series_totales={'dmi': ['dmi']},
-    #                       variables={'n34': n34},
-    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-    #
+
+    print('DMI, N34 - U50 ----------------------------------------------------')
+    aux_alpha_CN_Effect_2(actor_list,
+                          set_series_directo=['dmi', 'n34'],
+                          set_series_totales={'dmi': ['dmi', 'n34'],
+                                              'n34': ['n34']},
+                          variables={'u50': u50},
+                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+
+    print('DMI, N34 ----------------------------------------------------------')
+    aux_alpha_CN_Effect_2(actor_list,
+                          set_series_directo=['dmi'],
+                          set_series_totales={'dmi': ['dmi']},
+                          variables={'n34': n34},
+                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+
     # # ------------------------------------------------------------------------ #
     # print('DMI, N34 - SSAM ---------------------------------------------------')
     # aux_alpha_CN_Effect_2(actor_list,
@@ -339,14 +342,14 @@ for lag_key in lags.keys():
                           variables={'ssam': ssam},
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
-    # ------------------------------------------------------------------------ #
-    print('DMI, N34 - ASAM ---------------------------------------------------')
-    aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi', 'n34'],
-                          set_series_totales={'dmi': ['dmi', 'n34'],
-                                              'n34': ['n34']},
-                          variables={'asam': asam},
-                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    # # ------------------------------------------------------------------------ #
+    # print('DMI, N34 - ASAM ---------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['dmi', 'n34'],
+    #                       set_series_totales={'dmi': ['dmi', 'n34'],
+    #                                           'n34': ['n34']},
+    #                       variables={'asam': asam},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     print('DMI, N34, U50 - ASAM ----------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
