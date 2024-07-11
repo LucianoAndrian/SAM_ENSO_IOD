@@ -16,7 +16,7 @@ import statsmodels.formula.api as smf
 ################################################################################
 def SetParents(parents, pc_alpha, withtarget=False):
     parents = parents[parents['pval'] < pc_alpha]
-    parents = parents.query('r < 0.99')
+    parents = parents.query('r < 0.999')
     if withtarget:
         parents = parents.assign(abs_r=parents['r'].abs()).sort_values(
             by=['Target', 'abs_r'], ascending=[True, False])
@@ -94,6 +94,52 @@ def SetLags(x, y, ty, series, parents):
 
     return pd.DataFrame({'x':x, 'y':y, **z_data})
 
+def select_positions(serie, pos, window, lag=0):
+    pos += lag
+    selected_indices = list(range(pos - window - 1, pos + window))
+
+    all_indices = set(selected_indices)
+    max_index = len(serie)
+    for i in range(1, (max_index // 12) + 1):
+        additional_indices = [index + 12 * i for index in selected_indices if
+                              index + 12 * i < max_index]
+        all_indices.update(additional_indices)
+
+    sorted_indices = sorted(all_indices)
+
+    selected_values = serie[sorted_indices]
+
+    return selected_values
+
+
+def select_positions(serie, pos, window, lag=0):
+    selected_values = []
+    length = len(serie)
+    step = 12
+    pos -= lag
+
+    for i in range(0, length//12 + 1):
+        selected_values.extend(serie[pos-window-1+step*i:pos+window+step*i])
+
+    return selected_values
+
+
+def SetLags2(x, y, ty, series, parents, mm, w):
+    x = select_positions(x, mm, w, 0)
+    y = select_positions(y, mm, w, ty)
+
+    z_series = []
+    for i, p  in enumerate(parents):
+        zn = series[p.split('_lag_')[0]]
+        tz = np.int(p.split('_lag_')[1])
+
+        z_series.append(select_positions(zn, mm, w, tz))
+
+    z_columns = [f'parent{i}' for i in range(1, len(z_series) + 1)]
+    z_data = {column: z_series[i] for i, column in enumerate(z_columns)}
+
+    return pd.DataFrame({'x':x, 'y':y, **z_data})
+
 def PartialCorrelation2(df):
     import statsmodels.api as sm
 
@@ -120,16 +166,19 @@ def PartialCorrelation(df):
 
     return r, pv
 
-def PC(series, target, tau_max, pc_alpha):
-    taus = np.arange(1, tau_max + 1)
+def PC(series, target, tau_max, pc_alpha, mm, w):
+    taus = np.arange(0, tau_max + 1)
     len_series = len(series[target])
 
     # Set preliminary parents ------------------------------------------------ #
     # Correlation
     first = True
+    target_serie = select_positions(series[target], mm, w, 0)
     for k in series.keys():
         for t in taus:
-            r, pv = pearsonr(series[target][t:], series[k][:len_series - t])
+            r, pv = pearsonr(target_serie,
+                             select_positions(series[k], mm, w, t))
+            #r, pv = pearsonr(series[target][t:], series[k][:len_series - t])
             d = {'pparents': k + '_lag_' + str(t), 'r': [r], 'pval': [pv]}
 
             if first:
@@ -144,7 +193,6 @@ def PC(series, target, tau_max, pc_alpha):
     if len(parents) > 2:
         # Strong parents for partial correlation
         strong_parents = parents['pparents'].head(2).tolist()
-
         first = True
         for p in parents['pparents']:
             if p == strong_parents[0]:
@@ -154,14 +202,17 @@ def PC(series, target, tau_max, pc_alpha):
 
             serie_p = p.split('_lag_')[0]
             t_p = np.int(p.split('_lag_')[1])
+            # df = SetLags(series[target], series[serie_p], ty=t_p, series=series,
+            #              parents=[sp])
 
-            df = SetLags(series[target], series[serie_p], ty=t_p, series=series,
-                         parents=[sp])
+            df = SetLags2(series[target], series[serie_p], ty=t_p,
+                          series=series, parents=[sp], mm=mm, w=w)
 
             r, pv = PartialCorrelation(df)
 
             d = {'pparents': serie_p + '_lag_' + str(t_p),
                  'r': [r], 'pval': [pv]}
+
             if first:
                 first = False
                 parents1 = pd.DataFrame(d)
@@ -169,8 +220,6 @@ def PC(series, target, tau_max, pc_alpha):
                 parents1 = pd.concat([parents1, pd.DataFrame(d)], axis=0)
 
         parents = SetParents(parents1, pc_alpha)
-        # print('parents1')
-        # print(parents)
         # -------------------------------------------------------------------- #
         if len(parents) > 2:
             # Strong parents for partial correlation
@@ -178,6 +227,7 @@ def PC(series, target, tau_max, pc_alpha):
 
             first = True
             for p in parents['pparents']:
+
                 # Select 2 strong parents for partial correlation
                 aux_strong_parents = strong_parents[:2] if \
                     all(parent != p for parent in strong_parents) else \
@@ -186,9 +236,14 @@ def PC(series, target, tau_max, pc_alpha):
                 serie_p = p.split('_lag_')[0]
                 t_p = np.int(p.split('_lag_')[1])
 
-                df = SetLags(series[target], series[serie_p], ty=t_p,
-                             series=series,
-                             parents=aux_strong_parents)
+
+                # df = SetLags(series[target], series[serie_p], ty=t_p,
+                #              series=series,
+                #              parents=aux_strong_parents)
+
+                df = SetLags2(series[target], series[serie_p], ty=t_p,
+                             series=series, parents=aux_strong_parents,
+                              mm=mm, w=w)
 
                 r, pv = PartialCorrelation(df)
 
@@ -219,7 +274,7 @@ def add_lag(parents, plus_lag=1):
 
     return parents_add_lag
 
-def MCI(series, targets, tau_max, parents, mci_alpha):
+def MCI(series, targets, tau_max, parents, mci_alpha, mm, w):
 
     lags = np.arange(0, tau_max + 1)
     first = True
@@ -240,10 +295,19 @@ def MCI(series, targets, tau_max, parents, mci_alpha):
                 # Test
                 target_actor_parents = list(set(target_actor_parents))
 
-                df = SetLags(series[target], series[a], ty=l, series=series,
-                             parents=target_actor_parents)
+                # df = SetLags(series[target], series[a], ty=l, series=series,
+                #              parents=target_actor_parents)
+                #
+                # esto es debido a la longitud de las series en los casos
+                # donde el add_lag se va a la mierda falla pero no tienen
+                # mucho sentido por ahora esos lags
+                try:
+                    df = SetLags2(series[target], series[a], ty=l, series=series,
+                             parents=target_actor_parents, mm=mm, w=w)
+                    r, pv = PartialCorrelation(df)
+                except:
+                    r, pv = 0, 1
 
-                r, pv = PartialCorrelation(df)
 
                 d = {'Target': target, 'Actor': a + '_lag_' + str(l),
                      'r': [r], 'pval': [pv]}
@@ -258,13 +322,30 @@ def MCI(series, targets, tau_max, parents, mci_alpha):
     #print(links)
     return links
 
-def PCMCI(series, tau_max, pc_alpha, mci_alpha):
+def PCMCI(series, tau_max, pc_alpha, mci_alpha, mm, w):
     targets = []
     targets_parents= {}
     # PC --------------------------------------------------------------------- #
     for s in series.keys():
         targets.append(s)
-        targets_parents.update({s:PC(series, s, tau_max, pc_alpha)})
+        targets_parents.update({s:PC(series, s, tau_max, pc_alpha, mm, w)})
     # MCI -------------------------------------------------------------------- #
-    links = MCI(series,targets, tau_max, targets_parents, mci_alpha)
+    links = MCI(series,targets, tau_max, targets_parents, mci_alpha, mm, w)
     return links
+
+
+# test cambios
+
+x = np.arange(1,101)
+y = np.random.random(100)
+z = np.random.random(100)
+series = {'x':x, 'y':y, 'z':z}
+#
+#
+# SetLags2(x=series['x'], y=series['y'], ty=1, series=series,
+#                          parents=['y_lag_1', 'z_lag_2'], mm=10, w=0)
+
+
+#from PCMCI import PCMCI
+
+#PCMCI(series=series, tau_max=5, pc_alpha=0.2, mci_alpha=0.05, mm=10, w=6)
