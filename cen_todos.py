@@ -294,6 +294,12 @@ lags = {'SON':[10,10,10],
         'JAS--SON':[10, 8, 8],
         'JAS_ASO--OND':[11, 8, 9],
         'JAS--SON2':[10, 8, 10]}
+#
+# lags = {'aux':[10, 10, 9],
+#         'aux2':[10, 10, 8],
+#         'aux3':[10, 10, 7],
+#         'aux4':[10, 10, 6]}
+
 
 for lag_key in lags.keys():
     seasons_lags = lags[lag_key]
@@ -308,6 +314,15 @@ for lag_key in lags.keys():
                              ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
+    # print('DMI, N34 - U50 ----------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['u50', 'n34'],
+    #                       set_series_totales={'u50': ['u50', 'n34'],
+    #                                           'n34': ['n34']},
+    #                       variables={'dmi': dmi},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+
+
 
     print('DMI, N34 - U50 ----------------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
@@ -319,9 +334,9 @@ for lag_key in lags.keys():
 
     print('DMI, N34 ----------------------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi'],
-                          set_series_totales={'dmi': ['dmi']},
-                          variables={'n34': n34},
+                          set_series_directo=['n34'],
+                          set_series_totales={'n34': ['n34']},
+                          variables={'dmi': dmi},
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     # # ------------------------------------------------------------------------ #
@@ -362,3 +377,35 @@ for lag_key in lags.keys():
 
 
 # ---------------------------------------------------------------------------- #
+
+u50_aux = u50_or.sel(
+    time=~u50_or.time.dt.year.isin([2002,2019]))
+u50_aux =u50_aux.sel(time=u50_aux.time.dt.year.isin(range(1959,2021)))
+#u50_aux = u50_aux.sel(time=u50_aux.time.dt.month.isin([7,8,9,10,11, 12]))
+dmi_aux = SameDateAs(dmi_or, u50_aux)
+n34_aux = SameDateAs(n34_or, u50_aux)
+asam_aux = SameDateAs(asam_or, u50_aux)
+ssam_aux = SameDateAs(ssam_or, u50_aux)
+u50_aux = u50_aux / u50_aux.std()
+dmi_aux = dmi_aux / dmi_aux.std()
+n34_aux = n34_aux / n34_aux.std()
+asam_aux = asam_aux / asam_aux.std()
+ssam_aux = ssam_aux / ssam_aux.std()
+
+series = {'dmi':dmi_aux.values, 'n34':n34_aux.values, 'u50':u50_aux.values,
+          'asam':asam_aux.values, 'ssam':ssam_aux.values}
+
+from PCMCI import PCMCI
+PCMCI(series=series, tau_max=3, pc_alpha=0.05, mci_alpha=0.1, mm=10, w=0)
+
+series = {'dmi':dmi_aux.values, 'n34':n34_aux.values, 'u50':u50_aux.values,
+          'asam':asam_aux.values}
+series = {'dmi':dmi_aux.values, 'n34':n34_aux.values,
+          'asam':asam_aux.values}
+
+
+series = {'asam':asam_aux.values,'u50':u50_aux.values,
+          'ssam':ssam_aux.values}
+
+series = {'dmi':dmi_aux.values, 'n34':n34_aux.values}
+PCMCI(series=series, tau_max=5, pc_alpha=0.2, mci_alpha=0.05, mm=10, w=0)

@@ -37,14 +37,18 @@ class CEN_ufunc:
 
         return coef_dataset, pval_dataset
 
+
     def Compute_CEN_and_Plot(self, variables, name_variables, maps,
                              actors_and_sets_total, actors_and_sets_direc,
                              save=False, factores_sp=None, aux_name='',
-                             alpha=0.05, out_dir=''):
+                             alpha=0.05, out_dir='', actors_to_plot=None):
         if save:
             dpi = 100
         else:
             dpi = 70
+
+        if actors_to_plot is None:
+            actors_to_plot = list(actors_and_sets_total.keys())
 
         for v, v_name, mapa in zip(variables,
                                    name_variables,
@@ -53,51 +57,55 @@ class CEN_ufunc:
             v_cmap = get_cbars(v_name)
 
             for a in actors_and_sets_total:
-                sets_total = actors_and_sets_total[a]
-                aux_sig, aux_all = (
-                    self.compute_regression(v['var'], sets_total, coef=a,
-                                       alpha=alpha))
 
-                titulo = f"{v_name} - {a} efecto total  {aux_name}"
-                name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
+                if a in actors_to_plot:
 
-                Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
-                     out_dir, data_ctn=aux_all)
-
-                try:
-                    sets_direc = actors_and_sets_direc[a]
-
+                    sets_total = actors_and_sets_total[a]
                     aux_sig, aux_all = (
-                        self.compute_regression(v['var'], sets_direc, coef=a,
-                                           alpha=alpha))
+                        self.compute_regression(v['var'], sets_total,
+                                                coef=a, alpha=alpha))
 
-                    titulo = f"{v_name} - {a} efecto directo  {aux_name}"
-                    name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
+                    titulo = f"{v_name} - {a} efecto total  {aux_name}"
+                    name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
 
                     Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
                          out_dir, data_ctn=aux_all)
 
-                    if factores_sp is not None:
-                        sp_cmap = get_cbars('snr2')
+                    try:
+                        sets_direc = actors_and_sets_direc[a]
 
-                        try:
-                            factores_sp_a = factores_sp[a]
+                        aux_sig, aux_all = (
+                            self.compute_regression(v['var'], sets_direc,
+                                                    coef=a,
+                                                    alpha=alpha))
+                        titulo = f"{v_name} - {a} efecto directo  {aux_name}"
+                        name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
 
-                            for f_sp in factores_sp_a.keys():
-                                aux_f_sp = factores_sp_a[f_sp]
+                        Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
+                             out_dir, data_ctn=aux_all)
 
-                                titulo = (
-                                    f"{v_name} - {a} SP Indirecto via {f_sp} "
-                                    f"{aux_name}")
-                                name_fig = (f"{v_name}_{a}_SP_indirecto_{f_sp}_"
-                                            f"{aux_name}")
+                        if factores_sp is not None:
+                            sp_cmap = get_cbars('snr2')
 
-                                Plot(aux_f_sp * aux_sig, sp_cmap, mapa, save,
-                                     dpi,
-                                     titulo, name_fig, out_dir,
-                                     data_ctn=aux_all)
-                        except:
-                            pass
+                            try:
+                                factores_sp_a = factores_sp[a]
 
-                except:
-                    print('Sin efecto directo')
+                                for f_sp in factores_sp_a.keys():
+                                    aux_f_sp = factores_sp_a[f_sp]
+
+                                    titulo = (f"{v_name} - {a} SP Indirecto "
+                                              f"via {f_sp} {aux_name}")
+
+                                    name_fig = (f"{v_name}_{a}_SP_indirecto_"
+                                                f"{f_sp}_{aux_name}")
+
+                                    Plot(aux_f_sp * aux_sig, sp_cmap, mapa,
+                                         save, dpi, titulo, name_fig, out_dir,
+                                         data_ctn=aux_all)
+                            except:
+                                pass
+
+                    except:
+                        print('Sin efecto directo')
+
+

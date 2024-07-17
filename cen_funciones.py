@@ -32,6 +32,7 @@ import cartopy.crs as ccrs
 #     else:
 #         return coefs_results
 
+
 import statsmodels.api as sm
 def regre(series, intercept, coef=0, filter_significance=True, alpha=1):
     df = pd.DataFrame(series)
