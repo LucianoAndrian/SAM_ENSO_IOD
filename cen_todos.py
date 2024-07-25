@@ -81,9 +81,26 @@ def Weights(data):
     data_w = data * weights
     return data_w
 
+def aux2_Setlag(serie_or, serie_lag, serie_set, years_to_remove):
+    if serie_lag is not None:
+        serie_f = serie_or.sel(
+            time=serie_or.time.dt.month.isin([serie_lag]))
+        serie_f = serie_f.sel(
+            time=serie_f.time.dt.year.isin(serie_set.time.dt.year))
+    else:
+        serie_f = SameDateAs(serie_or, serie_set)
+
+    serie_f = serie_f / serie_f.std()
+
+    serie_f = serie_f.sel(time=~serie_f.time.dt.year.isin(years_to_remove))
+
+    return serie_f
+
 def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
                          pp_or, dmi_or, n34_or, asam_or, ssam_or, sam_or,
-                         u50_or, strato_indice, years_to_remove=None):
+                         u50_or, strato_indice, years_to_remove=None,
+                         asam_lag=None, ssam_lag=None, sam_lag=None,
+                         auxdmi_lag=None, auxn34_lag=None, auxstrato_lag=None):
 
     # lag_target
     hgt200_anom = hgt200_anom_or.sel(
@@ -92,38 +109,26 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
         hgt200_anom = hgt200_anom.sel(
             time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
 
-    pp = SameDateAs(pp_or, hgt200_anom)
-    sam = SameDateAs(sam_or, hgt200_anom)
-    asam = SameDateAs(asam_or, hgt200_anom)
-    ssam = SameDateAs(ssam_or, hgt200_anom)
-
-    # lag_dmin34
-    dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([lag_dmin34]))
-    dmi = dmi.sel(time=dmi.time.dt.year.isin(hgt200_anom.time.dt.year))
-    n34 = SameDateAs(n34_or, dmi)
-
-    # lag_strato
-    u50 = u50_or.sel(time=u50_or.time.dt.month.isin([lag_strato]))
-    u50 = u50.sel(time=u50.time.dt.year.isin(hgt200_anom.time.dt.year))
-
-    dmi = dmi / dmi.std()
-    n34 = n34 / n34.std()
-    sam = sam / sam.std()
-    asam = asam / asam.std()
-    ssam = ssam / ssam.std()
-    u50 = u50 / u50.std()
     hgt200_anom = hgt200_anom / hgt200_anom.std()
-    pp = pp / pp.std()
-
     hgt200_anom = hgt200_anom.sel(
         time=~hgt200_anom.time.dt.year.isin(years_to_remove))
+
+    pp = SameDateAs(pp_or, hgt200_anom)
+    pp = pp / pp.std()
     pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
-    sam = sam.sel(time=~sam.time.dt.year.isin(years_to_remove))
-    asam = asam.sel(time=~asam.time.dt.year.isin(years_to_remove))
-    ssam = ssam.sel(time=~ssam.time.dt.year.isin(years_to_remove))
-    n34 = n34.sel(time=~n34.time.dt.year.isin(years_to_remove))
-    dmi = dmi.sel(time=~dmi.time.dt.year.isin(years_to_remove))
-    u50 = u50.sel(time=~u50.time.dt.year.isin(years_to_remove))
+
+    sam = aux2_Setlag(sam_or, sam_lag, hgt200_anom, years_to_remove)
+    asam = aux2_Setlag(asam_or, asam_lag, hgt200_anom, years_to_remove)
+    ssam = aux2_Setlag(ssam_or, ssam_lag, hgt200_anom, years_to_remove)
+
+    dmi = aux2_Setlag(dmi_or, lag_dmin34, hgt200_anom, years_to_remove)
+    n34 = aux2_Setlag(n34_or, lag_dmin34, hgt200_anom, years_to_remove)
+
+    u50 = aux2_Setlag(u50_or, lag_strato, hgt200_anom, years_to_remove)
+
+    dmi_aux = aux2_Setlag(dmi_or, auxdmi_lag, hgt200_anom, years_to_remove)
+    n34_aux = aux2_Setlag(n34_or, auxn34_lag, hgt200_anom, years_to_remove)
+    u50_aux = aux2_Setlag(u50_or, auxstrato_lag, hgt200_anom, years_to_remove)
 
     if strato_indice is not None:
         strato_indice = strato_indice.sel(
@@ -131,16 +136,19 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
                       'asam': asam.values,
                       'strato': strato_indice['var'].values,
-                      'sam': sam.values, 'u50': u50.values}
-
-
+                      'sam': sam.values, 'u50': u50.values,
+                      'dmi_aux': dmi_aux.values, 'n34_aux':n34_aux.values,
+                      'u50_aux':u50_aux.values}
     else:
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
                       'asam': asam.values,
                       'strato': None,
-                      'sam': sam.values, 'u50': u50.values}
+                      'sam': sam.values, 'u50': u50.values,
+                      'dmi_aux': dmi_aux.values, 'n34_aux':n34_aux.values,
+                      'u50_aux':u50_aux.values}
 
-    return hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34, actor_list
+    return hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34,\
+           actor_list, dmi_aux, n34_aux, u50_aux
 
 
 def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
@@ -256,15 +264,18 @@ if use_u50:
 # Comparación u50 vs strato caja
 # u50 en SON
 ################################################################################
-hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
-    auxSetLags_ActorList(lag_target=10,
-                         lag_dmin34=10,
-                         lag_strato=10,
-                         hgt200_anom_or=hgt200_anom_or,  pp_or=pp_or,
-                         dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
-                         ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
-                         strato_indice=strato_indice,
-                         years_to_remove=[2002, 2019])
+hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, dmi_aux,\
+n34_aux, u50_aux = auxSetLags_ActorList(lag_target=10,
+                                        lag_dmin34=10,
+                                        lag_strato=10,
+                                        hgt200_anom_or=hgt200_anom_or,
+                                        pp_or=pp_or,
+                                        dmi_or=dmi_or, n34_or=n34_or,
+                                        asam_or=asam_or,
+                                        ssam_or=ssam_or, sam_or=sam_or,
+                                        u50_or=u50_or,
+                                        strato_indice=strato_indice,
+                                        years_to_remove=[2002, 2019])
 
 print('DMI, N34 - STRATO -----------------------------------------------------')
 aux_alpha_CN_Effect_2(actor_list,
@@ -292,7 +303,7 @@ lags = {'SON':[10,10,10],
         'ASO--SON':[10, 9, 10],
         'JAS_ASO--SON':[10, 8, 9],
         'JAS--SON':[10, 8, 8],
-        'JAS_ASO--OND':[11, 8, 9],
+        #'JAS_ASO--OND':[11, 8, 9],
         'JAS--SON2':[10, 8, 10]}
 #
 # lags = {'aux':[10, 10, 9],
@@ -305,14 +316,15 @@ for lag_key in lags.keys():
     seasons_lags = lags[lag_key]
     print(f"{lag_key} ########################################################")
 
-    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
+    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    dmi_aux, n34_aux, u50_aux = \
         auxSetLags_ActorList(lag_target=seasons_lags[0],
                              lag_dmin34=seasons_lags[1],
                              lag_strato=seasons_lags[2],
                              hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
                              dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
                              ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
-                             strato_indice=None,
+                             strato_indice=None, auxdmi_lag=7,
                              years_to_remove=[2002, 2019])
     # print('DMI, N34 - U50 ----------------------------------------------------')
     # aux_alpha_CN_Effect_2(actor_list,
@@ -340,13 +352,13 @@ for lag_key in lags.keys():
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     # # ------------------------------------------------------------------------ #
-    # print('DMI, N34 - SSAM ---------------------------------------------------')
-    # aux_alpha_CN_Effect_2(actor_list,
-    #                       set_series_directo=['dmi', 'n34'],
-    #                       set_series_totales={'dmi': ['dmi', 'n34'],
-    #                                           'n34': ['n34']},
-    #                       variables={'ssam': ssam},
-    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    print('DMI, N34 - SSAM ---------------------------------------------------')
+    aux_alpha_CN_Effect_2(actor_list,
+                          set_series_directo=['dmi', 'n34'],
+                          set_series_totales={'dmi': ['dmi', 'n34'],
+                                              'n34': ['n34']},
+                          variables={'ssam': ssam},
+                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     print('DMI, N34, U50 - SSAM ----------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
@@ -358,13 +370,13 @@ for lag_key in lags.keys():
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     # # ------------------------------------------------------------------------ #
-    # print('DMI, N34 - ASAM ---------------------------------------------------')
-    # aux_alpha_CN_Effect_2(actor_list,
-    #                       set_series_directo=['dmi', 'n34'],
-    #                       set_series_totales={'dmi': ['dmi', 'n34'],
-    #                                           'n34': ['n34']},
-    #                       variables={'asam': asam},
-    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    print('DMI, N34 - ASAM ---------------------------------------------------')
+    aux_alpha_CN_Effect_2(actor_list,
+                          set_series_directo=['dmi', 'n34'],
+                          set_series_totales={'dmi': ['dmi', 'n34'],
+                                              'n34': ['n34']},
+                          variables={'asam': asam},
+                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     print('DMI, N34, U50 - ASAM ----------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
@@ -377,35 +389,36 @@ for lag_key in lags.keys():
 
 
 # ---------------------------------------------------------------------------- #
-
-u50_aux = u50_or.sel(
-    time=~u50_or.time.dt.year.isin([2002,2019]))
-u50_aux =u50_aux.sel(time=u50_aux.time.dt.year.isin(range(1959,2021)))
-#u50_aux = u50_aux.sel(time=u50_aux.time.dt.month.isin([7,8,9,10,11, 12]))
-dmi_aux = SameDateAs(dmi_or, u50_aux)
-n34_aux = SameDateAs(n34_or, u50_aux)
-asam_aux = SameDateAs(asam_or, u50_aux)
-ssam_aux = SameDateAs(ssam_or, u50_aux)
-u50_aux = u50_aux / u50_aux.std()
-dmi_aux = dmi_aux / dmi_aux.std()
-n34_aux = n34_aux / n34_aux.std()
-asam_aux = asam_aux / asam_aux.std()
-ssam_aux = ssam_aux / ssam_aux.std()
-
-series = {'dmi':dmi_aux.values, 'n34':n34_aux.values, 'u50':u50_aux.values,
-          'asam':asam_aux.values, 'ssam':ssam_aux.values}
-
-from PCMCI import PCMCI
-PCMCI(series=series, tau_max=3, pc_alpha=0.05, mci_alpha=0.1, mm=10, w=0)
-
-series = {'dmi':dmi_aux.values, 'n34':n34_aux.values, 'u50':u50_aux.values,
-          'asam':asam_aux.values}
-series = {'dmi':dmi_aux.values, 'n34':n34_aux.values,
-          'asam':asam_aux.values}
-
-
-series = {'asam':asam_aux.values,'u50':u50_aux.values,
-          'ssam':ssam_aux.values}
-
-series = {'dmi':dmi_aux.values, 'n34':n34_aux.values}
-PCMCI(series=series, tau_max=5, pc_alpha=0.2, mci_alpha=0.05, mm=10, w=0)
+#
+# u50_aux = u50_or.sel(
+#     time=~u50_or.time.dt.year.isin([2002,2019]))
+# u50_aux =u50_aux.sel(time=u50_aux.time.dt.year.isin(range(1959,2021)))
+# #u50_aux = u50_aux.sel(time=u50_aux.time.dt.month.isin([7,8,9,10,11, 12]))
+# dmi_aux = SameDateAs(dmi_or, u50_aux)
+# n34_aux = SameDateAs(n34_or, u50_aux)
+# asam_aux = SameDateAs(asam_or, u50_aux)
+# ssam_aux = SameDateAs(ssam_or, u50_aux)
+# u50_aux = u50_aux / u50_aux.std()
+# dmi_aux = dmi_aux / dmi_aux.std()
+# n34_aux = n34_aux / n34_aux.std()
+# asam_aux = asam_aux / asam_aux.std()
+# ssam_aux = ssam_aux / ssam_aux.std()
+#
+# series = {'dmi':dmi_aux.values, 'n34':n34_aux.values, 'u50':u50_aux.values,
+#           'asam':asam_aux.values, 'ssam':ssam_aux.values}
+#
+# from PCMCI import PCMCI
+# PCMCI(series=series, tau_max=3, pc_alpha=0.05, mci_alpha=0.1, mm=10, w=0,
+#       autocorr=True)
+#
+# series = {'dmi':dmi_aux.values, 'n34':n34_aux.values, 'u50':u50_aux.values,
+#           'asam':asam_aux.values}
+# series = {'dmi':dmi_aux.values, 'n34':n34_aux.values,
+#           'asam':asam_aux.values}
+#
+#
+# series = {'asam':asam_aux.values,'u50':u50_aux.values,
+#           'ssam':ssam_aux.values}
+#
+# series = {'dmi':dmi_aux.values, 'n34':n34_aux.values}
+# PCMCI(series=series, tau_max=5, pc_alpha=0.2, mci_alpha=0.05, mm=10, w=0)
