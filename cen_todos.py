@@ -101,11 +101,17 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
                          u50_or, strato_indice, years_to_remove=None,
                          asam_lag=None, ssam_lag=None, sam_lag=None,
                          auxdmi_lag=None, auxn34_lag=None, auxstrato_lag=None,
-                         auxsam_lag=None, auxssam_lag=None, auxasam_lag=None):
+                         auxsam_lag=None, auxssam_lag=None, auxasam_lag=None,
+                         auxhgt_lag=None, auxpp_lag=None):
 
     # lag_target
-    hgt200_anom = hgt200_anom_or.sel(
-        time=hgt200_anom_or.time.dt.month.isin([lag_target]))
+    if auxhgt_lag is None:
+        hgt200_anom = hgt200_anom_or.sel(
+            time=hgt200_anom_or.time.dt.month.isin([lag_target]))
+    else:
+        hgt200_anom = hgt200_anom_or.sel(
+            time=hgt200_anom_or.time.dt.month.isin([auxhgt_lag]))
+
     if strato_indice is not None:
         hgt200_anom = hgt200_anom.sel(
             time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
@@ -114,7 +120,11 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
     hgt200_anom = hgt200_anom.sel(
         time=~hgt200_anom.time.dt.year.isin(years_to_remove))
 
-    pp = SameDateAs(pp_or, hgt200_anom)
+    if auxpp_lag is None:
+        pp = SameDateAs(pp_or, hgt200_anom)
+    else:
+        pp = pp_or.sel(
+            time=pp_or.time.dt.month.isin([auxpp_lag]))
     pp = pp / pp.std()
     pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
 
@@ -314,27 +324,22 @@ lags = {'SON':[10,10,10],
         'JAS_ASO--SON':[10, 8, 9],
         'JAS--SON':[10, 8, 8],
         #'JAS_ASO--OND':[11, 8, 9],
-        'JAS--SON2':[10, 8, 10]}
-#
-# lags = {'aux':[10, 10, 9],
-#         'aux2':[10, 10, 8],
-#         'aux3':[10, 10, 7],
-#         'aux4':[10, 10, 6]}
-
+        'JAS--SON2':[10, 8, 10],
+        'ASO':[9, 9, 9]}
 
 for lag_key in lags.keys():
     seasons_lags = lags[lag_key]
     print(f"{lag_key} ########################################################")
 
     hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
-    dmi_aux, n34_aux, u50_aux, sam_aux, asam_aux, ssam_aux  = \
+    dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
         auxSetLags_ActorList(lag_target=seasons_lags[0],
                              lag_dmin34=seasons_lags[1],
                              lag_strato=seasons_lags[2],
                              hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
                              dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
                              ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
-                             strato_indice=None, auxdmi_lag=7,
+                             strato_indice=None, #auxssam_lag=9, auxasam_lag=9,
                              years_to_remove=[2002, 2019])
     # print('DMI, N34 - U50 ----------------------------------------------------')
     # aux_alpha_CN_Effect_2(actor_list,
@@ -362,13 +367,13 @@ for lag_key in lags.keys():
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     # # ------------------------------------------------------------------------ #
-    print('DMI, N34 - SSAM ---------------------------------------------------')
-    aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi', 'n34'],
-                          set_series_totales={'dmi': ['dmi', 'n34'],
-                                              'n34': ['n34']},
-                          variables={'ssam': ssam},
-                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    # print('DMI, N34 - SSAM ---------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['dmi', 'n34'],
+    #                       set_series_totales={'dmi': ['dmi', 'n34'],
+    #                                           'n34': ['n34']},
+    #                       variables={'ssam': ssam},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     print('DMI, N34, U50 - SSAM ----------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
@@ -376,17 +381,17 @@ for lag_key in lags.keys():
                           set_series_totales={'dmi': ['dmi', 'n34'],
                                               'n34': ['n34'],
                                               'u50': ['dmi', 'n34', 'u50']},
-                          variables={'ssam': ssam},
+                          variables={'aux_ssam': aux_ssam},
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     # # ------------------------------------------------------------------------ #
-    print('DMI, N34 - ASAM ---------------------------------------------------')
-    aux_alpha_CN_Effect_2(actor_list,
-                          set_series_directo=['dmi', 'n34'],
-                          set_series_totales={'dmi': ['dmi', 'n34'],
-                                              'n34': ['n34']},
-                          variables={'asam': asam},
-                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    # print('DMI, N34 - ASAM ---------------------------------------------------')
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['dmi', 'n34'],
+    #                       set_series_totales={'dmi': ['dmi', 'n34'],
+    #                                           'n34': ['n34']},
+    #                       variables={'asam': asam},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
     print('DMI, N34, U50 - ASAM ----------------------------------------------')
     aux_alpha_CN_Effect_2(actor_list,
@@ -394,7 +399,7 @@ for lag_key in lags.keys():
                           set_series_totales={'dmi': ['dmi', 'n34'],
                                               'n34': ['n34'],
                                               'u50': ['dmi', 'n34', 'u50']},
-                          variables={'asam': asam},
+                          variables={'aux_asam': aux_asam},
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
 
