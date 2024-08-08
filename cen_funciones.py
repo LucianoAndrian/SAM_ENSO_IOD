@@ -98,42 +98,6 @@ def regre_forplot(series, intercept, coef=0, alpha=1):
         return results_sig.get(coef, 0), results_all.get(coef, 0)
     else:
         return results_sig, results_all
-#
-#
-# from scipy.stats import t as t_dist
-# def regre(series, intercept, coef=0, filter_significance=True, alpha=0.05):
-#     df = pd.DataFrame(series)
-#     if intercept:
-#         X = sm.add_constant(df[df.columns[1:]])
-#     else:
-#         X = df[df.columns[1:]]
-#     y = df[df.columns[0]]
-#
-#     model = sm.OLS(y, X).fit()
-#     coefs_results = model.params
-#     t_values = model.tvalues
-#
-#     n = len(y)
-#     n = len(series[list(series.keys())[0]])
-#     p = X.shape[1] - (1 if intercept else 0)  # Número de predictores
-#     p = len(series)-1
-#     t_critico = t_dist.ppf(1 - alpha/2, df=n - p - 1)
-# #    print(t_critico)
-#
-#     results = {}
-#     for col in df.columns[1:]:
-#         if filter_significance:
-#             if np.abs(t_values[col]) > t_critico:
-#                 results[col] = coefs_results[col]
-#             else:
-#                 results[col] = 0
-#         else:
-#             results[col] = coefs_results[col]
-#
-#     if isinstance(coef, str):
-#         return results.get(coef, 0)
-#     else:
-#         return results
 
 def AUX_select_actors(actor_list, set_series, serie_to_set):
     serie_to_set2 = serie_to_set.copy()
@@ -224,7 +188,6 @@ def CN_Effect_2(actor_list, set_series_directo, set_series_totales,
     return result_df
 
 
-
 def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir,
          step=1, data_ctn=None):
 
@@ -300,3 +263,192 @@ def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir,
         plt.close()
     else:
         plt.show()
+# ---------------------------------------------------------------------------- #
+import xarray as xr
+from ENSO_IOD_Funciones import SameDateAs
+
+def OpenObsDataSet(name, sa=True, dir=''):
+    aux = xr.open_dataset(dir + name + '.nc')
+    if sa:
+        aux2 = aux.sel(lon=slice(270, 330), lat=slice(15, -60))
+        if len(aux2.lat) > 0:
+            return aux2
+        else:
+            aux2 = aux.sel(lon=slice(270, 330), lat=slice(-60, 15))
+            return aux2
+    else:
+        return aux
+
+def Detrend(xrda, dim):
+    aux = xrda.polyfit(dim=dim, deg=1)
+    try:
+        trend = xr.polyval(xrda[dim], aux.var_polyfit_coefficients)
+    except:
+        trend = xr.polyval(xrda[dim], aux.polyfit_coefficients)
+    dt = xrda - trend
+    return dt
+
+def Weights(data):
+    weights = np.transpose(np.tile(np.cos(data.lat * np.pi / 180),
+                                   (len(data.lon), 1)))
+    data_w = data * weights
+    return data_w
+
+def aux2_Setlag(serie_or, serie_lag, serie_set, years_to_remove):
+    if serie_lag is not None:
+        serie_f = serie_or.sel(
+            time=serie_or.time.dt.month.isin([serie_lag]))
+        serie_f = serie_f.sel(
+            time=serie_f.time.dt.year.isin(serie_set.time.dt.year))
+    else:
+        serie_f = SameDateAs(serie_or, serie_set)
+
+    serie_f = serie_f / serie_f.std()
+
+    serie_f = serie_f.sel(time=~serie_f.time.dt.year.isin(years_to_remove))
+
+    return serie_f
+
+def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato,
+                         hgt200_anom_or=None, pp_or=None, dmi_or=None,
+                         n34_or=None, asam_or=None, ssam_or=None,
+                         sam_or=None, u50_or=None, strato_indice=None,
+                         years_to_remove=None, asam_lag=None, ssam_lag=None,
+                         sam_lag=None, auxdmi_lag=None, auxn34_lag=None,
+                         auxstrato_lag=None, auxsam_lag=None, auxssam_lag=None,
+                         auxasam_lag=None, auxhgt_lag=None, auxpp_lag=None):
+
+    # lag_target
+    if auxhgt_lag is None:
+        hgt200_anom = hgt200_anom_or.sel(
+            time=hgt200_anom_or.time.dt.month.isin([lag_target]))
+    else:
+        hgt200_anom = hgt200_anom_or.sel(
+            time=hgt200_anom_or.time.dt.month.isin([auxhgt_lag]))
+
+    if strato_indice is not None:
+        hgt200_anom = hgt200_anom.sel(
+            time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
+
+    if hgt200_anom is not None:
+        hgt200_anom = hgt200_anom / hgt200_anom.std()
+        hgt200_anom = hgt200_anom.sel(
+            time=~hgt200_anom.time.dt.year.isin(years_to_remove))
+
+        if pp_or is not None:
+            if auxpp_lag is None:
+                pp = SameDateAs(pp_or, hgt200_anom)
+            else:
+                pp = pp_or.sel(
+                    time=pp_or.time.dt.month.isin([auxpp_lag]))
+            pp = pp / pp.std()
+            pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
+            pp2 = pp.values
+        else:
+            pp = pp2 = None
+
+        if sam_or is not None:
+            sam = aux2_Setlag(sam_or, sam_lag, hgt200_anom, years_to_remove)
+            aux_sam = aux2_Setlag(sam_or, auxsam_lag, hgt200_anom,
+                                  years_to_remove)
+            sam2 = sam.values
+            aux_sam2 = aux_sam.values
+        else:
+            sam = sam2 = None
+            aux_sam = aux_sam2 = None
+
+        if asam_or is not None:
+            asam = aux2_Setlag(asam_or, asam_lag, hgt200_anom, years_to_remove)
+            aux_asam = aux2_Setlag(asam_or, auxasam_lag, hgt200_anom,
+                                   years_to_remove)
+            asam2 = asam.values
+            aux_asam2 = aux_asam.values
+        else:
+            asam = asam2 = None
+            aux_asam = aux_asam2 = None
+
+        if ssam_or is not None:
+            ssam = aux2_Setlag(ssam_or, ssam_lag, hgt200_anom, years_to_remove)
+            aux_ssam = aux2_Setlag(ssam_or, auxssam_lag, hgt200_anom,
+                                   years_to_remove)
+            ssam2 = ssam.values
+            aux_ssam2 = aux_ssam.values
+        else:
+            ssam = ssam2 = None
+            aux_ssam = aux_ssam2 = None
+
+        if dmi_or is not None:
+            dmi = aux2_Setlag(dmi_or, lag_dmin34, hgt200_anom, years_to_remove)
+            dmi_aux = aux2_Setlag(dmi_or, auxdmi_lag, hgt200_anom,
+                                  years_to_remove)
+            dmi2 = dmi.values
+            dmi_aux2 = dmi_aux.values
+        else:
+            dmi = dmi2 = None
+            dmi_aux = dmi_aux2 = None
+
+        if n34_or is not None:
+            n34 = aux2_Setlag(n34_or, lag_dmin34, hgt200_anom, years_to_remove)
+            n34_aux = aux2_Setlag(n34_or, auxn34_lag, hgt200_anom,
+                                  years_to_remove)
+            n342 = n34.values
+            n34_aux2 = n34_aux.values
+        else:
+            n34 = n342 = None
+            n34_aux = n34_aux2 = None
+
+        if u50_or is not None:
+            u50 = aux2_Setlag(u50_or, lag_strato, hgt200_anom, years_to_remove)
+            u50_aux = aux2_Setlag(u50_or, auxstrato_lag, hgt200_anom,
+                                  years_to_remove)
+            u502 = u50.values
+            u50_aux2 = u50_aux.values
+        else:
+            u50 = u502 = None
+            u50_aux = u50_aux2 = None
+
+        if strato_indice is not None:
+            strato_indice = strato_indice.sel(
+                time=~strato_indice.time.isin(years_to_remove))
+            strato_indice2 = strato_indice['var'].values
+        else:
+            strato_indice = strato_indice2 = None
+
+        actor_list = {'dmi': dmi2, 'n34': n342, 'ssam': ssam2, 'asam': asam2,
+                      'strato': strato_indice2, 'sam': sam2, 'u50': u502,
+                      'dmi_aux': dmi_aux2, 'n34_aux': n34_aux2,
+                      'u50_aux': u50_aux2,
+                      'aux_sam': aux_sam2, 'aux_ssam': aux_ssam2,
+                      'aux_asam': aux_asam2}
+
+    else:
+        print('Error: hgt200_anom es None')
+        hgt200_anom =  pp = asam = ssam = u50 = strato_indice = dmi = n34 = \
+        actor_list = dmi_aux = n34_aux = u50_aux = aux_sam = aux_ssam = \
+        aux_asam = None
+        actor_list = None
+
+    return (hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34,\
+           actor_list, dmi_aux, n34_aux, u50_aux, aux_sam, aux_ssam,
+            aux_asam)
+
+
+def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
+                          variables, sig, alpha_sig,
+                          set_series_directo_particulares=None):
+    for i in alpha_sig:
+        linea_sig = pd.DataFrame({'v_efecto': ['alpha'], 'b': [str(i)]})
+
+        df = CN_Effect_2(actor_list, set_series_directo,
+                         set_series_totales,
+                         variables, alpha=i,
+                         sig=sig,
+                         set_series_directo_particulares=
+                         set_series_directo_particulares)
+
+        if i == alpha_sig[0]:
+            df_final = pd.concat([linea_sig, df], ignore_index=True)
+        else:
+            df_final = pd.concat([df_final, linea_sig, df], ignore_index=True)
+
+    return df_final
