@@ -33,6 +33,8 @@ from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2
 from cen_funciones import CN_Effect_2
+from cen_funciones import OpenObsDataSet, Detrend, Weights, aux2_Setlag, \
+    auxSetLags_ActorList, aux_alpha_CN_Effect_2, CN_Effect_2
 # import matplotlib.pyplot as plt
 # import cartopy.feature
 # from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -53,142 +55,6 @@ sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
 dir_pp = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_no_detrend/'
 ################################################################################
-# Funciones ------------------------------------------------------------------ #
-def OpenObsDataSet(name, sa=True, dir=''):
-    aux = xr.open_dataset(dir + name + '.nc')
-    if sa:
-        aux2 = aux.sel(lon=slice(270, 330), lat=slice(15, -60))
-        if len(aux2.lat) > 0:
-            return aux2
-        else:
-            aux2 = aux.sel(lon=slice(270, 330), lat=slice(-60, 15))
-            return aux2
-    else:
-        return aux
-
-def Detrend(xrda, dim):
-    aux = xrda.polyfit(dim=dim, deg=1)
-    try:
-        trend = xr.polyval(xrda[dim], aux.var_polyfit_coefficients)
-    except:
-        trend = xr.polyval(xrda[dim], aux.polyfit_coefficients)
-    dt = xrda - trend
-    return dt
-
-def Weights(data):
-    weights = np.transpose(np.tile(np.cos(data.lat * np.pi / 180),
-                                   (len(data.lon), 1)))
-    data_w = data * weights
-    return data_w
-
-def aux2_Setlag(serie_or, serie_lag, serie_set, years_to_remove):
-    if serie_lag is not None:
-        serie_f = serie_or.sel(
-            time=serie_or.time.dt.month.isin([serie_lag]))
-        serie_f = serie_f.sel(
-            time=serie_f.time.dt.year.isin(serie_set.time.dt.year))
-    else:
-        serie_f = SameDateAs(serie_or, serie_set)
-
-    serie_f = serie_f / serie_f.std()
-
-    serie_f = serie_f.sel(time=~serie_f.time.dt.year.isin(years_to_remove))
-
-    return serie_f
-
-def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
-                         pp_or, dmi_or, n34_or, asam_or, ssam_or, sam_or,
-                         u50_or, strato_indice, years_to_remove=None,
-                         asam_lag=None, ssam_lag=None, sam_lag=None,
-                         auxdmi_lag=None, auxn34_lag=None, auxstrato_lag=None,
-                         auxsam_lag=None, auxssam_lag=None, auxasam_lag=None,
-                         auxhgt_lag=None, auxpp_lag=None):
-
-    # lag_target
-    if auxhgt_lag is None:
-        hgt200_anom = hgt200_anom_or.sel(
-            time=hgt200_anom_or.time.dt.month.isin([lag_target]))
-    else:
-        hgt200_anom = hgt200_anom_or.sel(
-            time=hgt200_anom_or.time.dt.month.isin([auxhgt_lag]))
-
-    if strato_indice is not None:
-        hgt200_anom = hgt200_anom.sel(
-            time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
-
-    hgt200_anom = hgt200_anom / hgt200_anom.std()
-    hgt200_anom = hgt200_anom.sel(
-        time=~hgt200_anom.time.dt.year.isin(years_to_remove))
-
-    if auxpp_lag is None:
-        pp = SameDateAs(pp_or, hgt200_anom)
-    else:
-        pp = pp_or.sel(
-            time=pp_or.time.dt.month.isin([auxpp_lag]))
-    pp = pp / pp.std()
-    pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
-
-    sam = aux2_Setlag(sam_or, sam_lag, hgt200_anom, years_to_remove)
-    asam = aux2_Setlag(asam_or, asam_lag, hgt200_anom, years_to_remove)
-    ssam = aux2_Setlag(ssam_or, ssam_lag, hgt200_anom, years_to_remove)
-
-    dmi = aux2_Setlag(dmi_or, lag_dmin34, hgt200_anom, years_to_remove)
-    n34 = aux2_Setlag(n34_or, lag_dmin34, hgt200_anom, years_to_remove)
-
-    u50 = aux2_Setlag(u50_or, lag_strato, hgt200_anom, years_to_remove)
-
-    dmi_aux = aux2_Setlag(dmi_or, auxdmi_lag, hgt200_anom, years_to_remove)
-    n34_aux = aux2_Setlag(n34_or, auxn34_lag, hgt200_anom, years_to_remove)
-    u50_aux = aux2_Setlag(u50_or, auxstrato_lag, hgt200_anom, years_to_remove)
-
-    aux_sam = aux2_Setlag(sam_or, auxsam_lag, hgt200_anom, years_to_remove)
-    aux_asam = aux2_Setlag(asam_or, auxasam_lag, hgt200_anom, years_to_remove)
-    aux_ssam = aux2_Setlag(ssam_or, auxssam_lag, hgt200_anom, years_to_remove)
-
-
-    if strato_indice is not None:
-        strato_indice = strato_indice.sel(
-            time=~strato_indice.time.isin(years_to_remove))
-        actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
-                      'asam': asam.values,
-                      'strato': strato_indice['var'].values,
-                      'sam': sam.values, 'u50': u50.values,
-                      'dmi_aux': dmi_aux.values, 'n34_aux':n34_aux.values,
-                      'u50_aux':u50_aux.values, 'aux_sam':aux_sam.values,
-                      'aux_ssam':aux_ssam.values, 'aux_asam':aux_asam.values}
-    else:
-        actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
-                      'asam': asam.values,
-                      'strato': None,
-                      'sam': sam.values, 'u50': u50.values,
-                      'dmi_aux': dmi_aux.values, 'n34_aux':n34_aux.values,
-                      'u50_aux':u50_aux.values, 'aux_sam':aux_sam.values,
-                      'aux_ssam':aux_ssam.values, 'aux_asam':aux_asam.values}
-
-    return (hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34,\
-           actor_list, dmi_aux, n34_aux, u50_aux, aux_sam, aux_ssam,
-            aux_asam)
-
-
-def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
-                          variables, sig, alpha_sig,
-                          set_series_directo_particulares=None):
-    for i in alpha_sig:
-        linea_sig = pd.DataFrame({'v_efecto': ['alpha'], 'b': [str(i)]})
-
-        df = CN_Effect_2(actor_list, set_series_directo,
-                         set_series_totales,
-                         variables, alpha=i,
-                         sig=sig,
-                         set_series_directo_particulares=
-                         set_series_directo_particulares)
-
-        if i == alpha_sig[0]:
-            df_final = pd.concat([linea_sig, df], ignore_index=True)
-        else:
-            df_final = pd.concat([df_final, linea_sig, df], ignore_index=True)
-
-    return df_final
 ################################################################################
 # HGT ------------------------------------------------------------------------ #
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
@@ -285,33 +151,34 @@ if use_u50:
 ################################################################################
 # Comparación u50 vs strato caja
 # u50 en SON
+# YA ESTA
 ################################################################################
-(hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list,
- dmi_aux, n34_aux, u50_aux, sam_aux, asam_aux, ssam_aux) = (
-    auxSetLags_ActorList(lag_target=10,
-                         lag_dmin34=10,
-                         lag_strato=10,
-                         hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
-                         dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
-                         ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
-                         strato_indice=strato_indice,
-                         years_to_remove=[2002, 2019]))
-
-print('DMI, N34 - STRATO -----------------------------------------------------')
-aux_alpha_CN_Effect_2(actor_list,
-                      set_series_directo=['dmi', 'n34'],
-                      set_series_totales={'dmi': ['dmi', 'n34'],
-                                          'n34': ['n34']},
-                      variables={'strato' : strato_indice2['var']},
-                      sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-
-print('DMI, N34 - U50 --------------------------------------------------------')
-aux_alpha_CN_Effect_2(actor_list,
-                      set_series_directo=['dmi', 'n34'],
-                      set_series_totales={'dmi': ['dmi', 'n34'],
-                                          'n34': ['n34']},
-                      variables={'u50' : u50},
-                      sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+# (hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list,
+#  dmi_aux, n34_aux, u50_aux, sam_aux, asam_aux, ssam_aux) = (
+#     auxSetLags_ActorList(lag_target=10,
+#                          lag_dmin34=10,
+#                          lag_strato=10,
+#                          hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
+#                          dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
+#                          ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
+#                          strato_indice=strato_indice,
+#                          years_to_remove=[2002, 2019]))
+#
+# print('DMI, N34 - STRATO -----------------------------------------------------')
+# aux_alpha_CN_Effect_2(actor_list,
+#                       set_series_directo=['dmi', 'n34'],
+#                       set_series_totales={'dmi': ['dmi', 'n34'],
+#                                           'n34': ['n34']},
+#                       variables={'strato' : strato_indice2['var']},
+#                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+#
+# print('DMI, N34 - U50 --------------------------------------------------------')
+# aux_alpha_CN_Effect_2(actor_list,
+#                       set_series_directo=['dmi', 'n34'],
+#                       set_series_totales={'dmi': ['dmi', 'n34'],
+#                                           'n34': ['n34']},
+#                       variables={'u50' : u50},
+#                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
 
 ################################################################################
 # Usando U, no STRATO.

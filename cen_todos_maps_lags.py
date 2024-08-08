@@ -4,7 +4,7 @@ con lags
 """
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
-save = True
+save = False
 use_u50 = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect2/'
 
@@ -74,49 +74,70 @@ def Weights(data):
     data_w = data * weights
     return data_w
 
+def aux2_Setlag(serie_or, serie_lag, serie_set, years_to_remove):
+    if serie_lag is not None:
+        serie_f = serie_or.sel(
+            time=serie_or.time.dt.month.isin([serie_lag]))
+        serie_f = serie_f.sel(
+            time=serie_f.time.dt.year.isin(serie_set.time.dt.year))
+    else:
+        serie_f = SameDateAs(serie_or, serie_set)
+
+    serie_f = serie_f / serie_f.std()
+
+    serie_f = serie_f.sel(time=~serie_f.time.dt.year.isin(years_to_remove))
+
+    return serie_f
+
 def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
                          pp_or, dmi_or, n34_or, asam_or, ssam_or, sam_or,
-                         u50_or, strato_indice, years_to_remove=None):
+                         u50_or, strato_indice, years_to_remove=None,
+                         asam_lag=None, ssam_lag=None, sam_lag=None,
+                         auxdmi_lag=None, auxn34_lag=None, auxstrato_lag=None,
+                         auxsam_lag=None, auxssam_lag=None, auxasam_lag=None,
+                         auxhgt_lag=None, auxpp_lag=None):
 
     # lag_target
-    hgt200_anom = hgt200_anom_or.sel(
-        time=hgt200_anom_or.time.dt.month.isin([lag_target]))
+    if auxhgt_lag is None:
+        hgt200_anom = hgt200_anom_or.sel(
+            time=hgt200_anom_or.time.dt.month.isin([lag_target]))
+    else:
+        hgt200_anom = hgt200_anom_or.sel(
+            time=hgt200_anom_or.time.dt.month.isin([auxhgt_lag]))
+
     if strato_indice is not None:
         hgt200_anom = hgt200_anom.sel(
             time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
 
-    pp = SameDateAs(pp_or, hgt200_anom)
-    sam = SameDateAs(sam_or, hgt200_anom)
-    asam = SameDateAs(asam_or, hgt200_anom)
-    ssam = SameDateAs(ssam_or, hgt200_anom)
-
-    # lag_dmin34
-    dmi = dmi_or.sel(time=dmi_or.time.dt.month.isin([lag_dmin34]))
-    dmi = dmi.sel(time=dmi.time.dt.year.isin(hgt200_anom.time.dt.year))
-    n34 = SameDateAs(n34_or, dmi)
-
-    # lag_strato
-    u50 = u50_or.sel(time=u50_or.time.dt.month.isin([lag_strato]))
-    u50 = u50.sel(time=u50.time.dt.year.isin(hgt200_anom.time.dt.year))
-
-    dmi = dmi / dmi.std()
-    n34 = n34 / n34.std()
-    sam = sam / sam.std()
-    asam = asam / asam.std()
-    ssam = ssam / ssam.std()
-    u50 = u50 / u50.std()
     hgt200_anom = hgt200_anom / hgt200_anom.std()
-    pp = pp / pp.std()
-
     hgt200_anom = hgt200_anom.sel(
         time=~hgt200_anom.time.dt.year.isin(years_to_remove))
+
+    if auxpp_lag is None:
+        pp = SameDateAs(pp_or, hgt200_anom)
+    else:
+        pp = pp_or.sel(
+            time=pp_or.time.dt.month.isin([auxpp_lag]))
+    pp = pp / pp.std()
     pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
-    sam = sam.sel(time=~sam.time.dt.year.isin(years_to_remove))
-    asam = asam.sel(time=~asam.time.dt.year.isin(years_to_remove))
-    ssam = ssam.sel(time=~ssam.time.dt.year.isin(years_to_remove))
-    n34 = n34.sel(time=~n34.time.dt.year.isin(years_to_remove))
-    dmi = dmi.sel(time=~dmi.time.dt.year.isin(years_to_remove))
-    u50 = u50.sel(time=~u50.time.dt.year.isin(years_to_remove))
+
+    sam = aux2_Setlag(sam_or, sam_lag, hgt200_anom, years_to_remove)
+    asam = aux2_Setlag(asam_or, asam_lag, hgt200_anom, years_to_remove)
+    ssam = aux2_Setlag(ssam_or, ssam_lag, hgt200_anom, years_to_remove)
+
+    dmi = aux2_Setlag(dmi_or, lag_dmin34, hgt200_anom, years_to_remove)
+    n34 = aux2_Setlag(n34_or, lag_dmin34, hgt200_anom, years_to_remove)
+
+    u50 = aux2_Setlag(u50_or, lag_strato, hgt200_anom, years_to_remove)
+
+    dmi_aux = aux2_Setlag(dmi_or, auxdmi_lag, hgt200_anom, years_to_remove)
+    n34_aux = aux2_Setlag(n34_or, auxn34_lag, hgt200_anom, years_to_remove)
+    u50_aux = aux2_Setlag(u50_or, auxstrato_lag, hgt200_anom, years_to_remove)
+
+    aux_sam = aux2_Setlag(sam_or, auxsam_lag, hgt200_anom, years_to_remove)
+    aux_asam = aux2_Setlag(asam_or, auxasam_lag, hgt200_anom, years_to_remove)
+    aux_ssam = aux2_Setlag(ssam_or, auxssam_lag, hgt200_anom, years_to_remove)
+
 
     if strato_indice is not None:
         strato_indice = strato_indice.sel(
@@ -124,16 +145,22 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
                       'asam': asam.values,
                       'strato': strato_indice['var'].values,
-                      'sam': sam.values, 'u50': u50.values}
-
+                      'sam': sam.values, 'u50': u50.values,
+                      'dmi_aux': dmi_aux.values, 'n34_aux':n34_aux.values,
+                      'u50_aux':u50_aux.values, 'aux_sam':aux_sam.values,
+                      'aux_ssam':aux_ssam.values, 'aux_asam':aux_asam.values}
     else:
         actor_list = {'dmi': dmi.values, 'n34': n34.values, 'ssam': ssam.values,
                       'asam': asam.values,
                       'strato': None,
-                      'sam': sam.values, 'u50': u50.values}
+                      'sam': sam.values, 'u50': u50.values,
+                      'dmi_aux': dmi_aux.values, 'n34_aux':n34_aux.values,
+                      'u50_aux':u50_aux.values, 'aux_sam':aux_sam.values,
+                      'aux_ssam':aux_ssam.values, 'aux_asam':aux_asam.values}
 
-    return hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34, actor_list
-
+    return (hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34,\
+           actor_list, dmi_aux, n34_aux, u50_aux, aux_sam, aux_ssam,
+            aux_asam)
 
 ################################################################################
 # HGT ------------------------------------------------------------------------ #
@@ -240,14 +267,14 @@ coefs_u50_ssam = [0.636, 0.636, 0.689, 0.683, 0.644]
 for l_count, lag_key in enumerate(lags.keys()):
     seasons_lags = lags[lag_key]
 
-    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list = \
+    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
         auxSetLags_ActorList(lag_target=seasons_lags[0],
                              lag_dmin34=seasons_lags[1],
                              lag_strato=seasons_lags[2],
                              hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
                              dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
-                             ssam_or=ssam_or, sam_or=sam_or,
-                             u50_or=u50_or,
+                             ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
 
@@ -266,6 +293,7 @@ for l_count, lag_key in enumerate(lags.keys()):
                    'asam': {'dmi->asam': coefs_dmi_asam[l_count],
                             'n34->asam': coefs_n34_asam[l_count],
                             'u50->asam': coefs_u50_asam[l_count]}}
+    factores_sp = {}
 
     # Mod Full ASAM -x- SSAM - u50 ---------------------------------------------
     actors_and_sets_total = {'dmi': 'dmi:n34',
@@ -285,7 +313,7 @@ for l_count, lag_key in enumerate(lags.keys()):
                              save=save, factores_sp=factores_sp,
                              aux_name=f"Mod_ASAMxSSAM_u50_LAG-{lag_key}",
                              alpha=0.10, out_dir=out_dir,
-                             actors_to_plot=['dmi', 'n34', 'u50'])
+                             actors_to_plot = ['n34', 'dmi', 'u50'])
 
     cen.Compute_CEN_and_Plot([pp], ['pp'], ['sa'],
                              actors_and_sets_total, actors_and_sets_direc,
@@ -421,3 +449,117 @@ for l_count, lag_key in enumerate(lags.keys()):
                              alpha=0.10, out_dir=out_dir,
                              actors_to_plot=['dmi', 'n34', 'u50'])
 ################################################################################
+
+
+lags = {'ASO':[9,9,9]}
+
+coefs_dmi_u50 = [-0.16]
+coefs_n34_u50 = [0.22]
+coefs_dmi_asam = [-0.23]
+coefs_n34_asam = [-0.44]
+coefs_dmi_ssam = [-0.035]
+coefs_n34_ssam = [-0.06]
+coefs_u50_asam = [0.26]
+coefs_u50_ssam = [0.512]
+
+for l_count, lag_key in enumerate(lags.keys()):
+    seasons_lags = lags[lag_key]
+
+    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
+        auxSetLags_ActorList(lag_target=seasons_lags[0],
+                             lag_dmin34=seasons_lags[1],
+                             lag_strato=seasons_lags[2],
+                             hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
+                             dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
+                             ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
+                             strato_indice=None, auxssam_lag=10, auxasam_lag=10,
+                             auxhgt_lag=10, auxpp_lag=10,
+                             years_to_remove=[2002, 2019])
+
+    cen = CEN_ufunc(actor_list)
+    hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
+
+    factores_sp = {'u50': {'dmi->u50': coefs_dmi_u50[l_count],
+                           'n34->u50': coefs_n34_u50[l_count]},
+                   'ssam': {'dmi->ssam': coefs_dmi_ssam[l_count],
+                            'n34->ssam': coefs_n34_ssam[l_count],
+                            'u50->ssam': coefs_u50_ssam[l_count]},
+                   'asam': {'dmi->asam': coefs_dmi_asam[l_count],
+                            'n34->asam': coefs_n34_asam[l_count],
+                            'u50->asam': coefs_u50_asam[l_count]}}
+
+    # Mod Full ASAM -x- SSAM - u50 ---------------------------------------------
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'u50': 'dmi:n34:u50',
+                             'asam': 'dmi:n34:u50:asam',
+                             'ssam': 'dmi:n34:ssam:u50'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:u50:asam:ssam',
+                             'n34': 'dmi:n34:u50:asam:ssam',
+                             'u50': 'dmi:n34:u50:asam:ssam',
+                             'asam': 'dmi:n34:u50:asam',
+                             'ssam': 'dmi:n34:ssam:u50'}
+
+    cen.Compute_CEN_and_Plot([hgt200_anom2], ['hgt200'], ['hs'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp,
+                             aux_name=f"Mod_ASAMxSSAM_u50_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir,
+                             #actors_to_plot=['dmi', 'n34', 'u50'])
+                             actors_to_plot = ['asam', 'ssam'])
+
+    cen.Compute_CEN_and_Plot([pp], ['pp'], ['sa'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp,
+                             aux_name=f"Mod_ASAMxSSAM_u50_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir)
+
+    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
+        auxSetLags_ActorList(lag_target=seasons_lags[0],
+                             lag_dmin34=seasons_lags[1],
+                             lag_strato=seasons_lags[2],
+                             hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
+                             dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
+                             ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
+                             strato_indice=None, auxssam_lag=10, auxasam_lag=10,
+                             auxhgt_lag=10, auxpp_lag=10,
+                             years_to_remove=[2002, 2019])
+
+    cen = CEN_ufunc(actor_list)
+    hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
+
+    factores_sp = {'u50': {'dmi->u50': coefs_dmi_u50[l_count],
+                           'n34->u50': coefs_n34_u50[l_count]},
+                   'ssam': {'dmi->ssam': coefs_dmi_ssam[l_count],
+                            'n34->ssam': coefs_n34_ssam[l_count],
+                            'u50->ssam': coefs_u50_ssam[l_count]},
+                   'asam': {'dmi->asam': coefs_dmi_asam[l_count],
+                            'n34->asam': coefs_n34_asam[l_count],
+                            'u50->asam': coefs_u50_asam[l_count]}}
+
+    # Mod Full DMI, N34 - u50 --------------------------------------------------
+    actors_and_sets_total = {'dmi': 'dmi:n34',
+                             'n34': 'n34',
+                             'u50': 'dmi:n34:u50'}
+
+    actors_and_sets_direc = {'dmi': 'dmi:n34:u50',
+                             'n34': 'dmi:n34:u50',
+                             'u50': 'dmi:n34:u50'}
+
+    cen.Compute_CEN_and_Plot([hgt200_anom2], ['hgt200'], ['hs'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp,
+                             aux_name=f"Mod_ASAMxSSAM_NOSAMs_u50_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir,
+                             #actors_to_plot=['dmi', 'n34', 'u50'])
+                             actors_to_plot = ['n34', 'dmi', 'u50'])
+
+    cen.Compute_CEN_and_Plot([pp], ['pp'], ['sa'],
+                             actors_and_sets_total, actors_and_sets_direc,
+                             save=save, factores_sp=factores_sp,
+                             aux_name=f"Mod_ASAMxSSAM_NOSAMs_u50_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir)
+
