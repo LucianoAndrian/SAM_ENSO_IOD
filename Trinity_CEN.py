@@ -3,7 +3,7 @@ Red causal ENSO-IOD-U50hpa
 """
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
-save = False
+save = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
 modname='Trinity'
 
@@ -132,25 +132,14 @@ u50_or = xr.DataArray(u50_or['var'].drop('lat'))
 hgt200_anom_or =\
     hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.year.isin(range(1959,2021)))
 
-# QUE LAGS USAR ?????
 lags = {'SON':[10,10,10],
-        'ASO--SON':[10, 9, 10],
+        'ASO--SON':[10, 9, 9],
         'JAS_ASO--SON':[10, 8, 9],
-        'JAS--SON':[10, 8, 8],
-        #'JAS_ASO--OND':[11, 8, 9],
-        'JAS--SON2':[10, 8, 10],
-        'ASO':[9, 9, 9]}
+        'JAS--SON':[10, 8, 8]}
 
-coefs_dmi_u50 = [-0.01,-0.03, -0.11, -0.11, -0.06]
-coefs_n34_u50 = [0.08, 0.11, 0.16, 0.16, 0.14]
-coefs_dmi_asam = [-0.28, -0.27, -0.12, -0.009, -0.15]
-coefs_n34_asam = [-0.40, -0.40, -0.53, -0.57, -0.49]
-coefs_dmi_ssam = [-0.12, - 0.09, -0.04, 0.19, -0.009]
-coefs_n34_ssam = [0, -0.03, 0.12, -0.38, -0.10]
-coefs_u50_asam = [0.236, 0.23, 0.42, 0.53, 0.25]
-coefs_u50_ssam = [0.636, 0.636, 0.689, 0.683, 0.644]
-
-lags = {'SON':[10,10,10]}
+coefs_dmi_u50 = [-0.01, -0.16, -0.15, -0.20]
+coefs_n34_u50 = [0.10, 0.22, 0.23, 0.13]
+coef_n34_dmi_u50 = [0.639*0.10, 0.589*0.22, 0.483*0.23, 0.483*0.13]
 
 for l_count, lag_key in enumerate(lags.keys()):
     seasons_lags = lags[lag_key]
@@ -166,15 +155,21 @@ for l_count, lag_key in enumerate(lags.keys()):
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
 
-
     print(f"# {modname} CEN --------------------------------------------------")
+
+    # aux_alpha_CN_Effect_2(actor_list,
+    #                       set_series_directo=['n34'],
+    #                       set_series_totales={'n34': ['n34']},
+    #                       variables={'dmi': dmi},
+    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+    #
+
     aux_alpha_CN_Effect_2(actor_list,
                           set_series_directo=['dmi', 'n34'],
                           set_series_totales={'dmi': ['dmi', 'n34'],
                                               'n34': ['n34']},
                           variables={'u50': u50},
                           sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-
 
     print(f"# Plot -----------------------------------------------------------")
     cen = CEN_ufunc(actor_list)
@@ -185,7 +180,8 @@ for l_count, lag_key in enumerate(lags.keys()):
     # la función va tomar los sp que tenga como actores nomas
 
     factores_sp_u50 = {'u50': {'dmi->u50': coefs_dmi_u50[l_count],
-                               'n34->u50': coefs_n34_u50[l_count]}}
+                               'n34->u50': coefs_n34_u50[l_count],
+                               'n34-dmi->u50': coef_n34_dmi_u50[l_count]}}
 
     actors_and_sets_total = {'dmi': 'dmi:n34',
                              'n34': 'n34',
