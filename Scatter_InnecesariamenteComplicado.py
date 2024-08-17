@@ -2,8 +2,8 @@
 Scatter plot enso-iod-u50-X'
 """
 ################################################################################
-save = False
-out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/scatter/'
+save = True
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/scatter_in_com/'
 
 # Caja de PP
 pp_lons = [295, 310]
@@ -219,19 +219,19 @@ for l_count, lag_key in enumerate(lags.keys()):
                 fix_marker_size=500, tick_label_size=15, label_legend_size=15,
                 title=f"Lag: {lag_key}",
                 color_pos='#D55E3B', color_neg='#4DD5C3',
-                namefig='pp_vs_n34_cDMI')
+                namefig=f"pp_vs_n34_cDMI_{lag_key}")
 
     ScatterPlot(pp_aux['var'], n34, u50_aux, dmi, save, x_label='PP anom.',
                 y_label='N34', c_label='U50', d_label="DMI",
                 fix_marker_size=500, tick_label_size=15, label_legend_size=15,
                 title=f"Lag: {lag_key}",
                 color_pos='#B52825', color_neg='#4D8AE7',
-                namefig='pp_vs_n34_cU50')
+                namefig=f"pp_vs_n34_cU50_{lag_key}")
 
     ScatterPlot(dmi, n34, u50_aux, pp_aux['var'], save, x_label='dmi',
                 y_label='n34', c_label='u50', d_label="pp",
                 fix_marker_size=500, tick_label_size=15, label_legend_size=15,
                 title=f"Lag: {lag_key}",
                 color_pos='#31A5FF', color_neg='#FF9846',
-                namefig='dmi_vs_n34_cU50')
+                namefig=f"dmi_vs_n34_cU50_{lag_key}")
 ################################################################################
