@@ -22,6 +22,9 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 pd.options.mode.chained_assignment = None
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
@@ -42,13 +45,8 @@ dir_pp = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_no_detrend/'
 def ScatterPlot(a, b, c, d, save, x_label='a', y_label='b', c_label='c',
                 d_label='d', fix_marker_size=50, tick_label_size=5,
                 label_legend_size=0, title='',
-                color_pos='Red', color_neg='Blue', namefig='fig', dpi=dpi):
+                cmap='RdBu', namefig='fig', dpi=300):
 
-    import matplotlib.pyplot as plt
-
-    #c_pos = np.where(c > 0)
-
-    #c_neg = np.where(c < 0)
     c_pos = dmi[np.where(c > 0)].time.dt.year.values
     c_neg = dmi[np.where(c < 0)].time.dt.year.values
 
@@ -60,25 +58,39 @@ def ScatterPlot(a, b, c, d, save, x_label='a', y_label='b', c_label='c',
 
     d_pos = d.sel(time=d.time.dt.year.isin(c_pos))
     d_neg = d.sel(time=d.time.dt.year.isin(c_neg))
+
+    # by chatpgt ------------------------------------------------------------- #
+    # Normaliza los valores de d para usar en el mapa de colores
+    norm = mcolors.Normalize(vmin=min(d.min().item(), -d.max().item()),
+                             vmax=max(d.max().item(), -d.min().item()))
+    cmap = cm.ScalarMappable(norm=norm, cmap=cmap)
+
     # ------------------------------------------------------------------------ #
     fig, ax = plt.subplots(dpi=dpi, figsize=(7.08661, 7.08661))
 
-    ax.scatter(x=a, y=b, marker='.',
-               s=20, edgecolor='k',
-               color='k', alpha=0.75)
+    # ax.scatter(x=a, y=b, marker='.', s=20, edgecolor='k',
+    #            color='k', alpha=0.75)
 
-    ax.scatter(x=a_pos, y=b_pos, marker='^',
-               s=np.abs(np.array(d_pos)) * fix_marker_size, edgecolor='k',
-               color=color_pos, alpha=0.75, label=f"{c_label} > 0")
+    scatter_pos = ax.scatter(x=a_pos, y=b_pos, marker='^',
+                             #s=np.abs(np.array(d_pos)) * fix_marker_size,
+                             s= fix_marker_size,
+                             edgecolor='k', c=cmap.to_rgba(np.array(d_pos)),
+                             alpha=0.75, label=f"{c_label} > 0")
 
-    ax.scatter(x=a_neg, y=b_neg, marker='v',
-               s=np.abs(np.array(d_neg)) * fix_marker_size, edgecolor='k',
-               color=color_neg, alpha=0.75, label=f"{c_label} < 0")
+    scatter_neg = ax.scatter(x=a_neg, y=b_neg, marker='v',
+                             #s=np.abs(np.array(d_neg)) * fix_marker_size,
+                             s=fix_marker_size,
+                             edgecolor='k', c=cmap.to_rgba(np.array(d_neg)),
+                             alpha=0.75, label=f"{c_label} < 0")
 
     ax.scatter(x=[], y=[], marker='',
                s=0, alpha=0,
-               label=f"Size = {d_label}")
+               label=f"Color & Size = {d_label}")
 
+
+    cbar = plt.colorbar(cmap, ax=ax, orientation='vertical', pad=0.02)
+    cbar.set_label(f'{d_label}', fontsize=tick_label_size)
+    cbar.ax.tick_params(labelsize=tick_label_size)
 
     lgnd = ax.legend(loc=(.01, .80), fontsize=label_legend_size)
     lgnd.legendHandles[0]._sizes = [100]
@@ -97,10 +109,11 @@ def ScatterPlot(a, b, c, d, save, x_label='a', y_label='b', c_label='c',
     plt.tight_layout()
 
     if save:
-        plt.savefig(out_dir + namefig, dpi=dpi, bbox_inches='tight')
+        plt.savefig(f"{out_dir}{namefig}.jpg", dpi=dpi, bbox_inches='tight')
         plt.close('all')
     else:
         plt.show()
+
 ################################################################################
 # HGT ------------------------------------------------------------------------ #
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
@@ -216,22 +229,20 @@ for l_count, lag_key in enumerate(lags.keys()):
 
     ScatterPlot(pp_aux['var'], n34, dmi, u50_aux, save, x_label='PP anom.',
                 y_label='N34', c_label='DMI', d_label="u50",
-                fix_marker_size=500, tick_label_size=15, label_legend_size=15,
+                fix_marker_size=300, tick_label_size=15, label_legend_size=12,
                 title=f"Lag: {lag_key}",
-                color_pos='#D55E3B', color_neg='#4DD5C3',
+                cmap='RdBu_r',
                 namefig=f"pp_vs_n34_cDMI_{lag_key}")
 
     ScatterPlot(pp_aux['var'], n34, u50_aux, dmi, save, x_label='PP anom.',
                 y_label='N34', c_label='U50', d_label="DMI",
-                fix_marker_size=500, tick_label_size=15, label_legend_size=15,
-                title=f"Lag: {lag_key}",
-                color_pos='#B52825', color_neg='#4D8AE7',
+                fix_marker_size=300, tick_label_size=15, label_legend_size=12,
+                title=f"Lag: {lag_key}", cmap='PRGn',
                 namefig=f"pp_vs_n34_cU50_{lag_key}")
 
     ScatterPlot(dmi, n34, u50_aux, pp_aux['var'], save, x_label='dmi',
                 y_label='n34', c_label='u50', d_label="pp",
-                fix_marker_size=500, tick_label_size=15, label_legend_size=15,
-                title=f"Lag: {lag_key}",
-                color_pos='#31A5FF', color_neg='#FF9846',
+                fix_marker_size=300, tick_label_size=15, label_legend_size=12,
+                title=f"Lag: {lag_key}",cmap='PuOr_r',
                 namefig=f"dmi_vs_n34_cU50_{lag_key}")
 ################################################################################
