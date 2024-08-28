@@ -1,5 +1,5 @@
 
-from cen_funciones import AUX_select_actors, regre_forplot, Plot
+from cen_funciones import AUX_select_actors, regre_forplot, Plot, Plot_vsP
 import xarray as xr
 from Scales_Cbars import get_cbars
 
@@ -41,7 +41,8 @@ class CEN_ufunc:
     def Compute_CEN_and_Plot(self, variables, name_variables, maps,
                              actors_and_sets_total, actors_and_sets_direc,
                              save=False, factores_sp=None, aux_name='',
-                             alpha=0.05, out_dir='', actors_to_plot=None):
+                             alpha=0.05, out_dir='', actors_to_plot=None,
+                             latvsp=False):
         if save:
             dpi = 100
         else:
@@ -57,8 +58,8 @@ class CEN_ufunc:
             v_cmap = get_cbars(v_name)
 
             for a in actors_and_sets_total:
-
                 if a in actors_to_plot:
+                    print(a)
 
                     sets_total = actors_and_sets_total[a]
                     aux_sig, aux_all = (
@@ -68,12 +69,15 @@ class CEN_ufunc:
                     titulo = f"{v_name} - {a} efecto total  {aux_name}"
                     name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
 
-                    Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
-                         out_dir, data_ctn=aux_all)
+                    if latvsp:
+                        Plot_vsP(aux_sig, v_cmap, save, dpi, titulo,
+                                 name_fig, out_dir, data_ctn=aux_all)
+                    else:
+                        Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
+                             out_dir, data_ctn=aux_all)
 
                     try:
                         sets_direc = actors_and_sets_direc[a]
-
                         aux_sig, aux_all = (
                             self.compute_regression(v['var'], sets_direc,
                                                     coef=a,
@@ -81,8 +85,12 @@ class CEN_ufunc:
                         titulo = f"{v_name} - {a} efecto directo  {aux_name}"
                         name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
 
-                        Plot(aux_sig, v_cmap, mapa, save, dpi, titulo, name_fig,
-                             out_dir, data_ctn=aux_all)
+                        if latvsp:
+                            Plot_vsP(aux_sig, v_cmap, save, dpi, titulo,
+                                     name_fig, out_dir, data_ctn=aux_all)
+                        else:
+                            Plot(aux_sig, v_cmap, mapa, save, dpi, titulo,
+                                 name_fig, out_dir, data_ctn=aux_all)
 
                         if factores_sp is not None:
                             sp_cmap = get_cbars('snr2')
@@ -98,14 +106,16 @@ class CEN_ufunc:
 
                                     name_fig = (f"{v_name}_{a}_SP_indirecto_"
                                                 f"{f_sp}_{aux_name}")
-
-                                    Plot(aux_f_sp * aux_sig, sp_cmap, mapa,
-                                         save, dpi, titulo, name_fig, out_dir,
-                                         data_ctn=aux_all)
+                                    if latvsp:
+                                        Plot_vsP(aux_f_sp * aux_sig, sp_cmap,
+                                                 save, dpi, titulo,
+                                                 name_fig, out_dir,
+                                                 data_ctn=aux_all)
+                                    else:
+                                        Plot(aux_f_sp * aux_sig, sp_cmap,
+                                             mapa, save, dpi, titulo, name_fig,
+                                             out_dir, data_ctn=aux_all)
                             except:
                                 pass
-
                     except:
                         print('Sin efecto directo')
-
-

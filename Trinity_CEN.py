@@ -28,7 +28,7 @@ import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-from ENSO_IOD_Funciones import Nino34CPC, DMI2
+from ENSO_IOD_Funciones import Nino34CPC, DMI2, ChangeLons
 from cen_funciones import OpenObsDataSet, Detrend, Weights, \
     auxSetLags_ActorList, aux_alpha_CN_Effect_2
 from CEN_ufunc import CEN_ufunc
@@ -38,16 +38,18 @@ if save:
     dpi = 200
 else:
     dpi = 70
-
-# if use_strato_index:
-#     per = '1979_2020'
-# else:
-#     per = '1940_2020'
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
 dir_pp = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_no_detrend/'
 ################################################################################
+def convertdates(dataarray, dimension, rename=None):
+    fechas = pd.to_datetime(dataarray[dimension].values.astype(str),
+                            format='%Y%m%d')
+    dataarray[dimension] = fechas
+    if rename is not None:
+        dataarray = dataarray.rename({dimension: rename})
+    return dataarray
 ################################################################################
 # HGT ------------------------------------------------------------------------ #
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
@@ -79,6 +81,41 @@ hgt200_anom_or = hgt200_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
 # hgt750_anom_or = hgt750_anom_or.rolling(time=3, center=True).mean()
 # hgt750_anom_or = hgt750_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
 
+# SEGUIR CON ESTO. INTERPOLAR A MENOR RESOLUCION PUEDE SER BUENO...
+# mientras tanto
+# PP ------------------------------------------------------------------------- #
+hgt_lvls = xr.open_dataset(
+    '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/ERA5_HGT500-10_79-20.mon.nc')
+hgt_lvls = convertdates(hgt_lvls, 'date', 'time')
+hgt_lvls = ChangeLons(hgt_lvls,'longitude')
+hgt_lvls = hgt_lvls.rename({'latitude':'lat', 'z':'var'})
+hgt_lvls = hgt_lvls.drop('expver')
+hgt_lvls = hgt_lvls.drop('number')
+
+# Lo siguiente se podria hacer sin el for pero consume demasiada ram y es muy
+# lento. Dask no ayuda.
+print('Setting hgt_lvls...')
+first = True
+for l in hgt_lvls.pressure_level.values:
+    aux = hgt_lvls.sel(pressure_level=l)
+    aux = aux.interp(lon=np.arange(aux.lon.values[0],
+                                   aux.lon.values[-1]+1, 1),
+                     lat=np.arange(aux.lat.values[-1],
+                                   aux.lat.values[0]+1, 1)[::-1])
+    aux = aux.groupby('time.month') - aux.groupby('time.month').mean('time')
+    aux = aux.mean('lon')
+    weights = np.sqrt(np.abs(np.cos(np.radians(aux.lat))))
+    aux = aux * weights
+    aux = aux.rolling(time=3, center=True).mean()
+    aux = Detrend(aux, 'time')
+    aux = aux / aux.std('time')
+    if first:
+        first = False
+        hgt_lvls_nrm = aux
+    else:
+        hgt_lvls_nrm = xr.concat(
+            [hgt_lvls_nrm, aux], dim='pressure_level')
+
 # PP ------------------------------------------------------------------------- #
 pp_or = OpenObsDataSet(name='pp_pgcc_v2020_1891-2023_1', sa=True, dir=dir_pp)
 pp_or = pp_or.rename({'precip':'var'})
@@ -87,7 +124,7 @@ pp_or = pp_or.sel(time=slice('1940-01-16', '2020-12-16'))
 pp_or = Weights(pp_or)
 pp_or = pp_or.sel(lat=slice(20, -60), lon=slice(270,330)) # SA
 pp_or = pp_or.rolling(time=3, center=True).mean()
-pp_or = pp_or.sel(time=pp_or.time.dt.month.isin([8,9,10,11]))
+#pp_or = pp_or.sel(time=pp_or.time.dt.month.isin([8,9,10,11]))
 pp_or = Detrend(pp_or, 'time')
 
 # Caja PP
@@ -122,15 +159,16 @@ u50_or = u50_or.rename({'longitude': 'lon'})
 u50_or = u50_or.rename({'latitude': 'lat'})
 u50_or = Weights(u50_or)
 u50_or = u50_or.sel(lat=-60)
-u50_or = u50_or - u50_or.mean('time')
+#u50_or = u50_or - u50_or.mean('time')
+u50_or = u50_or.groupby('time.month') - u50_or.groupby('time.month').mean('time')
 u50_or = u50_or.rolling(time=3, center=True).mean()
 u50_or = Detrend(u50_or, 'time')
 u50_or = u50_or.sel(expver=1).drop('expver')
 u50_or = u50_or.mean('lon')
 u50_or = xr.DataArray(u50_or['var'].drop('lat'))
 ################################################################################
-hgt200_anom_or =\
-    hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.year.isin(range(1959,2021)))
+# hgt200_anom_or =\
+#     hgt200_anom_or.sel(time=hgt200_anom_or.time.dt.year.isin(range(1959,2021)))
 
 lags = {'SON':[10,10,10],
         'ASO--SON':[10, 9, 9],
@@ -145,24 +183,34 @@ for l_count, lag_key in enumerate(lags.keys()):
     seasons_lags = lags[lag_key]
     print(f"{lag_key} ########################################################")
 
-    hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    # hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    # dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
+    #     auxSetLags_ActorList(lag_target=seasons_lags[0],
+    #                          lag_dmin34=seasons_lags[1],
+    #                          lag_strato=seasons_lags[2],
+    #                          hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
+    #                          dmi_or=dmi_or, n34_or=n34_or, u50_or=u50_or,
+    #                          strato_indice=None,
+    #                          years_to_remove=[2002, 2019])
+
+    hgtlvls_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
     dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
         auxSetLags_ActorList(lag_target=seasons_lags[0],
                              lag_dmin34=seasons_lags[1],
                              lag_strato=seasons_lags[2],
-                             hgt200_anom_or=hgt200_anom_or, pp_or=pp_or,
+                             hgt200_anom_or=hgt_lvls_nrm, pp_or=pp_or,
                              dmi_or=dmi_or, n34_or=n34_or, u50_or=u50_or,
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
 
     print(f"# {modname} CEN --------------------------------------------------")
 
-    # aux_alpha_CN_Effect_2(actor_list,
-    #                       set_series_directo=['n34'],
-    #                       set_series_totales={'n34': ['n34']},
-    #                       variables={'dmi': dmi},
-    #                       sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
-    #
+    aux_alpha_CN_Effect_2(actor_list,
+                          set_series_directo=['n34'],
+                          set_series_totales={'n34': ['n34']},
+                          variables={'dmi': dmi},
+                          sig=True, alpha_sig=[0.05, 0.1, 0.15, 1])
+
 
     aux_alpha_CN_Effect_2(actor_list,
                           set_series_directo=['dmi', 'n34'],
@@ -173,11 +221,7 @@ for l_count, lag_key in enumerate(lags.keys()):
 
     print(f"# Plot -----------------------------------------------------------")
     cen = CEN_ufunc(actor_list)
-    hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
-
-    # Los factores_sp sirven para los 3 modelos ya las relaciones no cambian
-    # entre los actores xq estamos asumiendo
-    # la función va tomar los sp que tenga como actores nomas
+    #hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
 
     factores_sp_u50 = {'u50': {'dmi->u50': coefs_dmi_u50[l_count],
                                'n34->u50': coefs_n34_u50[l_count],
@@ -191,18 +235,25 @@ for l_count, lag_key in enumerate(lags.keys()):
                              'n34': 'dmi:n34:u50',
                              'u50': 'dmi:n34:u50'}
 
-    cen.Compute_CEN_and_Plot([hgt200_anom2], ['hgt200'], ['hs'],
-                             actors_and_sets_total, actors_and_sets_direc,
-                             save=save, factores_sp=factores_sp_u50,
-                             aux_name=f"Mod_{modname}_LAG-{lag_key}",
-                             alpha=0.10, out_dir=out_dir,
-                             actors_to_plot=['dmi', 'n34', 'u50'])
+    # cen.Compute_CEN_and_Plot([hgt200_anom2], ['hgt200'], ['hs'],
+    #                          actors_and_sets_total, actors_and_sets_direc,
+    #                          save=save, factores_sp=factores_sp_u50,
+    #                          aux_name=f"Mod_{modname}_LAG-{lag_key}",
+    #                          alpha=0.10, out_dir=out_dir,
+    #                          actors_to_plot=['u50'])
 
-    cen.Compute_CEN_and_Plot([pp], ['pp'], ['sa'],
+    cen.Compute_CEN_and_Plot([hgtlvls_anom], ['hgt200'], ['hs'],
                              actors_and_sets_total, actors_and_sets_direc,
                              save=save, factores_sp=factores_sp_u50,
-                             aux_name=f"Mod_{modname}_LAG-{lag_key}",
-                             alpha=0.10, out_dir=out_dir)
+                             aux_name=f"Mod_{modname}_vsP_LAG-{lag_key}",
+                             alpha=0.10, out_dir=out_dir,
+                             actors_to_plot=['dmi', 'n34', 'u50'], latvsp=True)
+
+    # cen.Compute_CEN_and_Plot([pp], ['pp'], ['sa'],
+    #                          actors_and_sets_total, actors_and_sets_direc,
+    #                          save=save, factores_sp=factores_sp_u50,
+    #                          aux_name=f"Mod_{modname}_LAG-{lag_key}",
+    #                          alpha=0.10, out_dir=out_dir)
 
 print('#######################################################################')
 print('# Done ################################################################')

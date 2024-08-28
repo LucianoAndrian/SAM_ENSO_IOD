@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import cartopy.feature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import cartopy.crs as ccrs
-
+import matplotlib
 # def regre(series, intercept, coef=0):
 #     df = pd.DataFrame(series)
 #     if intercept:
@@ -452,3 +452,69 @@ def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
             df_final = pd.concat([df_final, linea_sig, df], ignore_index=True)
 
     return df_final
+
+def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
+         step=1, data_ctn=None):
+
+    fig_size = (5, 5)
+
+    #xticks = np.arange(0, 360, 30)
+    xticks = np.arange(-90, -10, 10)
+    contour = False
+
+    levels = [-1, -.8, -.6, -.4, -.2, -.1, 0, .1, .2, .4, .6, .8, 1]
+
+    fig = plt.figure(figsize=fig_size, dpi=dpi)
+    ax = plt.axes()
+
+    if data_ctn is not None:
+        levels_ctn = levels.copy()
+        try:
+            if isinstance(levels_ctn, np.ndarray):
+                levels_ctn = levels_ctn[levels_ctn != 0]
+            else:
+                levels_ctn.remove(0)
+        except:
+            pass
+        ax.contour(data.lat.values, data.pressure_level.values,
+                   data_ctn, linewidths=0.8,
+                   levels=levels_ctn, colors='black')
+
+    im = ax.contourf(data.lat.values, data.pressure_level.values,
+                     data,
+                     levels=levels, cmap=cmap, extend='both')
+
+
+
+    cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
+    cb.ax.tick_params(labelsize=8)
+
+    ax.set_xticks(xticks)
+    #ax.set_yticks(yticks, crs=crs_latlon)
+
+    lat_formatter = LatitudeFormatter()
+    ax.xaxis.set_major_formatter(lat_formatter)
+    ax.tick_params(labelsize=7)
+
+    plt.yscale('log')
+    ax.set_ylabel("Pressure [hPa]")
+    ax.set_yscale('log')
+    ax.set_ylim(10.*np.ceil(data.pressure_level.values.max()/10.), 30)
+    subs = [1,2,5]
+    if data.pressure_level.values.max()/100 < 30.:
+        subs = [1,2,3,4,5,6,7,8,9, 10,11,12,13,14,15]
+    y1loc = matplotlib.ticker.LogLocator(base=10., subs=subs)
+    ax.yaxis.set_major_locator(y1loc)
+
+
+    fmt = matplotlib.ticker.FormatStrFormatter("%g")
+    ax.yaxis.set_major_formatter(fmt)
+    ax.grid()
+    plt.title(titulo, fontsize=10)
+    plt.tight_layout()
+
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg', dpi = dpi)
+        plt.close()
+    else:
+        plt.show()
