@@ -2,7 +2,7 @@
 Scatter plot 2D: SAM vs N34 y SAM vs DMI
 """
 # ---------------------------------------------------------------------------- #
-save = False
+save = True
 # ---------------------------------------------------------------------------- #
 dmi_n34_dir = '/datos/luciano.andrian/ncfiles/NMME_CFSv2/DMI_N34_Leads_r/'
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'

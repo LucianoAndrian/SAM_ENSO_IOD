@@ -267,7 +267,7 @@ factores_sp = None # es irrelevante al quitar los SSW
 cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                          actors_and_sets_total, actors_and_sets_direc,
                          save=save, factores_sp=None, aux_name='Mod_strato',
-                         alpha=0.10, out_dir=out_dir)
+                         alpha=0.10, out_dir=out_dir, actors_to_plot=['dmi'])
 
 print('DMI, N34 - U50 --------------------------------------------------------')
 actors_and_sets_total = {'dmi':'dmi:n34',
@@ -325,7 +325,7 @@ cen.Compute_CEN_and_Plot([hgt200_anom2, pp], ['hgt200', 'pp'], ['hs', 'sa'],
                          actors_and_sets_total, actors_and_sets_direc,
                          save=save, factores_sp=factores_sp,
                          aux_name='Mod_DMI-N34-SSAM',  alpha=0.10,
-                         out_dir=out_dir)
+                         out_dir=out_dir, actors_to_plot=['dmi'])
 
 print('DMI, N34, STRATO - SSAM -----------------------------------------------')
 actors_and_sets_total = {'dmi':'dmi:n34',

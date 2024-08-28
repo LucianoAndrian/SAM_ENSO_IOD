@@ -2,6 +2,8 @@
 "Mapas causales" (regre coef) Redes cusales ENSO, IOD, SAM, ASAM, U50
 con lags
 """
+from test_regre_cn_w_lags import hgt_anom_lag1
+
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
 save = False
@@ -29,7 +31,7 @@ import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2
+from ENSO_IOD_Funciones import Nino34CPC, SameDateAs, DMI2, ChangeLons
 import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
@@ -162,6 +164,14 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato, hgt200_anom_or,
            actor_list, dmi_aux, n34_aux, u50_aux, aux_sam, aux_ssam,
             aux_asam)
 
+def convertdates(dataarray, dimension, rename=None):
+    fechas = pd.to_datetime(dataarray[dimension].values.astype(str),
+                            format='%Y%m%d')
+    dataarray[dimension] = fechas
+    if rename is not None:
+        dataarray = dataarray.rename({dimension: rename})
+    return dataarray
+
 ################################################################################
 # HGT ------------------------------------------------------------------------ #
 hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
@@ -230,6 +240,32 @@ n34_or = Nino34CPC(sst_aux, start=1920, end=2020)[0]
 
 strato_indice = None
 
+hgt_lvls = xr.open_dataset(
+    '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/ERA5_HGT500-10_79-20.mon.nc')
+
+hgt_lvls = convertdates(hgt_lvls, 'date', 'time')
+hgt_lvls = ChangeLons(hgt_lvls,'longitude')
+hgt_lvls = hgt_lvls.rename({'latitude':'lat'})
+hgt_lvls = hgt_lvls.sel(lat=-60)
+hgt_lvls = (hgt_lvls.groupby('time.month') -
+            hgt_lvls.groupby('time.month').mean('time'))
+hgt_lvls = hgt_lvls.drop('expver')
+hgt_lvls = hgt_lvls.drop('number')
+
+first = True
+for l in hgt_lvls.pressure_level.values:
+    aux = hgt_lvls.sel(pressure_level=l)
+    aux = aux / aux.std('time')
+
+    if first:
+        first = False
+        hgt_lvls_nrm = aux
+    else:
+        hgt_lvls_nrm = xr.concat([hgt_lvls_nrm, aux], dim='pressure_level')
+
+#hgt_lvls = hgt_lvls/hgt_lvls.std('time')
+
+
 if use_u50:
     u50_or = xr.open_dataset('/pikachu/datos/luciano.andrian/observado/'
                            'ncfiles/ERA5/downloaded/ERA5_U50hpa_40-20.mon.nc')
@@ -277,6 +313,26 @@ for l_count, lag_key in enumerate(lags.keys()):
                              ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
                              strato_indice=None,
                              years_to_remove=[2002, 2019])
+
+    # test ------------------------------------------------------------------- #
+    hgtlvls_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34, actor_list, \
+    dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam  = \
+        auxSetLags_ActorList(lag_target=seasons_lags[0],
+                             lag_dmin34=seasons_lags[1],
+                             lag_strato=seasons_lags[2],
+                             hgt200_anom_or=hgt_lvls_nrm, pp_or=pp_or,
+                             dmi_or=dmi_or, n34_or=n34_or, asam_or=asam_or,
+                             ssam_or=ssam_or, sam_or=sam_or, u50_or=u50_or,
+                             strato_indice=None,
+                             years_to_remove=[2002, 2019])
+
+    cen = CEN_ufunc(actor_list)
+    coef, pval = cen.compute_regression(hgtlvls_anom.z,
+                                        actors_and_sets_direc['n34'],
+                                        'n34', 0.5)
+
+    Plot_vsP(pval, 'RdBu_r', save, dpi, 'titulo', 'name', out_dir)
+    # test ------------------------------------------------------------------- #
 
     cen = CEN_ufunc(actor_list)
     hgt200_anom2 = hgt200_anom.sel(lat=slice(-80, 20))
@@ -562,4 +618,74 @@ for l_count, lag_key in enumerate(lags.keys()):
                              save=save, factores_sp=factores_sp,
                              aux_name=f"Mod_ASAMxSSAM_NOSAMs_u50_LAG-{lag_key}",
                              alpha=0.10, out_dir=out_dir)
+
+
+
+
+import matplotlib.pyplot as plt
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import matplotlib
+def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
+         step=1, data_ctn=None):
+
+    fig_size = (5, 5)
+
+    xticks = np.arange(0, 360, 30)
+    yticks = np.arange(-60, 40, 20)
+    contour = False
+
+    levels = [-1, -.8, -.6, -.4, -.2, -.1, 0, .1, .2, .4, .6, .8, 1]
+
+    fig = plt.figure(figsize=fig_size, dpi=dpi)
+    ax = plt.axes()
+
+    if data_ctn is not None:
+        levels_ctn = levels.copy()
+        try:
+            if isinstance(levels_ctn, np.ndarray):
+                levels_ctn = levels_ctn[levels_ctn != 0]
+            else:
+                levels_ctn.remove(0)
+        except:
+            pass
+
+        ax.contour(data.lon.values[::step], data.lat.values[::step],
+                   data_ctn[::step, ::step], linewidths=0.8,
+                   levels=levels_ctn, colors='black')
+
+
+    im = ax.contourf(data.lon.values[::step], data.pressure_level.values[::step],
+                     data[::step, ::step],
+                     levels=levels, cmap=cmap, extend='both')
+
+    cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
+    cb.ax.tick_params(labelsize=8)
+
+    ax.set_xticks(xticks)
+    #ax.set_yticks(yticks, crs=crs_latlon)
+
+    lon_formatter = LongitudeFormatter()
+    ax.xaxis.set_major_formatter(lon_formatter)
+    ax.tick_params(labelsize=7)
+
+    plt.yscale('log')
+    ax.set_ylabel("Pressure [hPa]")
+    ax.set_yscale('log')
+    ax.set_ylim(10.*np.ceil(coef.pressure_level.values.max()/10.), 30)
+    subs = [1,2,5]
+    if coef.pressure_level.values.max()/100 < 30.:
+        subs = [1,2,3,4,5,6,7,8,9]
+    y1loc = matplotlib.ticker.LogLocator(base=10., subs=subs)
+    ax.yaxis.set_major_locator(y1loc)
+    fmt = matplotlib.ticker.FormatStrFormatter("%g")
+    ax.yaxis.set_major_formatter(fmt)
+
+    plt.title(titulo, fontsize=10)
+    plt.tight_layout()
+
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg', dpi = dpi)
+        plt.close()
+    else:
+        plt.show()
 
