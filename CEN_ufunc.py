@@ -42,7 +42,7 @@ class CEN_ufunc:
                              actors_and_sets_total, actors_and_sets_direc,
                              save=False, factores_sp=None, aux_name='',
                              alpha=0.05, out_dir='', actors_to_plot=None,
-                             latvsp=False):
+                             latvsp=False, data_clim=None):
         if save:
             dpi = 100
         else:
@@ -66,7 +66,7 @@ class CEN_ufunc:
                         self.compute_regression(v['var'], sets_total,
                                                 coef=a, alpha=alpha))
 
-                    titulo = f"{v_name} - {a} efecto total  {aux_name}"
+                    titulo = f"{v_name} - {a} efecto total \n {aux_name}"
                     name_fig = f"{v_name}_{a}_efecto_TOTAL_{aux_name}"
 
                     if latvsp:
@@ -82,7 +82,8 @@ class CEN_ufunc:
                             self.compute_regression(v['var'], sets_direc,
                                                     coef=a,
                                                     alpha=alpha))
-                        titulo = f"{v_name} - {a} efecto directo  {aux_name}"
+
+                        titulo = f"{v_name} - {a} efecto directo \n {aux_name}"
                         name_fig = f"{v_name}_{a}_efecto_DIRECTO_{aux_name}"
 
                         if latvsp:
@@ -102,7 +103,7 @@ class CEN_ufunc:
                                     aux_f_sp = factores_sp_a[f_sp]
 
                                     titulo = (f"{v_name} - {a} SP Indirecto "
-                                              f"via {f_sp} {aux_name}")
+                                              f"via {f_sp} \n {aux_name}")
 
                                     name_fig = (f"{v_name}_{a}_SP_indirecto_"
                                                 f"{f_sp}_{aux_name}")
