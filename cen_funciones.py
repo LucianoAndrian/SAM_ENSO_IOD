@@ -6,6 +6,7 @@ import cartopy.feature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import cartopy.crs as ccrs
 import matplotlib
+import matplotlib.ticker as ticker
 # def regre(series, intercept, coef=0):
 #     df = pd.DataFrame(series)
 #     if intercept:
@@ -259,7 +260,7 @@ def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir,
     plt.title(titulo, fontsize=10)
     plt.tight_layout()
     if save:
-        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.savefig(f"{out_dir}{name_fig}.jpg")
         plt.close()
     else:
         plt.show()
@@ -432,7 +433,6 @@ def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato,
            actor_list, dmi_aux, n34_aux, u50_aux, aux_sam, aux_ssam,
             aux_asam)
 
-
 def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
                           variables, sig, alpha_sig,
                           set_series_directo_particulares=None):
@@ -454,7 +454,7 @@ def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
     return df_final
 
 def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
-         step=1, data_ctn=None):
+             data_ctn=None):
 
     fig_size = (5, 5)
 
@@ -484,8 +484,6 @@ def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
                      data,
                      levels=levels, cmap=cmap, extend='both')
 
-
-
     cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
     cb.ax.tick_params(labelsize=8)
 
@@ -506,7 +504,6 @@ def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
     y1loc = matplotlib.ticker.LogLocator(base=10., subs=subs)
     ax.yaxis.set_major_locator(y1loc)
 
-
     fmt = matplotlib.ticker.FormatStrFormatter("%g")
     ax.yaxis.set_major_formatter(fmt)
     ax.grid()
@@ -514,7 +511,7 @@ def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
     plt.tight_layout()
 
     if save:
-        plt.savefig(out_dir + name_fig + '.jpg', dpi = dpi)
+        plt.savefig(f"{out_dir}{name_fig}.jpg")
         plt.close()
     else:
         plt.show()
