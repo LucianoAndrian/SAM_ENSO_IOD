@@ -104,6 +104,108 @@ def Nino34CPC(data, start=1920, end=2020):
 
     return ninio34_f, n34, n34_df
 
+def Nino34CPC_twomonths(data, start=1920, end=2020):
+
+    # Calculates the Niño3.4 index using the CPC criteria.
+    # Use ERSSTv5 to obtain exactly the same values as those reported.
+
+    #from Funciones import MovingBasePeriodAnomaly
+
+    start_year = str(start-14)
+    end_year = str(end)
+    sst = data
+    # N34
+    ninio34 = sst.sel(lat=slice(4.0, -4.0), lon=slice(190, 240),
+                      time=slice(start_year+'-01-01', end_year + '-12-31'))
+    ninio34 = ninio34.sst.mean(['lon', 'lat'], skipna=True)
+
+    # compute monthly anomalies
+    ninio34 = MovingBasePeriodAnomaly(data=ninio34, start=start, end=end)
+
+    # compute 5-month running mean
+    ninio34_filtered = np.convolve(ninio34, np.ones((2,)) / 2, mode='same')  #
+    ninio34_f = xr.DataArray(ninio34_filtered, coords=[ninio34.time.values],
+                             dims=['time'])
+
+    aux = abs(np.round(ninio34_f, 1)) >= 0.5
+    results = []
+    for k, g in groupby(enumerate(aux.values), key=lambda x: x[1]):
+        if k:
+            g = list(g)
+            results.append([g[0][0], len(g)])
+
+    n34 = []
+    n34_df = pd.DataFrame(columns=['N34', 'Años', 'Mes'], dtype=float)
+    for m in range(0, len(results)):
+        # True values
+        len_true = results[m][1]
+
+        # True values for at least 5 consecutive seasons
+        if len_true >= 5:
+            a = results[m][0]
+            n34.append([np.arange(a, a + results[m][1]), ninio34_f[np.arange(a, a + results[m][1])].values])
+
+            for l in range(0, len_true):
+                if l < (len_true):
+                    main_month_num = results[m][0] + l
+                    if main_month_num != 1210:
+                        n34_df = n34_df.append({'N34': np.around(ninio34_f[main_month_num].values, 1),
+                                            'Años': np.around(ninio34_f[main_month_num]['time.year'].values),
+                                            'Mes': np.around(ninio34_f[main_month_num]['time.month'].values)},
+                                           ignore_index=True)
+
+    return ninio34_f, n34, n34_df
+
+def Nino34CPC_singlemonth(data, start=1920, end=2020):
+
+    # Calculates the Niño3.4 index using the CPC criteria.
+    # Use ERSSTv5 to obtain exactly the same values as those reported.
+
+    #from Funciones import MovingBasePeriodAnomaly
+
+    start_year = str(start-14)
+    end_year = str(end)
+    sst = data
+    # N34
+    ninio34 = sst.sel(lat=slice(4.0, -4.0), lon=slice(190, 240), time=slice(start_year+'-01-01', end_year + '-12-31'))
+    ninio34 = ninio34.sst.mean(['lon', 'lat'], skipna=True)
+
+    # compute monthly anomalies
+    ninio34 = MovingBasePeriodAnomaly(data=ninio34, start=start, end=end)
+
+    # compute 5-month running mean
+    #ninio34_filtered = np.convolve(ninio34, np.ones((3,)) / 3, mode='same')  #
+    ninio34_f = xr.DataArray(ninio34, coords=[ninio34.time.values], dims=['time'])
+
+    aux = abs(np.round(ninio34_f, 1)) >= 0.5
+    results = []
+    for k, g in groupby(enumerate(aux.values), key=lambda x: x[1]):
+        if k:
+            g = list(g)
+            results.append([g[0][0], len(g)])
+
+    n34 = []
+    n34_df = pd.DataFrame(columns=['N34', 'Años', 'Mes'], dtype=float)
+    for m in range(0, len(results)):
+        # True values
+        len_true = results[m][1]
+
+        # True values for at least 5 consecutive seasons
+        if len_true >= 5:
+            a = results[m][0]
+            n34.append([np.arange(a, a + results[m][1]), ninio34_f[np.arange(a, a + results[m][1])].values])
+
+            for l in range(0, len_true):
+                if l < (len_true):
+                    main_month_num = results[m][0] + l
+                    if main_month_num != 1210:
+                        n34_df = n34_df.append({'N34': np.around(ninio34_f[main_month_num].values, 1),
+                                            'Años': np.around(ninio34_f[main_month_num]['time.year'].values),
+                                            'Mes': np.around(ninio34_f[main_month_num]['time.month'].values)},
+                                           ignore_index=True)
+
+    return ninio34_f, n34, n34_df
+
 def DMIndex(iodw, iode, sst_anom_sd=True, xsd=0.5, opposite_signs_criteria=True):
 
     import numpy as np
@@ -524,6 +626,279 @@ def DMI2(end_per=1920, start_per=2020, filter_harmonic=True, filter_bwa=False,
                                    opposite_signs_criteria=opposite_signs_criteria)
     return dmi_sy_full, dmi_raw, (iodw_f - iode_f)
     ####################################################################################################################
+
+def DMI2_twomonths(end_per=1920, start_per=2020, filter_harmonic=True, filter_bwa=False,
+         sst_anom_sd=True, opposite_signs_criteria=True):
+
+    # argumentos fijos ------------------------------------------------------------------------------------------------#
+    movinganomaly = False
+    change_baseline = False
+    start_year2 = '6666'
+    end_year2 = end_per
+    #------------------------------------------------------------------------------------------------------------------#
+    western_io = slice(50, 70)  # definicion tradicional
+    start_per = str(start_per)
+    end_per = str(end_per)
+
+    start_year = start_per
+    end_year = end_per
+    ####################################################################################################################
+    # DATA - ERSSTv5 --------------------------------------------------------------------------------------------------#
+    sst = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
+
+    # Pre-processing --------------------------------------------------------------------------------------------------#
+    iodw = sst.sel(lat=slice(10.0, -10.0), lon=western_io,
+                       time=slice(start_year + '-01-01', end_year + '-12-31'))
+    iodw = iodw.sst.mean(['lon', 'lat'], skipna=True)
+    # -----------------------------------------------------------------------------------------------------------------#
+    iode = sst.sel(lat=slice(0, -10.0), lon=slice(90, 110),
+                   time=slice(start_year + '-01-01', end_year + '-12-31'))
+    iode = iode.sst.mean(['lon', 'lat'], skipna=True)
+    # -----------------------------------------------------------------------------------------------------------------#
+
+    if movinganomaly:
+        iodw = MovingBasePeriodAnomaly(iodw)
+        iode = MovingBasePeriodAnomaly(iode)
+    else:
+        if change_baseline:
+            iodw = iodw.groupby('time.month') - \
+                   iodw.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31')).groupby('time.month').mean(
+                       'time')
+
+            iode = iode.groupby('time.month') - \
+                   iode.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31')).groupby('time.month').mean(
+                       'time')
+
+            print('baseline: ' + str(start_year2) + ' - ' + str(end_year2))
+        else:
+            print('baseline: All period')
+            iodw = iodw.groupby('time.month') - iodw.groupby('time.month').mean('time', skipna=True)
+            iode = iode.groupby('time.month') - iode.groupby('time.month').mean('time', skipna=True)
+
+    # Detrend ---------------------------------------------------------------------------------------------------------#
+    iodw_trend = np.polyfit(range(0, len(iodw)), iodw, deg=1)
+    iodw = iodw - (iodw_trend[0] * range(0, len(iodw)) + iodw_trend[1])
+    #------------------------------------------------------------------------------------------------------------------#
+    iode_trend = np.polyfit(range(0, len(iode)), iode, deg=1)
+    iode = iode - (iode_trend[0] * range(0, len(iode)) + iode_trend[1])
+    #------------------------------------------------------------------------------------------------------------------#
+    # 2-Month running mean --------------------------------------------------------------------------------------------#
+    iodw_filtered = np.convolve(iodw, np.ones((2,)) / 2, mode='same')
+    iode_filtered = np.convolve(iode, np.ones((2,)) / 2, mode='same')
+
+    # Filtering Harmonic ----------------------------------------------------------------------------------------------#
+    if filter_harmonic:
+        for harmonic in range(15):
+            iodw_filtered = WaveFilter(iodw_filtered, harmonic)
+            iode_filtered = WaveFilter(iode_filtered, harmonic)
+
+    # Filter BWA #######################################################################################################
+    if filter_bwa:
+        bwa = sst.sel(lat=slice(20.0, -20.0), lon=slice(40, 110),
+                      time=slice(start_year + '-01-01', end_year + '-12-31'))
+        bwa = bwa.sst.mean(['lon', 'lat'], skipna=True)
+
+        if movinganomaly:
+            bwa = MovingBasePeriodAnomaly(bwa)
+        else:
+            bwa = bwa.groupby('time.month') - \
+                  bwa.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31')). \
+                      groupby('time.month').mean('time')
+
+        # Detrend -----------------------------------------̣̣------------------------------------------------------------#
+        bwa_trend = np.polyfit(range(0, len(bwa)), bwa, deg=1)
+        bwa = bwa - (bwa_trend[0] * range(0, len(bwa)) + bwa_trend[1])
+        bwa_filtered = np.convolve(bwa, np.ones((3,)) / 3, mode='same')
+
+        ninio3 = sst.sel(lat=slice(5.0, -5.0), lon=slice(210, 270),
+                         time=slice(start_year + '-01-01', end_year + '-12-31'))
+        ninio3 = ninio3.sst.mean(['lon', 'lat'], skipna=True)
+
+        if movinganomaly:
+            ninio3 = MovingBasePeriodAnomaly(ninio3)
+        else:
+            if change_baseline:
+                ninio3 = ninio3.groupby('time.month') - \
+                         ninio3.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31'))\
+                             .groupby('time.month').mean('time')
+            else:
+                ninio3 = ninio3.groupby('time.month') - ninio3.groupby('time.month').mean('time', skipna=True)
+
+            trend = np.polyfit(range(0, len(ninio3)), ninio3, deg=1)
+            ninio3 = ninio3 - (trend[0] * range(0, len(ninio3)) + trend[1])
+
+        # 3-month running mean
+        ninio3_filtered = np.convolve(ninio3, np.ones((3,)) / 3, mode='same')
+
+        # -------------------------------------------------------------------------------------------------------------#
+        # removing BWA effect
+        # lag de maxima corr coincide para las dos bases de datos.
+        lag = 3
+        x = pd.DataFrame({'bwa': bwa_filtered[lag:], 'ninio3': ninio3_filtered[:-lag]})
+        result = sm.ols(formula='bwa~ninio3', data=x).fit()
+        recta = result.params[1] * ninio3_filtered + result.params[0]
+        iodw_f = iodw_filtered - recta
+
+        lag = 6
+        x = pd.DataFrame({'bwa': bwa_filtered[lag:], 'ninio3': ninio3_filtered[:-lag]})
+        result = sm.ols(formula='bwa~ninio3', data=x).fit()
+        recta = result.params[1] * ninio3_filtered + result.params[0]
+        iode_f = iode_filtered - recta
+        print('BWA filtrado')
+    else:
+        iodw_f = iodw_filtered
+        iode_f = iode_filtered
+
+    ####################################################################################################################
+    # END processing --------------------------------------------------------------------------------------------------#
+    iodw_f = xr.DataArray(iodw_f, coords=[iodw.time.values], dims=['time'])
+    iode_f = xr.DataArray(iode_f, coords=[iodw.time.values], dims=['time'])
+
+    # Compute DMI ######################################################################################################
+    dmi_sy_full, dmi_raw = DMIndex(iodw_f, iode_f,
+                                   sst_anom_sd=sst_anom_sd,
+                                   opposite_signs_criteria=opposite_signs_criteria)
+    return dmi_sy_full, dmi_raw, (iodw_f - iode_f)
+    ####################################################################################################################
+
+
+def DMI2_singlemonth(end_per=1920, start_per=2020, filter_harmonic=True, filter_bwa=False,
+         sst_anom_sd=True, opposite_signs_criteria=True):
+
+    # argumentos fijos ------------------------------------------------------------------------------------------------#
+    movinganomaly = False
+    change_baseline = False
+    start_year2 = '6666'
+    end_year2 = end_per
+    #------------------------------------------------------------------------------------------------------------------#
+    western_io = slice(50, 70)  # definicion tradicional
+    start_per = str(start_per)
+    end_per = str(end_per)
+
+    start_year = start_per
+    end_year = end_per
+    ####################################################################################################################
+    # DATA - ERSSTv5 --------------------------------------------------------------------------------------------------#
+    sst = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc")
+
+    # Pre-processing --------------------------------------------------------------------------------------------------#
+    iodw = sst.sel(lat=slice(10.0, -10.0), lon=western_io,
+                       time=slice(start_year + '-01-01', end_year + '-12-31'))
+    iodw = iodw.sst.mean(['lon', 'lat'], skipna=True)
+    # -----------------------------------------------------------------------------------------------------------------#
+    iode = sst.sel(lat=slice(0, -10.0), lon=slice(90, 110),
+                   time=slice(start_year + '-01-01', end_year + '-12-31'))
+    iode = iode.sst.mean(['lon', 'lat'], skipna=True)
+    # -----------------------------------------------------------------------------------------------------------------#
+
+    if movinganomaly:
+        iodw = MovingBasePeriodAnomaly(iodw)
+        iode = MovingBasePeriodAnomaly(iode)
+    else:
+        if change_baseline:
+            iodw = iodw.groupby('time.month') - \
+                   iodw.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31')).groupby('time.month').mean(
+                       'time')
+
+            iode = iode.groupby('time.month') - \
+                   iode.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31')).groupby('time.month').mean(
+                       'time')
+
+            print('baseline: ' + str(start_year2) + ' - ' + str(end_year2))
+        else:
+            print('baseline: All period')
+            iodw = iodw.groupby('time.month') - iodw.groupby('time.month').mean('time', skipna=True)
+            iode = iode.groupby('time.month') - iode.groupby('time.month').mean('time', skipna=True)
+
+    # Detrend ---------------------------------------------------------------------------------------------------------#
+    iodw_trend = np.polyfit(range(0, len(iodw)), iodw, deg=1)
+    iodw = iodw - (iodw_trend[0] * range(0, len(iodw)) + iodw_trend[1])
+    #------------------------------------------------------------------------------------------------------------------#
+    iode_trend = np.polyfit(range(0, len(iode)), iode, deg=1)
+    iode = iode - (iode_trend[0] * range(0, len(iode)) + iode_trend[1])
+    #------------------------------------------------------------------------------------------------------------------#
+    # 3-Month running mean --------------------------------------------------------------------------------------------#
+    # iodw_filtered = np.convolve(iodw, np.ones((3,)) / 3, mode='same')
+    # iode_filtered = np.convolve(iode, np.ones((3,)) / 3, mode='same')
+
+    iodw_filtered = iodw
+    iode_filtered = iode
+
+    # Filtering Harmonic ----------------------------------------------------------------------------------------------#
+    if filter_harmonic:
+        for harmonic in range(15):
+            iodw_filtered = WaveFilter(iodw_filtered, harmonic)
+            iode_filtered = WaveFilter(iode_filtered, harmonic)
+
+    # Filter BWA #######################################################################################################
+    if filter_bwa:
+        bwa = sst.sel(lat=slice(20.0, -20.0), lon=slice(40, 110),
+                      time=slice(start_year + '-01-01', end_year + '-12-31'))
+        bwa = bwa.sst.mean(['lon', 'lat'], skipna=True)
+
+        if movinganomaly:
+            bwa = MovingBasePeriodAnomaly(bwa)
+        else:
+            bwa = bwa.groupby('time.month') - \
+                  bwa.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31')). \
+                      groupby('time.month').mean('time')
+
+        # Detrend -----------------------------------------̣̣------------------------------------------------------------#
+        bwa_trend = np.polyfit(range(0, len(bwa)), bwa, deg=1)
+        bwa = bwa - (bwa_trend[0] * range(0, len(bwa)) + bwa_trend[1])
+        bwa_filtered = np.convolve(bwa, np.ones((3,)) / 3, mode='same')
+
+        ninio3 = sst.sel(lat=slice(5.0, -5.0), lon=slice(210, 270),
+                         time=slice(start_year + '-01-01', end_year + '-12-31'))
+        ninio3 = ninio3.sst.mean(['lon', 'lat'], skipna=True)
+
+        if movinganomaly:
+            ninio3 = MovingBasePeriodAnomaly(ninio3)
+        else:
+            if change_baseline:
+                ninio3 = ninio3.groupby('time.month') - \
+                         ninio3.sel(time=slice(start_year2 + '-01-01', end_year2 + '-12-31'))\
+                             .groupby('time.month').mean('time')
+            else:
+                ninio3 = ninio3.groupby('time.month') - ninio3.groupby('time.month').mean('time', skipna=True)
+
+            trend = np.polyfit(range(0, len(ninio3)), ninio3, deg=1)
+            ninio3 = ninio3 - (trend[0] * range(0, len(ninio3)) + trend[1])
+
+        # 3-month running mean
+        ninio3_filtered = np.convolve(ninio3, np.ones((3,)) / 3, mode='same')
+
+        # -------------------------------------------------------------------------------------------------------------#
+        # removing BWA effect
+        # lag de maxima corr coincide para las dos bases de datos.
+        lag = 3
+        x = pd.DataFrame({'bwa': bwa_filtered[lag:], 'ninio3': ninio3_filtered[:-lag]})
+        result = sm.ols(formula='bwa~ninio3', data=x).fit()
+        recta = result.params[1] * ninio3_filtered + result.params[0]
+        iodw_f = iodw_filtered - recta
+
+        lag = 6
+        x = pd.DataFrame({'bwa': bwa_filtered[lag:], 'ninio3': ninio3_filtered[:-lag]})
+        result = sm.ols(formula='bwa~ninio3', data=x).fit()
+        recta = result.params[1] * ninio3_filtered + result.params[0]
+        iode_f = iode_filtered - recta
+        print('BWA filtrado')
+    else:
+        iodw_f = iodw_filtered
+        iode_f = iode_filtered
+
+    ####################################################################################################################
+    # END processing --------------------------------------------------------------------------------------------------#
+    iodw_f = xr.DataArray(iodw_f, coords=[iodw.time.values], dims=['time'])
+    iode_f = xr.DataArray(iode_f, coords=[iodw.time.values], dims=['time'])
+
+    # Compute DMI ######################################################################################################
+    dmi_sy_full, dmi_raw = DMIndex(iodw_f, iode_f,
+                                   sst_anom_sd=sst_anom_sd,
+                                   opposite_signs_criteria=opposite_signs_criteria)
+    return dmi_sy_full, dmi_raw, (iodw_f - iode_f)
+    ####################################################################################################################
+
 
 def PlotEnso_Iod(dmi, ninio, title, fig_name = 'fig_enso_iod', out_dir=out_dir, save=False):
     from numpy import ma

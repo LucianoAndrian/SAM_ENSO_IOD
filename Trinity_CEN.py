@@ -7,7 +7,7 @@ save = True
 hgt_vs_p = True
 plot_maps_hgt_vs_p = True
 plot_maps_hgt_in_200 = True
-rolling_mode = [2,3]
+rolling_mode = [1,2,3]
 out_dir = ('/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
            'trinity/')
 modname='Trinity'
@@ -33,7 +33,8 @@ import warnings
 warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
 from shapely.errors import ShapelyDeprecationWarning
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-from ENSO_IOD_Funciones import Nino34CPC, DMI2, ChangeLons
+from ENSO_IOD_Funciones import Nino34CPC, DMI2, ChangeLons, DMI2_singlemonth, \
+    Nino34CPC_singlemonth, DMI2_twomonths, Nino34CPC_twomonths, MakeMask
 from cen_funciones import OpenObsDataSet, Detrend, Weights, \
     auxSetLags_ActorList, aux_alpha_CN_Effect_2
 from CEN_ufunc import CEN_ufunc
@@ -103,17 +104,6 @@ pp_or = pp_or.sel(time=slice('1940-01-16', '2020-12-16'))
 
 pp_or = Weights(pp_or)
 pp_or = pp_or.sel(lat=slice(20, -60), lon=slice(270,330)) # SA
-
-# hgt200_anom_or = hgt200_anom_or.rolling(time=3, center=True).mean()
-# hgt200_anom_or = hgt200_anom_or.sel(time=slice('1940-02-01', '2020-11-01'))
-
-# PP ------------------------------------------------------------------------- #
-pp_or = OpenObsDataSet(name='pp_pgcc_v2020_1891-2023_1', sa=True, dir=dir_pp)
-pp_or = pp_or.rename({'precip':'var'})
-pp_or = pp_or.sel(time=slice('1940-01-16', '2020-12-16'))
-
-pp_or = Weights(pp_or)
-pp_or = pp_or.sel(lat=slice(20, -60), lon=slice(270,330)) # SA
 # pp_or = pp_or.rolling(time=3, center=True).mean()
 # #pp_or = pp_or.sel(time=pp_or.time.dt.month.isin([8,9,10,11]))
 # pp_or = Detrend(pp_or, 'time')
@@ -135,13 +125,25 @@ pp_or = pp_or.sel(lat=slice(20, -60), lon=slice(270,330)) # SA
 # ssam_or = xr.open_dataset(sam_dir + 'ssam_700.nc')['mean_estimate']
 # ssam_or = ssam_or.rolling(time=3, center=True).mean()
 
-dmi_or = DMI2(filter_bwa=False, start_per='1959', end_per='2020',
-           sst_anom_sd=False, opposite_signs_criteria=False)[2]
+dmi_or_3rm = DMI2(filter_bwa=False, start_per='1959', end_per='2020',
+                  sst_anom_sd=False, opposite_signs_criteria=False)[2]
+
+dmi_or_1rm = DMI2_singlemonth(filter_bwa=False, start_per='1959', end_per='2020',
+                  sst_anom_sd=False, opposite_signs_criteria=False)[2]
+
+dmi_or_2rm = DMI2_twomonths(filter_bwa=False, start_per='1959', end_per='2020',
+                  sst_anom_sd=False, opposite_signs_criteria=False)[2]
+
 
 sst_aux = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/"
                       "sst.mnmean.nc")
 sst_aux = sst_aux.sel(time=slice('1920-01-01', '2020-12-01'))
-n34_or = Nino34CPC(sst_aux, start=1920, end=2020)[0]
+n34_or_3rm = Nino34CPC(sst_aux, start=1920, end=2020)[0]
+n34_or_1rm = Nino34CPC_singlemonth(sst_aux, start=1920, end=2020)[0]
+n34_or_2rm = Nino34CPC_twomonths(sst_aux, start=1920, end=2020)[0]
+
+n34_or = {'1': n34_or_1rm, '2': n34_or_2rm, '3': n34_or_3rm}
+dmi_or = {'1': dmi_or_1rm, '2': dmi_or_2rm, '3': dmi_or_3rm}
 
 u50_or = xr.open_dataset('/pikachu/datos/luciano.andrian/observado/'
                          'ncfiles/ERA5/downloaded/ERA5_U50hpa_40-20.mon.nc')
@@ -163,18 +165,32 @@ lons = [[0, 360], [150, 300], [50, 150],[50,300]]
 lons_name = ['todo', 'pacifico', 'indico', 'ind-pac']
 
 lags_r3 = {'SON': [10, 10, 10],
-        'ASO--SON': [10, 9, 9],
-        'JAS_ASO--SON': [10, 8, 9],
-        'JAS--SON': [10, 8, 8]}
+           'ASO': [9, 9, 9],
+           'ASO--SON': [10, 9, 9],
+           'JAS_ASO--SON': [10, 8, 9],
+           'JAS--SON': [10, 8, 8]}
 
 lags_r2 = {'SO': [10, 10, 10],
-        'AS--SO': [10, 9, 9],
-        'JA_AS--SO': [10, 8, 9],
-        'JA--SO': [10, 8, 8]}
+           'AS': [9, 9, 9],
+           'AS--SO': [10, 9, 9],
+           'JA_AS--SO': [10, 8, 9],
+           'JA--SO': [10, 8, 8]}
+
+lags_r1 = {'O': [10, 10, 10],
+           's': [9, 9, 9],
+           'S--O': [10, 9, 9],
+           'A_S--O': [10, 8, 9],
+           'A--O': [10, 8, 8]}
+
+lags_r3 = {'ASO': [9, 9, 9]}
+
+lags_r2 = {'AS': [9, 9, 9]}
+
+lags_r1 = {'s': [9, 9, 9]}
 
 # Si, al parecer rolling con 2 funciona de esta forma
 # el promedio SO queda con label de O, por eso sigue funcionando el mismo seteo
-lags_mode = {'3':lags_r3, '2':lags_r2}
+lags_mode = {'3':lags_r3, '2':lags_r2, '1':lags_r1}
 
 # Modificar CEN_ufunct para que esto sea automatico!!!!
 # coefs_dmi_u50 = [-0.01, -0.16, -0.15, -0.20]
@@ -218,12 +234,13 @@ for rl in rolling_mode:
         (hgt200_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34,
          actor_list, dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam, aux_asam) \
             = auxSetLags_ActorList(lag_target=seasons_lags[0],
-                                 lag_dmin34=seasons_lags[1],
-                                 lag_strato=seasons_lags[2],
-                                 hgt200_anom_or=hgt200_anom_rl, pp_or=pp_rl,
-                                 dmi_or=dmi_or, n34_or=n34_or, u50_or=u50_rl,
-                                 strato_indice=None,
-                                 years_to_remove=[2002, 2019])
+                                   lag_dmin34=seasons_lags[1],
+                                   lag_strato=seasons_lags[2],
+                                   hgt200_anom_or=hgt200_anom_rl, pp_or=pp_rl,
+                                   dmi_or=dmi_or[str(rl)],
+                                   n34_or=n34_or[str(rl)], u50_or=u50_rl,
+                                   strato_indice=None,
+                                   years_to_remove=[2002, 2019])
 
         print(f"# {modname} CEN ----------------------------------------------")
 
@@ -274,8 +291,8 @@ for rl in rolling_mode:
                                        lag_strato=seasons_lags[2],
                                        hgt200_anom_or=hgt200_anom_rl,
                                        pp_or=pp_rl,
-                                       dmi_or=dmi_or, n34_or=n34_or,
-                                       u50_or=u50_rl,
+                                       dmi_or=dmi_or[str(rl)],
+                                       n34_or=n34_or[str(rl)], u50_or=u50_rl,
                                        strato_indice=None,
                                        years_to_remove=[2002, 2019])
 
@@ -355,14 +372,15 @@ for rl in rolling_mode:
                 (hgtlvls_anom, pp, asam, ssam, u50, strato_indice2, dmi, n34,
                  actor_list, dmi_aux, n34_aux, u50_aux, sam_aux, aux_ssam,
                  aux_asam) = auxSetLags_ActorList(lag_target=seasons_lags[0],
-                                         lag_dmin34=seasons_lags[1],
-                                         lag_strato=seasons_lags[2],
-                                         hgt200_anom_or=hgt_lvls_nrm,
-                                         pp_or=pp_rl,
-                                         dmi_or=dmi_or, n34_or=n34_or,
-                                         u50_or=u50_rl,
-                                         strato_indice=None,
-                                         years_to_remove=[2002, 2019])
+                                                  lag_dmin34=seasons_lags[1],
+                                                  lag_strato=seasons_lags[2],
+                                                  hgt200_anom_or=hgt_lvls_nrm,
+                                                  pp_or=pp_rl,
+                                                  dmi_or=dmi_or[str(rl)],
+                                                  n34_or=n34_or[str(rl)],
+                                                  u50_or=u50_rl,
+                                                  strato_indice=None,
+                                                  years_to_remove=[2002, 2019])
 
                 print(f"# Plot -----------------------------------------------")
                 cen = CEN_ufunc(actor_list)
