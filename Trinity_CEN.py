@@ -3,10 +3,10 @@ Red causal ENSO-IOD-U50hpa
 """
 ################################################################################
 # Seteos generales ----------------------------------------------------------- #
-save = True
-hgt_vs_p = True
-plot_maps_hgt_vs_p = True
-plot_maps_hgt_in_200 = True
+save = False
+hgt_vs_p = False
+plot_maps_hgt_vs_p = False
+plot_maps_hgt_in_200 = False
 rolling_mode = [1,2,3]
 out_dir = ('/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/cn_effect/'
            'trinity/')
@@ -44,6 +44,7 @@ if save:
     dpi = 200
 else:
     dpi = 70
+
 ################################################################################
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
@@ -181,12 +182,6 @@ lags_r1 = {'O': [10, 10, 10],
            'S--O': [10, 9, 9],
            'A_S--O': [10, 8, 9],
            'A--O': [10, 8, 8]}
-
-lags_r3 = {'ASO': [9, 9, 9]}
-
-lags_r2 = {'AS': [9, 9, 9]}
-
-lags_r1 = {'s': [9, 9, 9]}
 
 # Si, al parecer rolling con 2 funciona de esta forma
 # el promedio SO queda con label de O, por eso sigue funcionando el mismo seteo
@@ -411,3 +406,4 @@ for rl in rolling_mode:
 print('#######################################################################')
 print('# Done ################################################################')
 print('#######################################################################')
+
