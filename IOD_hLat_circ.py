@@ -2,7 +2,7 @@
 IOD - SAM/U50
 """
 # ---------------------------------------------------------------------------- #
-save = False
+save = True
 sig_thr = 0.05
 hgt_vs_p = False
 use_pp = False
@@ -24,6 +24,7 @@ warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 from ENSO_IOD_Funciones import (DMI2, DMI2_singlemonth, DMI2_twomonths,
                                 ChangeLons, SameDateAs)
 from cen_funciones import Detrend, Weights, OpenObsDataSet
+import dcor
 # ---------------------------------------------------------------------------- #
 if save:
     dpi = 200
@@ -93,11 +94,6 @@ def SelectMonths(data, months_to_select, years_to_remove=None):
         output = output.sel(time=~output.time.dt.year.isin(years_to_remove))
 
     return output
-
-
-import numpy as np
-import dcor
-
 
 # Función para calcular el p-valor usando permutaciones
 def permutation_test(x, y, num_permutations=500):
@@ -215,6 +211,75 @@ def PlotScatter(x, y, x_label='x', y_label='y', title='', save=save,
         plt.close('all')
     else:
         plt.show()
+
+
+def PlotAllMatrices(pearson_1rm, pearson_sig_1rm, spearman_1rm,
+                    spearman_sig_1rm, distance_1rm, distance_sig_1rm,
+                    pearson_2rm, pearson_sig_2rm, spearman_2rm,
+                    spearman_sig_2rm, distance_2rm, distance_sig_2rm,
+                    pearson_3rm, pearson_sig_3rm, spearman_3rm,
+                    spearman_sig_3rm, distance_3rm, distance_sig_3rm,
+                    sig_thr=0.05, cmap='RdBu_r',
+                    save=False, name_fig='all_matrices', scale=(-1, 1),
+                    title='', y_label='x', x_label='x', dpi=dpi,
+                    out_dir=out_dir):
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, axes = plt.subplots(3, 3, figsize=(17.5, 17), dpi=dpi)
+    matrices = [
+        (pearson_1rm, pearson_sig_1rm, 'Pearson Correlation (1M)'),
+        (spearman_1rm, spearman_sig_1rm, 'Spearman Correlation (1M)'),
+        (distance_1rm, distance_sig_1rm, 'Distance Correlation (1M)'),
+        (pearson_2rm, pearson_sig_2rm, 'Pearson Correlation (2M)'),
+        (spearman_2rm, spearman_sig_2rm, 'Spearman Correlation (2M)'),
+        (distance_2rm, distance_sig_2rm, 'Distance Correlation (2M)'),
+        (pearson_3rm, pearson_sig_3rm, 'Pearson Correlation (3M)'),
+        (spearman_3rm, spearman_sig_3rm, 'Spearman Correlation (3M)'),
+        (distance_3rm, distance_sig_3rm, 'Distance Correlation (3M)')]
+
+    for i, ax in enumerate(axes.flatten()):
+        matrix, matrix_sig, label = matrices[i]
+        im = ax.imshow(matrix, cmap=cmap,
+                       vmin=min(scale),
+                       vmax=max(scale))
+        ax.set_title(label, fontsize=10)
+        ax.set_xticks(np.arange(12), major=True)
+        ax.set_yticks(np.arange(12), major=True)
+        ax.set_xticklabels(np.arange(1, 13))
+        ax.set_yticklabels(np.arange(1, 13))
+        ax.set_ylabel(f'Meses - {y_label}', fontsize=11)
+        ax.set_xlabel(f'Meses - {x_label}', fontsize=11)
+
+        ax.margins(0)
+
+        ax.set_xticks(np.arange(0, 12, 0.5), minor=True)
+        ax.set_yticks(np.arange(0, 12, 0.5), minor=True)
+
+        ax.grid(which='minor', alpha=0.5, color='k')
+
+        for x in range(12):
+            for y in range(12):
+                if np.abs(matrix_sig[x, y]) <= sig_thr:
+                    ax.text(y, x, f'{matrix[x, y]:.2f}',
+                            ha='center', va='center', color='k')
+
+
+    fig.suptitle(title, fontsize=16, y=0.97)
+
+    # Agregar la barra de color
+    cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.7])
+    fig.colorbar(im, cax=cbar_ax)
+    fig.subplots_adjust(bottom=0, hspace=0.05, left=0.05, top=0.95)
+
+    # Guardar o mostrar la figura
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
+    else:
+        plt.show()
+
 
 # ---------------------------------------------------------------------------- #
 # HGT ------------------------------------------------------------------------ #
@@ -336,54 +401,94 @@ n34_or_1rm, n34_or_2rm, n34_or_3rm = ddn([n34_or_1rm, n34_or_2rm, n34_or_3rm],
  distance_corr, distance_corr_pv) = CorrelationMatrix(u50_or_1rm['var'],
                                                       sam_or_1rm)
 
-PlotMatrix(pearson_corr, pearson_corr_pv, x_label='SAM', y_label='U50',
-           title=f'SAM vs U50 - Pearson Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(spearman_corr, spearman_corr_pv, x_label='SAM', y_label='U50',
-           title=f'SAM vs U50 - Spearman Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(distance_corr, distance_corr_pv, x_label='SAM', y_label='U50',
-           title=f'SAM vs U50 - Distance Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
+(pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm, spearman_corr_pv_2rm,
+ distance_corr_2rm, distance_corr_pv_2rm) = CorrelationMatrix(u50_or_2rm['var'],
+                                                      sam_or_2rm)
+
+(pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm, spearman_corr_pv_3rm,
+ distance_corr_3rm, distance_corr_pv_3rm) = CorrelationMatrix(u50_or_3rm['var'],
+                                                      sam_or_3rm)
+
+PlotAllMatrices(pearson_corr, pearson_corr_pv, spearman_corr,
+                spearman_corr_pv, distance_corr, distance_corr_pv,
+                pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm,
+                spearman_corr_pv_2rm, distance_corr_2rm, distance_corr_pv_2rm,
+                pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm,
+                spearman_corr_pv_3rm, distance_corr_3rm, distance_corr_pv_3rm,
+                sig_thr=sig_thr, cmap='RdBu_r', save=save,
+                name_fig='sam_vs_u50', title='SAM vs U50', x_label='SAM',
+                y_label='U50')
 
 # SAM vs DMI ----------------------------------------------------------------- #
 (pearson_corr, pearson_corr_pv, spearman_corr, spearman_corr_pv,
  distance_corr, distance_corr_pv) = CorrelationMatrix(sam_or_1rm,
-                                                      n34_or_1rm)
-PlotMatrix(pearson_corr, pearson_corr_pv, x_label='DMI', y_label='SAM',
-           title=f'DMI vs SAM - Pearson Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(spearman_corr, spearman_corr_pv, x_label='DMI', y_label='SAM',
-           title=f'DMI vs SAM - Spearman Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(distance_corr, distance_corr_pv, x_label='DMI', y_label='SAM',
-           title=f'DMI vs SAM - Distance Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
+                                                      dmi_or_1rm)
+
+(pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm, spearman_corr_pv_2rm,
+ distance_corr_2rm, distance_corr_pv_2rm) = (
+    CorrelationMatrix(sam_or_2rm, dmi_or_2rm))
+
+(pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm, spearman_corr_pv_3rm,
+ distance_corr_3rm, distance_corr_pv_3rm) = (
+    CorrelationMatrix(sam_or_3rm, dmi_or_3rm))
+
+PlotAllMatrices(pearson_corr, pearson_corr_pv, spearman_corr,
+                spearman_corr_pv, distance_corr, distance_corr_pv,
+                pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm,
+                spearman_corr_pv_2rm, distance_corr_2rm, distance_corr_pv_2rm,
+                pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm,
+                spearman_corr_pv_3rm, distance_corr_3rm, distance_corr_pv_3rm,
+                sig_thr=sig_thr, cmap='RdBu_r', save=save,
+                name_fig='dmi_vs_sam', title='DMI vs SAM', x_label='DMI',
+                y_label='SAM')
 
 # U50 vs DMI ----------------------------------------------------------------- #
 (pearson_corr, pearson_corr_pv, spearman_corr, spearman_corr_pv,
  distance_corr, distance_corr_pv) = CorrelationMatrix(u50_or_1rm['var'],
                                                       dmi_or_1rm)
-PlotMatrix(pearson_corr, pearson_corr_pv, x_label='DMI', y_label='U50',
-           title=f'DMI vs U50 - Pearson Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(spearman_corr, spearman_corr_pv, x_label='DMI', y_label='U50',
-           title=f'DMI vs U50 - Spearman Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(distance_corr, distance_corr_pv, x_label='DMI', y_label='U50',
-           title='DMI vs U50 - Distance Correlation')
+
+(pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm, spearman_corr_pv_2rm,
+ distance_corr_2rm, distance_corr_pv_2rm) = (
+    CorrelationMatrix(u50_or_2rm['var'], dmi_or_2rm))
+
+(pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm, spearman_corr_pv_3rm,
+ distance_corr_3rm, distance_corr_pv_3rm) = (
+    CorrelationMatrix(u50_or_3rm['var'], dmi_or_3rm))
+
+PlotAllMatrices(pearson_corr, pearson_corr_pv, spearman_corr,
+                spearman_corr_pv, distance_corr, distance_corr_pv,
+                pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm,
+                spearman_corr_pv_2rm, distance_corr_2rm, distance_corr_pv_2rm,
+                pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm,
+                spearman_corr_pv_3rm, distance_corr_3rm, distance_corr_pv_3rm,
+                sig_thr=sig_thr, cmap='RdBu_r', save=save,
+                name_fig='dmi_vs_u50', title='DMI vs U50', x_label='DMI',
+                y_label='U50')
 
 # Para control, N34 - DMI ---------------------------------------------------- #
 (pearson_corr, pearson_corr_pv, spearman_corr, spearman_corr_pv,
  distance_corr, distance_corr_pv) = CorrelationMatrix(n34_or_1rm,
                                                       dmi_or_1rm)
-PlotMatrix(pearson_corr, pearson_corr_pv, x_label='DMI', y_label='N34',
-           title=f'DMI vs N34 - Pearson Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(spearman_corr, spearman_corr_pv, x_label='DMI', y_label='N34',
-           title=f'DMI vs N34 - Spearman Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
-PlotMatrix(distance_corr, distance_corr_pv, x_label='DMI', y_label='N34',
-           title=f'DMI vs N34 - Distance Correlation - sig: {sig_thr}',
-           sig_thr=sig_thr)
+
+(pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm, spearman_corr_pv_2rm,
+ distance_corr_2rm, distance_corr_pv_2rm) = (
+    CorrelationMatrix(n34_or_2rm, dmi_or_2rm))
+
+(pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm, spearman_corr_pv_3rm,
+ distance_corr_3rm, distance_corr_pv_3rm) = (
+    CorrelationMatrix(n34_or_3rm, dmi_or_3rm))
+
+PlotAllMatrices(pearson_corr, pearson_corr_pv, spearman_corr,
+                spearman_corr_pv, distance_corr, distance_corr_pv,
+                pearson_corr_2rm, pearson_corr_pv_2rm, spearman_corr_2rm,
+                spearman_corr_pv_2rm, distance_corr_2rm, distance_corr_pv_2rm,
+                pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm,
+                spearman_corr_pv_3rm, distance_corr_3rm, distance_corr_pv_3rm,
+                sig_thr=sig_thr, cmap='RdBu_r', save=save,
+                name_fig='dmi_vs_n34', title='DMI vs N34', x_label='DMI',
+                y_label='N34')
 # ---------------------------------------------------------------------------- #
+
+aux_x = SelectMonths(sam_or_1rm, 8, [2002,2019])
+aux_y = SelectMonths(u50_or_1rm['var'], 8, [2002,2019])
+PlotScatter(aux_x, aux_y, x_label='SAM', y_label='U50', save=False)
