@@ -451,7 +451,7 @@ PlotAllMatrices(pearson_corr, pearson_corr_pv, spearman_corr,
  distance_corr_2rm, distance_corr_pv_2rm) = (
     CorrelationMatrix(u50_or_2rm['var'], dmi_or_2rm))
 
-(pearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm, spearman_corr_pv_3rm,
+(sampearson_corr_3rm, pearson_corr_pv_3rm, spearman_corr_3rm, spearman_corr_pv_3rm,
  distance_corr_3rm, distance_corr_pv_3rm) = (
     CorrelationMatrix(u50_or_3rm['var'], dmi_or_3rm))
 
@@ -492,3 +492,19 @@ PlotAllMatrices(pearson_corr, pearson_corr_pv, spearman_corr,
 aux_x = SelectMonths(sam_or_1rm, 8, [2002,2019])
 aux_y = SelectMonths(u50_or_1rm['var'], 8, [2002,2019])
 PlotScatter(aux_x, aux_y, x_label='SAM', y_label='U50', save=False)
+
+# ---------------------------------------------------------------------------- #
+from PCMCI import PCMCI
+
+series = {'u50':u50_or_1rm['var'].values, 'sam':sam_or_1rm.values,
+         'dmi':dmi_or_1rm.values}
+
+for mm in [7,8,9,10,11]:
+    print(f'mm: {mm}')
+    links = PCMCI(series=series, tau_max=6, pc_alpha=0.1, mci_alpha=0.1,
+                  mm=mm, w=0,
+                  autocorr=False)
+
+    print(links)
+
+# ---------------------------------------------------------------------------- #
