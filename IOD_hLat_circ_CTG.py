@@ -2,7 +2,7 @@
 IOD - SAM/U50 ctg
 """
 # ---------------------------------------------------------------------------- #
-save = False
+save = True
 sig_thr = 0.05
 
 out_dir = '/pikachu/datos/luciano.andrian/IOD_vs_hLat/ctg/'
@@ -298,7 +298,7 @@ def combinar_dataframes(lista1, lista2, col_names):
         columna2 = lista2[i].iloc[:,0]
 
         data[f'{col_names[i]}_obs'] = columna1.values
-        data[f'{col_names[i]}_esp'] = columna2.values
+        data[f'{col_names[i]}_dif_esp'] = columna2.values
 
     df_final = pd.DataFrame(data)
 
@@ -309,9 +309,15 @@ def TablaFogt(cases, alpha, second_index):
     tabla_rnd, chi_sq, chi_sq_teo = CtgTest(tabla, alpha)
     tabla_esperado = Re_ReorderTable(tabla_rnd, 'esperado')
     tabla = Re_ReorderTable(tabla, 'observado')
-    result = combinar_dataframes(tabla, tabla_esperado, list(cases.columns))
+
+    dif = []
+    for t, e in zip(tabla, tabla_esperado):
+        df = np.round(pd.DataFrame(t.values - e.values),1)
+        dif.append(df.rename(columns={df.columns[0]: 'dif'}))
+
+    result = combinar_dataframes(tabla, dif, list(cases.columns))
     result.index = ['DMI+', 'DMI-', f'{second_index}+', f'{second_index}-',
-                    f'DMI+{second_index}+', f'SIM-{second_index}-',
+                    f'DMI+{second_index}+', f'DMI-{second_index}-',
                     f'DMI-{second_index}+', f'DMI+{second_index}-',
                     'neutro']
 
