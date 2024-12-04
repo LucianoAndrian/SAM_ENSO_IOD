@@ -225,6 +225,12 @@ for mm, s_name in zip(seasons_mm, seasons_name):
     if save:
         n34_season.to_netcdf(f'{out_dir}N34_{s_name}_Leads_r_CFSv2.nc')
         dmi_season.to_netcdf(f'{out_dir}DMI_{s_name}_Leads_r_CFSv2.nc')
+
+    del n34_season
+    del dmi_season
+    del iodw
+    del iode
+    del season_set
 # ---------------------------------------------------------------------------- #
 # U50
 hindcast = OpenVariablesCFSv2(variable='U50', dir=dir_hc)
@@ -233,8 +239,11 @@ realtime = OpenVariablesCFSv2(variable='U50', dir=dir_rt)
 hindcast = hindcast.rolling(time=3, center=True).mean()
 realtime = realtime.rolling(time=3, center=True).mean()
 
-seasons_name = ['MJJ', 'JJA', 'JAS', 'ASO', 'SON' 'OND']
+seasons_name = ['MJJ', 'JJA', 'JAS', 'ASO', 'SON', 'OND']
 seasons_mm = [6, 7, 8, 9, 10, 11]
+
+seasons_name = ['SON', 'OND']
+seasons_mm = [10, 11]
 
 hincast_1982_1998, hindcast_1999_2011 = TwoHindcast(hindcast)
 
@@ -246,6 +255,9 @@ for mm, s_name in zip(seasons_mm, seasons_name):
     # Save files
     if save:
         u50.to_netcdf(f'{out_dir}U50_{s_name}_Leads_r_CFSv2.nc')
+
+    del season_set
+    del u50
 
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
