@@ -260,4 +260,29 @@ for mm, s_name in zip(seasons_mm, seasons_name):
     del u50
 
 # ---------------------------------------------------------------------------- #
+# SAM ya creado, solo seleccionar meses y seasons
+# A partir de hgt_mon_anom_d.nc creado por CFSv2_HGT_PreSelect.py con anomalias
+# por mes
+# Luego calculo del indice SAM --> CFSv2_SAMIndex.py
+
+path = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
+sam_index = xr.open_dataset(path + 'sam_rmon_r_z200.nc')
+
+#        .rolling(time2=3, center=True).mean()
+sam_index = sam_index.rename({'pcs': 'sam'})
+
+# ej son con 4l
+for l, mm in zip([0, 1, 2, 3], [10, 9, 8, 7]):
+    aux = sam_index.sel(time2=sam_index.time2.dt.month.isin(mm), L=l)
+    aux = aux.assign_coords({'L': l})
+
+    if l == 0:
+        sam_season = aux
+    else:
+        sam_season = xr.concat([sam_season, aux], dim='time2')
+
+    sam_season = sam_season.drop(['mode', 'month'])
+    sam_season = sam_season.rename({'time2': 'time'})
+    #sam_season.to_netcdf(out_dir2 + 'SAM_SON_Leads_r_CFSv2.nc')
+
 # ---------------------------------------------------------------------------- #

@@ -2,7 +2,7 @@
 TEST
 Calculo SAM en CFSv2
 """
-save = True
+save = False
 # ---------------------------------------------------------------------------- #
 path = '/pikachu/datos/luciano.andrian/cases_fields/'
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
@@ -212,6 +212,7 @@ hgt_son = hgt_sea.sel(time=hgt_sea.time.dt.month.isin(10)) # SON
 # Compute ---------------------------------------------------------------------#
 Compute(hgt, 'mon_r', 'mon_em', save)
 Compute(hgt_sea, 'sea_r', 'sea_em', save)
+Compute(hgt_son, 'SON_r', 'SON_em', False, True)
 Compute(hgt_son, 'SON_r', 'SON_em', False, True)
 print('#######################################################################')
 print('done')
