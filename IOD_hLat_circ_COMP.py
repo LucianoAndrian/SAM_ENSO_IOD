@@ -286,10 +286,10 @@ for rl in [0,1,2]:
         aux = SelectDMI_SAM_u50(None, index, aux_dmi, meses, meses,
                                 ind_name=index_name)
 
-        PlotComposite(variable=hgt200_anom_or_1rm, data_dates=aux,
+        PlotComposite(variable=aux_data, data_dates=aux,
                       cases=list(aux[list(aux.keys())[0]].dims),
                       scale=np.arange(-1,1.1,0.1), cmap=cbar, save=save,
-                      title=f'{rl+1}',out_dir=out_dir)
+                      title=f'{rl+1}-{index_name}',out_dir=out_dir)
 
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
