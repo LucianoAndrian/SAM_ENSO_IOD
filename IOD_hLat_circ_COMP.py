@@ -2,7 +2,7 @@
 IOD - SAM/U50 comp
 """
 # ---------------------------------------------------------------------------- #
-save = True
+save = False
 
 out_dir = '/pikachu/datos/luciano.andrian/IOD_vs_hLat/comp/'
 # ---------------------------------------------------------------------------- #
@@ -49,9 +49,11 @@ def SelectDMI_SAM_u50(dmi_df, indice_serie, dmi_serie, mm_dmi, mm_ind,
     for m_dmi, m_ind in zip(mm_dmi, mm_ind):
         ar_result = np.zeros((13,1))
 
-        dmi_serie_sel = dmi_serie.where(dmi_serie.time.dt.month == m_dmi, drop=True)
-        indice_serie_sel = indice_serie.where(indice_serie.time.dt.month == m_ind,
-                                              drop=True)
+        dmi_serie_sel = dmi_serie.where(dmi_serie.time.dt.month == m_dmi,
+                                        drop=True)
+        indice_serie_sel = indice_serie.where(
+            indice_serie.time.dt.month == m_ind, drop=True)
+
         if use_dmi_df:
             dmi_pos_sel = dmi_pos[dmi_pos['Mes'] == m_dmi]
             dmi_neg_sel = dmi_neg[dmi_neg['Mes'] == m_dmi]
@@ -292,4 +294,13 @@ for rl in [0,1,2]:
                       title=f'{rl+1}-{index_name}',out_dir=out_dir)
 
 # ---------------------------------------------------------------------------- #
+
+aux = SelectDMI_SAM_u50(None, u50_or_3rm['var'], dmi_or_3rm, [10], [8],
+                        ind_name='u50')
+
+PlotComposite(variable=hgt200_anom_or_3rm, data_dates=aux,
+              cases=list(aux[list(aux.keys())[0]].dims),
+              scale=np.arange(-1,1.1,0.1), cmap=cbar, save=save,
+              title=f'{2+1}-u50',out_dir=out_dir)
+
 # ---------------------------------------------------------------------------- #

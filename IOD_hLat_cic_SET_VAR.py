@@ -86,6 +86,7 @@ def SelectMonths(data, months_to_select, years_to_remove=None):
 
 # ---------------------------------------------------------------------------- #
 def compute():
+    years_to_remove = [2002, 2019]
     # HGT -------------------------------------------------------------------- #
     hgt = xr.open_dataset(hgt_dir + 'ERA5_HGT200_40-20.nc')
     hgt = hgt.rename({'longitude': 'lon', 'latitude': 'lat', 'z': 'var'})
@@ -95,6 +96,8 @@ def compute():
                       hgt_clim.groupby('time.month').mean('time'))
     weights = np.sqrt(np.abs(np.cos(np.radians(hgt200_anom_or.lat))))
     hgt200_anom_or_1rm = hgt200_anom_or * weights
+    hgt200_anom_or_1rm = hgt200_anom_or_1rm.sel(
+        time=~hgt200_anom_or_1rm.time.dt.year.isin(years_to_remove))
     hgt200_anom_or_1rm = hgt200_anom_or_1rm.sel(lat=slice(-80,20))
     hgt200_anom_or_2rm = hgt200_anom_or_1rm.rolling(time=2, center=True).mean()
     hgt200_anom_or_3rm = hgt200_anom_or_1rm.rolling(time=3, center=True).mean()
@@ -151,10 +154,25 @@ def compute():
     dmi_or_3rm = DMI2(filter_bwa=False, start_per='1959', end_per='2020',
                       sst_anom_sd=False, opposite_signs_criteria=False)[2]
 
+    dmi_or_1rm = dmi_or_1rm.sel(
+        time=~dmi_or_1rm.time.dt.year.isin(years_to_remove))
+    dmi_or_2rm = dmi_or_2rm.sel(
+        time=~dmi_or_2rm.time.dt.year.isin(years_to_remove))
+    dmi_or_3rm = dmi_or_3rm.sel(
+        time=~dmi_or_3rm.time.dt.year.isin(years_to_remove))
+
     sam_or_1rm = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
     sam_or_2rm = sam_or_1rm.rolling(time=2, center=True).mean()
     sam_or_3rm = sam_or_1rm.rolling(time=3, center=True).mean()
     sam_or_3rm[-1] = 0
+
+    sam_or_1rm = sam_or_1rm.sel(
+        time=~sam_or_1rm.time.dt.year.isin(years_to_remove))
+    sam_or_2rm = sam_or_2rm.sel(
+        time=~sam_or_2rm.time.dt.year.isin(years_to_remove))
+    sam_or_3rm = sam_or_3rm.sel(
+        time=~sam_or_3rm.time.dt.year.isin(years_to_remove))
+
 
     u50_or = xr.open_dataset('/pikachu/datos/luciano.andrian/observado/'
                              'ncfiles/ERA5/downloaded/ERA5_U50hpa_40-20.mon.nc')
@@ -167,8 +185,11 @@ def compute():
 
     u50_or = (u50_or.groupby('time.month') -
               u50_or.groupby('time.month').mean('time'))
-    u50_or_1rm = u50_or.mean('lon')
 
+    u50_or = u50_or.sel(
+        time=~u50_or.time.dt.year.isin(years_to_remove))
+
+    u50_or_1rm = u50_or.mean('lon')
     u50_or_2rm = u50_or.rolling(time=2, center=True).mean()
     u50_or_2rm = u50_or_2rm.mean('lon')
     u50_or_3rm = u50_or.rolling(time=3, center=True).mean()
