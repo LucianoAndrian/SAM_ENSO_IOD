@@ -390,98 +390,139 @@ for rl in [0,2]:
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_contingency_matrices(result, cmap='Blues'):
+
+def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
+                              cmap='Blues', cmap_esp='Reds',
+                              save=False, out_dir=None, name_fig='fig'):
     """
-    Genera un gráfico que contiene matrices de contingencia para las columnas "obs" y "esp".
+    Genera un gráfico que contiene matrices de contingencia para las columnas
+    "obs" y "esp".
 
     Parameters:
         result (DataFrame): DataFrame con columnas que contienen "obs" y "esp".
         cmap (str): Paleta de colores para el gráfico (por defecto 'Blues').
     """
-    # Separar columnas "obs" y "esp"
+
+    # columnas "obs" y "esp"
     obs_cols = [col for col in result.columns if "obs" in col]
     esp_cols = [col for col in result.columns if "esp" in col]
 
+    # aux
+    aux = result.loc[result.index != "neutro", obs_cols]
+    max_obs = aux.abs().values.max()
+
+    aux = result.loc[result.index != "neutro", esp_cols]
+    max_esp = aux.abs().values.max()
+
     # Definir categorías y orden de las filas y columnas
-    row_col_order = ["DMI+U50-", "DMI+", "DMI+U50+", "U50-", "neutro", "U50+", "DMI-U50-", "DMI-", "DMI-U50+"]
+    row_col_order = [f"{first_index}+{second_index}-",
+                     f"{first_index}+", f"{first_index}+{second_index}+",
+                     f"{second_index}-",
+                     "...",
+                     f"{second_index}+",
+                     f"{first_index}-{second_index}-",
+                     f"{first_index}-",
+                     f"{first_index}-{second_index}+"]
 
-    # Crear figura con subplots
-    fig, axes = plt.subplots(2, len(obs_cols), figsize=(4 * len(obs_cols), 8), squeeze=False)
-
-    # Inicializar una lista para contener las imágenes de cada subplot
+    fig, axes = plt.subplots(2, len(obs_cols), figsize=(4 * len(obs_cols), 8),
+                             squeeze=False)
     ims = []
-
+    ims_esp = []
     for i, (obs_col, esp_col) in enumerate(zip(obs_cols, esp_cols)):
-        # Crear matrices de contingencia para obs y esp
         obs_matrix = np.zeros((3, 3))
         esp_matrix = np.zeros((3, 3))
 
-        # Mapear valores a las matrices de contingencia
         for r in range(3):
             for c in range(3):
-                obs_matrix[r, c] = result.loc[row_col_order[r * 3 + c], obs_col]
-                esp_matrix[r, c] = result.loc[row_col_order[r * 3 + c], esp_col]
+                try:
+                    obs_matrix[r, c] = result.loc[
+                        row_col_order[r * 3 + c], obs_col]
+                    esp_matrix[r, c] = result.loc[
+                        row_col_order[r * 3 + c], esp_col]
+                except:
+                    obs_matrix[r, c] = None
+                    esp_matrix[r, c] = None
 
-        # Graficar la matriz de observados
         ax_obs = axes[0, i]
-        im_obs = ax_obs.imshow(obs_matrix, cmap=cmap, aspect='auto')
+        ax_obs2 = ax_obs.twinx()
+        ax_obs3 = ax_obs2.twiny()
+
+        ax_esp = axes[1, i]
+        ax_esp2 = ax_esp.twinx()
+        ax_esp3 = ax_esp2.twiny()
+
+        im_obs = ax_obs.imshow(obs_matrix, cmap=cmap, aspect='auto',
+                               vmin=0, vmax=max_obs)
         ims.append(im_obs)  # Guardar la imagen para la barra de color común
         for (row, col), value in np.ndenumerate(obs_matrix):
-            ax_obs.text(col, row, int(value), ha='center', va='center', color='black')
+            if ~np.isnan(value):
+                if value > max_obs / 2:
+                    color = 'white'
+                else:
+                    color = 'black'
+                ax_obs.text(col, row, value, ha='center', va='center',
+                            color=color)
+            else:
+                ax_obs.text(col, row, 'neutro', ha='center', va='center',
+                            color='black')
+
         ax_obs.set_title(f"{obs_col}")
-        ax_obs.set_xticks(range(3))
-        ax_obs.set_yticks(range(3))
-        ax_obs.set_xticklabels([None, "DMI+", None])
-        ax_obs.set_yticklabels([None, "U50-", None])
-        ax_obs.tick_params(axis="x", bottom=True, top=True,
-                           labelbottom=True,labeltop=True)
+        ax_obs.set_xlabel(f"{first_index}-")
+        ax_obs.set_ylabel(f"{second_index}-")
+        ax_obs2.set_ylabel(f"{second_index}+")
+        ax_obs3.set_xlabel(f"{first_index}+")
 
-        # # Agregar etiquetas en la parte inferior
-        # ax_obs.set_xticks([0, 1, 2])
-        # ax_obs.set_xticklabels([None, "DMI+", None], rotation=0)
-        # ax_obs.set_yticks([0, 1, 2])
-        # ax_obs.set_yticklabels([None, "U50-", None], rotation=0)
-        # ax_obs.tick_params(axis='x', labelbottom=True)
-        # ax_obs.tick_params(axis='y', labelleft=True)
-        #
-        # # Etiquetas a la derecha
-        # ax_obs.set_yticks([0, 1, 2], minor=True)
-        # ax_obs.set_yticklabels([None, "U50+", None], minor=True)
-        # ax_obs.tick_params(axis='y', which='minor', labelright=True)
+        ax_obs.set_xticks([])
+        ax_obs.set_yticks([])
+        ax_obs.xaxis.set_ticks_position('none')
 
-        # Graficar la matriz de esperados
-        # ax_esp = axes[1, i]
-        # im_esp = ax_esp.imshow(esp_matrix, cmap=cmap, aspect='auto')
-        # ims.append(im_esp)  # Guardar la imagen para la barra de color común
-        # for (row, col), value in np.ndenumerate(esp_matrix):
-        #     ax_esp.text(col, row, f"{value:.1f}", ha='center', va='center', color='black')
-        # ax_esp.set_title(f"{esp_col}")
-        # ax_esp.set_xticks(range(3))
-        # ax_esp.set_yticks(range(3))
-        # ax_esp.set_xticklabels([None, "DMI-", None])
-        # ax_esp.set_yticklabels([None, "U50+", None])
-        # ax_esp.xaxis.set_ticks_position('top')
-        # ax_esp.xaxis.set_label_position('top')
+        ax_obs2.set_xticks([])
+        ax_obs2.set_yticks([])
+        ax_obs2.xaxis.set_ticks_position('none')
 
-        # # Agregar etiquetas en la parte inferior
-        # ax_esp.set_xticks([0, 1, 2])
-        # ax_esp.set_xticklabels([None, "DMI-", None], rotation=0)
-        # ax_esp.set_yticks([0, 1, 2])
-        #
-        # ax_esp.set_yticklabels([None, "U50-", None], rotation=0)
-        # ax_esp.tick_params(axis='x', labelbottom=True)
-        # ax_esp.tick_params(axis='y', labelleft=True)
-        #
-        # # Etiquetas a la derecha
-        # ax_esp.set_yticks([0, 1, 2], minor=True)
-        # ax_esp.set_yticklabels([None, "U50+", None], minor=True)
-        # ax_esp.tick_params(axis='y', which='minor', labelright=True)
+        ax_obs3.set_xticks([])
+        ax_obs3.set_yticks([])
+        ax_obs3.xaxis.set_ticks_position('none')
 
-    # Agregar la barra de color común, basada en las imágenes
-    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # Barra de color a la derecha
-    fig.colorbar(ims[0], cax=cbar_ax, orientation='vertical')
+        im_esp = ax_esp.imshow(np.abs(esp_matrix), cmap=cmap_esp, aspect='auto',
+                               vmin=0, vmax=max_esp)
+        ims_esp.append(im_esp)  # Guardar la imagen para la barra de color común
+        for (row, col), value in np.ndenumerate(np.abs(esp_matrix)):
+            if ~np.isnan(value):
+                if value > max_esp / 2:
+                    color = 'white'
+                else:
+                    color = 'black'
+                ax_esp.text(col, row, value, ha='center', va='center',
+                            color=color)
+            else:
+                ax_esp.text(col, row, 'neutro', ha='center', va='center',
+                            color='black')
 
-    # Ajustar el espaciado entre subplots
-    plt.subplots_adjust(hspace=0.5, wspace=0.3)
+        ax_esp.set_title(f"{esp_col}")
+        ax_esp.set_xlabel(f"{first_index}-")
+        ax_esp.set_ylabel(f"{second_index}-")
+        ax_esp2.set_ylabel(f"{second_index}+")
+        ax_esp3.set_xlabel(f"{first_index}+")
+
+        ax_esp.set_xticks([])
+        ax_esp.set_yticks([])
+        ax_esp.xaxis.set_ticks_position('none')
+
+        ax_esp2.set_xticks([])
+        ax_esp2.set_yticks([])
+        ax_esp2.xaxis.set_ticks_position('none')
+
+        ax_esp3.set_xticks([])
+        ax_esp3.set_yticks([])
+        ax_esp3.xaxis.set_ticks_position('none')
+
+    plt.subplots_adjust(hspace=0.3)
+    if save:
+        plt.savefig(f'{out_dir}{name_fig}.png', bbox_inches='tight',
+                    pad_inches=0.1, dpi=200)
+        plt.close('all')
     plt.show()
+
+
 plot_contingency_matrices(result)
