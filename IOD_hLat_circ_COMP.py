@@ -208,7 +208,11 @@ def PlotComposite(variable, data_dates, cases,
                 var_neutro = variable.sel(time=neutro)
                 var_case = variable.sel(time=case)
 
+                #return var_neutro
+
                 comp = var_case.mean(c) - var_neutro.mean('Neutral')
+
+                #comp = var_case.mean(c) - var_neutro.mean('Neutral')
 
                 crs_latlon = ccrs.PlateCarree()
 
@@ -268,7 +272,7 @@ def PlotComposite(variable, data_dates, cases,
 # ---------------------------------------------------------------------------- #
 (dmi_or_1rm, dmi_or_2rm, dmi_or_3rm, sam_or_1rm, sam_or_2rm, sam_or_3rm,
  u50_or_1rm, u50_or_2rm, u50_or_3rm, hgt200_anom_or_1rm, hgt200_anom_or_2rm,
- hgt200_anom_or_3rm) = IOD_hLat_cic_SET_VAR.compute()
+ hgt200_anom_or_3rm, hgt_1rm, hgt_2rm, hgt_3rm) = IOD_hLat_cic_SET_VAR.compute()
 # ---------------------------------------------------------------------------- #
 cbar = get_cbars('hgt')
 
@@ -295,7 +299,7 @@ for rl in [0,1,2]:
 
 # ---------------------------------------------------------------------------- #
 
-aux = SelectDMI_SAM_u50(None, u50_or_3rm['var'], dmi_or_3rm, [10], [8],
+aux = SelectDMI_SAM_u50(None, u50_or_1rm['var'], dmi_or_3rm, [10], [8],
                         ind_name='u50')
 
 PlotComposite(variable=hgt200_anom_or_3rm, data_dates=aux,

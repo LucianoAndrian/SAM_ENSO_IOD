@@ -324,6 +324,7 @@ def TablaFogt(cases, alpha, second_index):
     return result, tabla, tabla_esperado, chi_sq, chi_sq_teo, tabla_or
 
 def plot_df(df, title='', name_fig='', save=False, out_dir=out_dir):
+
     fig, ax = plt.subplots(figsize=(len(df),len(df)/3.33), dpi=200)
     ax.axis('off')  # Ocultar los ejes
 
@@ -348,52 +349,9 @@ def plot_df(df, title='', name_fig='', save=False, out_dir=out_dir):
         plt.tight_layout()
         plt.show()
 
-# ---------------------------------------------------------------------------- #
-(dmi_or_1rm, dmi_or_2rm, dmi_or_3rm, sam_or_1rm, sam_or_2rm, sam_or_3rm,
- u50_or_1rm, u50_or_2rm, u50_or_3rm, hgt200_anom_or_1rm, hgt200_anom_or_2rm,
- hgt200_anom_or_3rm) = IOD_hLat_cic_SET_VAR.compute()
-# ---------------------------------------------------------------------------- #
-meses_dmi = [7, 8, 9, 10]
-
-dmis = [dmi_or_1rm, dmi_or_2rm, dmi_or_3rm]
-sams = [sam_or_1rm, sam_or_2rm, sam_or_3rm]
-u50s = [u50_or_1rm['var'], u50_or_2rm['var'], u50_or_3rm['var']]
-
-for rl in [0,2]:
-    aux_indices = [sams[rl], u50s[rl]]
-    aux_dmi = dmis[rl]
-
-    for index_name, index in zip(['sam', 'u50'], aux_indices):
-        for lag in [0, 1, 2, 3, 4]:
-            meses_ind = [x - lag for x in meses_dmi]
-
-            cases = SelectDMI_SAM_u50(None, index, aux_dmi, meses_dmi,
-                                      meses_ind, use_dmi_df=False)
-
-            result, tabla, tabla_esperado, chi_sq, chi_sq_teo, tabla_or = (
-                TablaFogt(cases, 0.1, index_name.upper()))
-
-
-
-            aux_fila = []
-            for chi, teo in zip(chi_sq, chi_sq_teo):
-                aux_fila.extend([np.round(chi, 1), np.round(teo, 1)])
-
-            result.loc["chi_sq_test"] = aux_fila
-
-            title = f'DMI vs {index_name.upper()} lag. {lag} - rm-{rl+1}'
-            name_fig = f'ctg_dmi_vs_{index_name}_lag-{lag}_rl-{rl+1}'
-            plot_df(result, title=title, name_fig=name_fig, save=save)
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-
 def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
-                              cmap='Blues', cmap_esp='Reds',
-                              save=False, out_dir=None, name_fig='fig'):
+                              cmap='Blues', cmap_esp='Reds', save=False,
+                              out_dir=None, name_fig='fig', dpi=100):
     """
     Genera un gráfico que contiene matrices de contingencia para las columnas
     "obs" y "esp".
@@ -410,11 +368,9 @@ def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
     # aux
     aux = result.loc[result.index != "neutro", obs_cols]
     max_obs = aux.abs().values.max()
-
     aux = result.loc[result.index != "neutro", esp_cols]
     max_esp = aux.abs().values.max()
 
-    # Definir categorías y orden de las filas y columnas
     row_col_order = [f"{first_index}+{second_index}-",
                      f"{first_index}+", f"{first_index}+{second_index}+",
                      f"{second_index}-",
@@ -424,8 +380,15 @@ def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
                      f"{first_index}-",
                      f"{first_index}-{second_index}+"]
 
-    fig, axes = plt.subplots(2, len(obs_cols), figsize=(4 * len(obs_cols), 8),
-                             squeeze=False)
+    if len(obs_cols) == 1:
+        fig, axes = plt.subplots(1, len(obs_cols)+1,
+                                 figsize=(8 * len(obs_cols), 4),
+                                 squeeze=False, dpi=dpi)
+    else:
+        fig, axes = plt.subplots(2, len(obs_cols),
+                                 figsize=(4 * len(obs_cols), 8),
+                                 squeeze=False, dpi=dpi)
+
     ims = []
     ims_esp = []
     for i, (obs_col, esp_col) in enumerate(zip(obs_cols, esp_cols)):
@@ -447,13 +410,17 @@ def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
         ax_obs2 = ax_obs.twinx()
         ax_obs3 = ax_obs2.twiny()
 
-        ax_esp = axes[1, i]
+        if len(obs_cols) == 1:
+            ax_esp = axes[0, i+1]
+        else:
+            ax_esp = axes[1, i]
+
         ax_esp2 = ax_esp.twinx()
         ax_esp3 = ax_esp2.twiny()
 
         im_obs = ax_obs.imshow(obs_matrix, cmap=cmap, aspect='auto',
                                vmin=0, vmax=max_obs)
-        ims.append(im_obs)  # Guardar la imagen para la barra de color común
+        ims.append(im_obs) # Guardar la imagen para la barra de color comun
         for (row, col), value in np.ndenumerate(obs_matrix):
             if ~np.isnan(value):
                 if value > max_obs / 2:
@@ -486,7 +453,7 @@ def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
 
         im_esp = ax_esp.imshow(np.abs(esp_matrix), cmap=cmap_esp, aspect='auto',
                                vmin=0, vmax=max_esp)
-        ims_esp.append(im_esp)  # Guardar la imagen para la barra de color común
+        ims_esp.append(im_esp) # Guardar la imagen para la barra de color comun
         for (row, col), value in np.ndenumerate(np.abs(esp_matrix)):
             if ~np.isnan(value):
                 if value > max_esp / 2:
@@ -523,6 +490,66 @@ def plot_contingency_matrices(result, first_index='DMI', second_index='U50',
                     pad_inches=0.1, dpi=200)
         plt.close('all')
     plt.show()
+# ---------------------------------------------------------------------------- #
+(dmi_or_1rm, dmi_or_2rm, dmi_or_3rm, sam_or_1rm, sam_or_2rm, sam_or_3rm,
+ u50_or_1rm, u50_or_2rm, u50_or_3rm, hgt200_anom_or_1rm, hgt200_anom_or_2rm,
+ hgt200_anom_or_3rm, hgt_1rm, hgt_2rm, hgt_3rm) = IOD_hLat_cic_SET_VAR.compute()
+# ---------------------------------------------------------------------------- #
+# meses_dmi = [9, 10]
+#
+# dmis = [dmi_or_1rm, dmi_or_2rm, dmi_or_3rm]
+# sams = [sam_or_1rm, sam_or_2rm, sam_or_3rm]
+# u50s = [u50_or_1rm['var'], u50_or_2rm['var'], u50_or_3rm['var']]
+#
+# for rl in [0,2]:
+#     aux_indices = [sams[rl], u50s[rl]]
+#     aux_dmi = dmis[rl]
+#
+#     for index_name, index in zip(['sam', 'u50'], aux_indices):
+#         for lag in [0, 1, 2, 3, 4]:
+#             meses_ind = [x - lag for x in meses_dmi]
+#
+#             cases = SelectDMI_SAM_u50(None, index, aux_dmi, meses_dmi,
+#                                       meses_ind, use_dmi_df=False)
+#
+#             result, tabla, tabla_esperado, chi_sq, chi_sq_teo, tabla_or = (
+#                 TablaFogt(cases, 0.1, index_name.upper()))
+#
+#
+#
+#             aux_fila = []
+#             for chi, teo in zip(chi_sq, chi_sq_teo):
+#                 aux_fila.extend([np.round(chi, 1), np.round(teo, 1)])
+#
+#             result.loc["chi_sq_test"] = aux_fila
+#
+#             title = f'DMI vs {index_name.upper()} lag. {lag} - rm-{rl+1}'
+#             name_fig = f'ctg_dmi_vs_{index_name}_lag-{lag}_rl-{rl+1}'
+#             plot_df(result, title=title, name_fig=name_fig, save=save)
 
 
-plot_contingency_matrices(result)
+# U50 Ago --> DMI SON
+meses_ind = [8]
+meses_dmi = [10]
+index = u50_or_1rm['var']
+index_name = 'U50'
+aux_dmi = dmi_or_3rm
+
+cases = SelectDMI_SAM_u50(None, index, aux_dmi, meses_dmi,
+                          meses_ind, use_dmi_df=False)
+
+result, tabla, tabla_esperado, chi_sq, chi_sq_teo, tabla_or = (
+                TablaFogt(cases, 0.1, index_name.upper()))
+
+aux_fila = []
+for chi, teo in zip(chi_sq, chi_sq_teo):
+    aux_fila.extend([np.round(chi, 1), np.round(teo, 1)])
+    result.loc["chi_sq_test"] = aux_fila
+
+title = f'DMI - SON vs {index_name.upper()} - Ago.'
+name_fig = f'CTG_dmi-son_vs_{index_name}_ago'
+plot_df(result, title=title, name_fig=name_fig, save=save)
+plot_contingency_matrices(result, save=save, out_dir=out_dir,
+                          name_fig=f'PLOT_{name_fig}', dpi=dpi)
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #

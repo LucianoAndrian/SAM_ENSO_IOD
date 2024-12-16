@@ -102,6 +102,15 @@ def compute():
     hgt200_anom_or_2rm = hgt200_anom_or_1rm.rolling(time=2, center=True).mean()
     hgt200_anom_or_3rm = hgt200_anom_or_1rm.rolling(time=3, center=True).mean()
 
+
+    weights = np.sqrt(np.abs(np.cos(np.radians(hgt.lat))))
+    hgt_1rm = hgt * weights
+    hgt_1rm = hgt_1rm.sel(
+        time=~hgt_1rm.time.dt.year.isin(years_to_remove))
+    hgt_1rm = hgt_1rm.sel(lat=slice(-80,20))
+    hgt_2rm = hgt_1rm.rolling(time=2, center=True).mean()
+    hgt_3rm = hgt_1rm.rolling(time=3, center=True).mean()
+
     #
     # if hgt_vs_p:
     #     hgt_lvls = xr.open_dataset('/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/'
@@ -207,11 +216,11 @@ def compute():
 
     return (dmi_or_1rm, dmi_or_2rm, dmi_or_3rm, sam_or_1rm, sam_or_2rm,
             sam_or_3rm,u50_or_1rm, u50_or_2rm, u50_or_3rm, hgt200_anom_or_1rm,
-            hgt200_anom_or_2rm,hgt200_anom_or_3rm)
+            hgt200_anom_or_2rm,hgt200_anom_or_3rm, hgt_1rm, hgt_2rm, hgt_3rm)
 
 # ---------------------------------------------------------------------------- #
 if __name__ == "__main__":
     (dmi_or_1rm, dmi_or_2rm, dmi_or_3rm, sam_or_1rm, sam_or_2rm, sam_or_3rm,
      u50_or_1rm, u50_or_2rm, u50_or_3rm, hgt200_anom_or_1rm, hgt200_anom_or_2rm,
-     hgt200_anom_or_3rm) = compute()
+     hgt200_anom_or_3rm, hgt_1rm, hgt_2rm, hgt_3rm) = compute()
 # ---------------------------------------------------------------------------- #
