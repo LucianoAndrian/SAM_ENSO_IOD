@@ -79,46 +79,76 @@ def SelectVariables(dates, data):
 
 cases = set_cases('DMI', 'U50')
 
-if len(seasons)>1:
-    def SelectEventsHGT(c):
-        for s in seasons:
-            try:
-                aux_cases = \
-                    xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc')\
-                        .rename({'__xarray_dataarray_variable__': 'index'})
-            except:
-                aux_cases = \
-                    xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc')\
-                        .rename({'sst': 'index'})
-
-            data_hgt_s = xr.open_dataset(f'{data_dir}hgt_{s.upper()}_Leads_r_CFSv2.nc')
-            case_events = SelectVariables(aux_cases, data_hgt_s)
-
-            case_events.to_netcdf(out_dir + 'hgt_' + c + '_' + s + '_05.nc')
-
-    pool = ThreadPool(len(seasons))
-    pool.map_async(SelectEventsHGT, [c for c in cases])
-
-else:
-    for s in seasons:
-        def SelectEventsHGT(c):
-            try:
-                aux_cases = \
-                    xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc')\
-                        .rename({'__xarray_dataarray_variable__': 'index'})
-            except:
-                aux_cases = \
-                    xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc')\
-                        .rename({'sst': 'index'})
-
-            data_hgt_s = xr.open_dataset(f'{data_dir}hgt_{s.upper()}_Leads_r_CFSv2.nc')
-            case_events = SelectVariables(aux_cases, data_hgt_s)
-
-            case_events.to_netcdf(out_dir + 'hgt_' + c + '_' + s + '_05.nc')
+# for s in seasons:
+#     def SelectEventsHGT(c):
+#         try:
+#             aux_cases = \
+#                 xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc') \
+#                     .rename({'__xarray_dataarray_variable__': 'index'})
+#         except:
+#             aux_cases = \
+#                 xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc') \
+#                     .rename({'sst': 'index'})
+#
+#         data_hgt_s = xr.open_dataset(
+#             f'{data_dir}hgt_{s.upper()}_Leads_r_CFSv2.nc')
+#         case_events = SelectVariables(aux_cases, data_hgt_s)
+#
+#         case_events.to_netcdf(out_dir + 'hgt_' + c + '_' + s + '_05.nc')
+#
+#
+#     processes = [Process(target=SelectEventsHGT, args=(c,)) for c in cases]
+#     for process in processes:
+#         process.start()
 
 
-        processes = [Process(target=SelectEventsHGT, args=(c,)) for c in cases]
-        for process in processes:
-            process.start()
+from multiprocessing.pool import Pool
+
+
+def SelectEventsHGT(c, s):
+    try:
+        aux_cases = \
+            xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc') \
+                .rename({'__xarray_dataarray_variable__': 'index'})
+    except:
+        aux_cases = \
+            xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc') \
+                .rename({'sst': 'index'})
+
+    data_hgt_s = xr.open_dataset(
+        f'{data_dir}hgt_{s.upper()}_Leads_r_CFSv2.nc')
+    case_events = SelectVariables(aux_cases, data_hgt_s)
+
+    case_events.to_netcdf(out_dir + 'hgt_' + c + '_' + s + '_05.nc')
+
+def SelectEventsHGT_wrapper(args):
+    c, s = args
+    SelectEventsHGT(c, s)
+
+with Pool(processes=12) as pool:
+    pool.map(SelectEventsHGT_wrapper,
+             [(c, season) for c in cases for season in seasons])
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
+#
+# if len(seasons)>1:
+#     def SelectEventsHGT(c):
+#         for s in seasons:
+#             try:
+#                 aux_cases = \
+#                     xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc')\
+#                         .rename({'__xarray_dataarray_variable__': 'index'})
+#             except:
+#                 aux_cases = \
+#                     xr.open_dataset(events_dir + c + '_f_' + s + '_05.nc')\
+#                         .rename({'sst': 'index'})
+#
+#             data_hgt_s = xr.open_dataset(f'{data_dir}hgt_{s.upper()}_Leads_r_CFSv2.nc')
+#             case_events = SelectVariables(aux_cases, data_hgt_s)
+#
+#             case_events.to_netcdf(out_dir + 'hgt_' + c + '_' + s + '_05.nc')
+#
+#     pool = ThreadPool(len(seasons))
+#     pool.map_async(SelectEventsHGT, [c for c in cases])
+#
+# else:
