@@ -7,6 +7,8 @@ save = True
 dir_hc = '/pikachu/datos/luciano.andrian/hindcast/'
 dir_rt = '/pikachu/datos/luciano.andrian/real_time/'
 out_dir = '/pikachu/datos/luciano.andrian/DMI_N34_Leads_r/'
+out_dir_data = ('/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
+                'IOD_hLat_cic/cases_fields/')
 # ---------------------------------------------------------------------------- #
 import xarray as xr
 import numpy as np
@@ -55,7 +57,6 @@ def TwoClim_Anom_Seasons(data_1982_1998, data_1999_2011, main_month_season):
     return (season_clim_1982_1998, season_clim_1999_2011,
             season_anom_1982_1998, season_anom_1999_2011)
 
-
 def Detrend_Seasons(season_anom_1982_1998, season_anom_1999_2011,
                     main_month_season):
 
@@ -98,7 +99,6 @@ def Detrend_Seasons(season_anom_1982_1998, season_anom_1999_2011,
 
     return season_anom_1982_1998_detrened, season_anom_1999_2011_detrend
 
-
 def Anom_Detrend_SeasonRealTime(data_realtime, season_clim_1999_2011,
                                 main_month_season):
 
@@ -124,7 +124,6 @@ def Anom_Detrend_SeasonRealTime(data_realtime, season_clim_1999_2011,
                 [season_anom_detrend, aux_detrend], dim='time')
 
     return season_anom_detrend
-
 
 def OpenVariablesCFSv2(variable,  dir=dir_hc, lat=[-80,20], hgt_P=200):
 
@@ -159,7 +158,6 @@ def OpenVariablesCFSv2(variable,  dir=dir_hc, lat=[-80,20], hgt_P=200):
 
     return data
 
-
 def TwoHindcast(hindcast):
 
     data_1982_1998 = hindcast.sel(
@@ -168,7 +166,6 @@ def TwoHindcast(hindcast):
         time=hindcast.time.dt.year.isin(np.linspace(1999, 2011, 13)))
 
     return data_1982_1998, data_1999_2011
-
 
 def SetAnoms(hincast_1982_1998, hindcast_1999_2011, realtime, mm):
 
@@ -241,9 +238,6 @@ realtime = realtime.rolling(time=3, center=True).mean()
 seasons_name = ['MJJ', 'JJA', 'JAS', 'ASO', 'SON', 'OND']
 seasons_mm = [6, 7, 8, 9, 10, 11]
 
-seasons_name = ['SON', 'OND']
-seasons_mm = [10, 11]
-
 hincast_1982_1998, hindcast_1999_2011 = TwoHindcast(hindcast)
 
 for mm, s_name in zip(seasons_mm, seasons_name):
@@ -253,7 +247,7 @@ for mm, s_name in zip(seasons_mm, seasons_name):
 
     # Save files
     if save:
-        u50.to_netcdf(f'{out_dir}U50_{s_name}_Leads_r_CFSv2.nc')
+        u50.to_netcdf(f'{out_dir_data}U50_{s_name}_Leads_r_CFSv2.nc')
 
     del season_set
     del u50
@@ -284,4 +278,25 @@ for mm, s_name in zip(seasons_mm, seasons_name):
 #         # sam_season.to_netcdf(out_dir2 + 'SAM_SON_Leads_r_CFSv2.nc')
 
 
+# ---------------------------------------------------------------------------- #
+# HGT
+hindcast = OpenVariablesCFSv2(variable='hgt', dir=dir_hc, lat=[-80,20])
+realtime = OpenVariablesCFSv2(variable='hgt', dir=dir_rt, lat=[-80,20])
+
+hindcast = hindcast.rolling(time=3, center=True).mean()
+realtime = realtime.rolling(time=3, center=True).mean()
+
+hincast_1982_1998, hindcast_1999_2011 = TwoHindcast(hindcast)
+
+seasons_name = ['MJJ', 'JJA', 'JAS', 'ASO', 'SON', 'OND']
+seasons_mm = [6,7,8,9,10,11]
+
+for mm, s_name in zip(seasons_mm, seasons_name):
+
+    season_set = SetAnoms(hincast_1982_1998,
+                          hindcast_1999_2011,
+                          realtime, mm)
+
+    if save:
+        season_set.to_netcdf(f'{out_dir_data}hgt_{s_name}_Leads_r_CFSv2.nc')
 # ---------------------------------------------------------------------------- #
