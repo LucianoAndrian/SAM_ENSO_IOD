@@ -305,6 +305,6 @@ aux = SelectDMI_SAM_u50(None, u50_or_1rm['var'], dmi_or_3rm, [10], [8],
 PlotComposite(variable=hgt200_anom_or_3rm, data_dates=aux,
               cases=list(aux[list(aux.keys())[0]].dims),
               scale=np.arange(-1,1.1,0.1), cmap=cbar, save=save,
-              title=f'{2+1}-u50',out_dir=out_dir)
+              title=f'{2+1}-u50-Ago',out_dir=out_dir)
 
 # ---------------------------------------------------------------------------- #
