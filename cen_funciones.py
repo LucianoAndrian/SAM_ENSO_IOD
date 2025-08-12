@@ -304,9 +304,9 @@ def aux2_Setlag(serie_or, serie_lag, serie_set, years_to_remove):
     else:
         serie_f = SameDateAs(serie_or, serie_set)
 
-    serie_f = serie_f / serie_f.std()
-
     serie_f = serie_f.sel(time=~serie_f.time.dt.year.isin(years_to_remove))
+
+    serie_f = serie_f / serie_f.std()
 
     return serie_f
 
