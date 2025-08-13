@@ -183,29 +183,35 @@ u50 = u50.sel(time=u50.time.dt.year.isin(range(year_start, year_end+1)))
 
 # ---------------------------------------------------------------------------- #
 
-dmi_l = aux2_Setlag(dmi, 8, dmi, years_to_remove=[2002, 2019])
-n34_l = aux2_Setlag(n34, 8, dmi, years_to_remove=[2002, 2019])
+dmi_l = aux2_Setlag(dmi, 10, dmi, years_to_remove=[2002, 2019])
+n34_l = aux2_Setlag(n34, 10, dmi, years_to_remove=[2002, 2019])
 u50_l = aux2_Setlag(u50, 9, dmi, years_to_remove=[2002, 2019])
 
 # Regresion simple
 series = {'u50':u50_l.values, 'n34':n34_l.values}
-print(regre(series, True, 0, False, 0.05))
+b_total_n34 = regre(series, True, 'n34', False, 0.05)
+
 series = {'u50':u50_l.values, 'dmi':dmi_l.values}
-print(regre(series, True, 0, False, 0.05))
+b_total_dmi = regre(series, True, 0, False, 0.05)
 
 # Control, como es dmi = b*n34
 series = {'dmi':dmi_l.values,'n34':n34_l.values}
-print(regre(series, True, 0, False, 0.05))
+b_n34_dmi = regre(series, True, 'n34', False, 0.05)
 
 # MLR
 series = {'u50': u50_l.values, 'n34':n34_l.values, 'dmi':dmi_l.values}
-print(regre(series, True, 0, False, 0.05))
-
+b_directo_n34 = regre(series, True, 'n34', False, 0.05)
+b_directo_dmi = regre(series, True, 'dmi', False, 0.05)
+print('')
+aux = b_directo_n34 + b_n34_dmi*b_directo_dmi
+print('b_directo_n34 + b_n34_dmi * b_directo_dmi:', aux)
+print('b_total_n34:', b_total_n34)
+print('')
 series = {'n34':n34_l.values, 'dmi':dmi_l.values}
 vif(series)
-
+print('')
 # coeficientes "a mano" ------------------------------------------------------ #
 b1_rs, b1_mlr = beta_from_cov_MLR(u50_l.values, n34_l.values, dmi_l.values)
-
+print('')
 b2_rs, b2_mlr = beta_from_cov_MLR(u50_l.values, dmi_l.values, n34_l.values)
 # ---------------------------------------------------------------------------- #
