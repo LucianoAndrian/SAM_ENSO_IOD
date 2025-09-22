@@ -68,8 +68,7 @@ def ComputeAndAdd(x, y, name, *df0):
 
     return dfs
 
-
-def RegRes(df, n, y):
+def RegRes(df, y, n):
     import statsmodels.formula.api as smf
     formula = y+'~'+n
     result = smf.ols(formula=formula, data=df).fit()
@@ -212,11 +211,14 @@ def SetLags_and_Reg(c, i, sp1, sp2, t, t_sp1, t_sp2, control, mode_single):
     return rrc, rri
 
 ################################################################################
-c = hgt_anom.sel(lon=270, lat=-60)
-#sam = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
-dmi = SameDateAs(dmi, c)
-n34 = SameDateAs(n34, c)
+c = hgt_anom.sel(lon=270, lat=-30)
+#c = xr.open_dataset(sam_dir + 'sam_700.nc')['mean_estimate']
+dmi2 = SameDateAs(dmi, c)
+n342 = SameDateAs(n34, c)
 
+c = c/c.std()
+dmi = dmi2/dmi2.std()
+n34 = n342/n342.std()
 #------------------------------------------------------------------------------#
 def Phase1(indice1, indice2, indice3, mode=1):
     if mode==1:
@@ -226,15 +228,15 @@ def Phase1(indice1, indice2, indice3, mode=1):
     elif mode==3:
         indices = [indice3, indice1, indice2]
 
-    df = pd.DataFrame({'indice1' : indices[0],
-                       'indice2': indices[1],
-                       'indice3': indices[2]})
+    df = pd.DataFrame({'indice1':indices[0],
+                       'indice2':indices[1],
+                       'indice3':indices[2]})
     control = False
     # globals().pop('parents1', None) if 'parents1' in globals() else None
     # globals().pop('corrs_2', None) if 'corrs_2' in globals() else None
     # globals().pop('parents2', None) if 'parents2' in globals() else None
     # globals().pop('corrs_3', None) if 'corrs_3' in globals() else None
-
+    print('test0')
     taus = [None, -1, -2]
     taus0 = [None, 1, 2]
     first = True
@@ -252,6 +254,7 @@ def Phase1(indice1, indice2, indice3, mode=1):
 
     parents0 = corrs_1[corrs_1['pv'] < 0.05]
     parents = parents0
+    print('test1')
     # ------------------------------------------------------------------------ #
     if len(parents0) > 2:
 
@@ -344,7 +347,6 @@ def Phase1(indice1, indice2, indice3, mode=1):
 
     return parents, df
 # 2
-
 def Phase2(x,y, px, py, x_df, y_df, t):
     # control
     if x is not None:
@@ -434,11 +436,19 @@ def ComputePhase2(c_name, c, c_parents, c_df, *args):
 
     return corrs
 
-corrs = ComputePhase2('c', c['var'].values, c_parents, c_df,
+corrs = ComputePhase2('c', c.values, c_parents, c_df,
               ['dmi', dmi.values, dmi_parents, dmi_df],
               ['n34', n34.values, n34_parents, n34_df])
 
+corrs = ComputePhase2('c', c.values, c_parents, c_df,
+              ['dmi', dmi.values, dmi_parents, dmi_df],
+              ['n34', n34.values, n34_parents, n34_df],
+              ['c', c.values, c_parents, c_df])
 
+corrs = ComputePhase2('dmi', dmi.values, dmi_parents, dmi_df,
+              ['dmi', dmi.values, dmi_parents, dmi_df],
+              ['n34', n34.values, n34_parents, n34_df],
+              ['c', c['var'].values, c_parents, c_df])
 ################################################################################
 # Testeo #######################################################################
 c1 = hgt_anom.sel(lon=250, lat=-50, time=hgt_anom.time.dt.year.isin([2018,2020]))
@@ -454,6 +464,7 @@ c3_parents, c3_df = Phase1(c1, c2, c3, mode=3)
 
 ComputePhase2('c1', c1, c1_parents, c1_df,
               ['dmi', c2, c2_parents, c2_df],
-              ['n34', c3, c3_parents, c3_df])
+              ['n34', c3, c3_parents, c3_df],
+              ['c1', c1, c1_parents, c1_df])
 # ok
 ################################################################################
