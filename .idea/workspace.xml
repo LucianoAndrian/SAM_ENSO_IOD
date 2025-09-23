@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="9fdd2d30-318a-4df5-a365-8b3b64789d8d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/ENSO_IOD_SAM.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/aws.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/remote-mappings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CEN_Funciones.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CEN_ufunc.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_HGT_PreSelect.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_ModReg_Verif.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_SAMindex.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_Scatter.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_SelectEvents.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_SelectVariables.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_composite.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CFSv2_set_anoms.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ENSO-IOD_SAM_SA_impacts.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ENSO-IOD_SAM_SH_impacts.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ENSO-SAM.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ENSO_IOD_Funciones.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Funcion_CFSv2_SelectEvents.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_SAM.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_cic_CFSv2_COMP.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_cic_CFSv2_SelectEvents.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_cic_CFSv2_SelectVariables.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_cic_SET_VAR.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_circ.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_circ_COMP.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IOD_hLat_circ_CTG.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/PCMCI.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Regression.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SAM.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SAM_IOD_Regression_Full.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scales_Cbars.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scatter.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scatter_IOD_SAM.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scatter_InnecesariamenteComplicado.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scatter_N34_SAM.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SelectEvents.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Set_SAM_indices.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_CEN.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_CEN2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_CEN3.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_EofSAM.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_regre_CN.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Trinity_CEN.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/aux_CFSv2_neutro.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/aux_borrar.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/aux_plot_regre.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/borrar.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_enso-iod_stratopath_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_enso-iod_vs_indices.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_enso-iod_vs_indices_wLAGS.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_enso_iod_sam.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_funciones.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_todos.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_todos_mapas.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cen_todos_maps_lags.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dask.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/descarga.nc.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/descarga.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mlr.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reg_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reg_test_asam.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/temporal_eof.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_multicollinearity.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_reg_sint.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_regre_cn_w_lags.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_tigramite.py" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="32vtYCo9cQrEWRe59f1oTfIojLH" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-b598e85cdad2-JavaScript-PY-252.25557.178" />
+        <option value="bundled-python-sdk-ce6832f46686-7b97d883f26b-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.25557.178" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="9fdd2d30-318a-4df5-a365-8b3b64789d8d" name="Changes" comment="" />
+      <created>1758312918650</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1758312918650</updated>
+      <workItem from="1758312919683" duration="2697000" />
+      <workItem from="1758634462310" duration="1407000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
