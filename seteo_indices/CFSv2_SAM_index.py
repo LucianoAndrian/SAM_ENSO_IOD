@@ -23,8 +23,9 @@ def Compute_SAM(hgt, model_stack=True):
     if model_stack:
         aux = hgt*weights
         aux_st = aux.rename({'time': 'time2'})
-        aux_st = aux_st.stack(time=('r', 'time2'))
-        aux_st = aux_st.transpose('time', 'lat', 'lon')
+        aux_st = aux_st.set_index(time=('time2', 'L')).unstack('time')
+        aux_st = aux_st.stack(
+            time=('r', 'time2', 'L')).transpose('time', 'lat', 'lon')
 
         # eof ------------------------------------#
         try:
