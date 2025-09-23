@@ -5,9 +5,9 @@ cada indice
 # ---------------------------------------------------------------------------- #
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/events_variables/'
 
-import xarray as xr
 from funciones.SelectVariables_utils import parallel_SelectVariables
 import os
+import glob
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 
 # ---------------------------------------------------------------------------- #
@@ -27,4 +27,23 @@ for i in ['DMI', 'N34', 'SAM']:
                              cases_dir=events_dir,
                              out_dir=out_dir)
 
+# Variables ------------------------------------------------------------------ #
+data_dir = '/pikachu/datos/luciano.andrian/cases_fields/'
+for variable_file in ['hgt_son.nc', 'hgt750_son_detrend.nc',
+                      'prec_son.nc', 'tref_son.nc']:
 
+    var_prefix = variable_file.split('_')[0]
+    existing_files = glob.glob(os.path.join(out_dir, f"{var_prefix}_*"))
+
+    if existing_files:
+        print(f"[SKIP] Ya existen archivos {out_dir} que empiezan con "
+              f"'{var_prefix}_'.")
+        continue
+    else:
+        print(f"[RUN] Procesando {variable_file}...")
+        parallel_SelectVariables(files, variable_file, div_files,
+                                 data_dir=data_dir,
+                                 cases_dir=events_dir,
+                                 out_dir=out_dir)
+
+# ---------------------------------------------------------------------------- #
