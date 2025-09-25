@@ -4,7 +4,22 @@ Funciones de ploteo y auxiliares
 # ---------------------------------------------------------------------------- #
 import xarray as xr
 import numpy as np
+import pandas as pd
+pd.options.mode.chained_assignment = None
+import cartopy.feature
+import string
 import matplotlib.pyplot as plt
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import cartopy.crs as ccrs
+import os
+os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
+import warnings
+warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
+from shapely.errors import ShapelyDeprecationWarning
+warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+warnings.filterwarnings("ignore")
+
+from funciones.utils import MakeMask
 
 # ---------------------------------------------------------------------------- #
 def aux_PlotScatter_ParIndex(case, idx1_name, idx2_name,
@@ -287,4 +302,233 @@ def PlotScatter(idx1_name, idx2_name, idx1_sd, idx2_sd, save=False,
         plt.show()
         
 # ---------------------------------------------------------------------------- #
-        
+
+def set_mapa_param(map):
+    # mapa
+    if map.upper() == 'HS':
+        xticks = np.arange(0, 360, 60)
+        yticks = np.arange(-80, 20, 20)
+        lon_localator = 60
+    elif map.upper() == 'TR':
+        xticks = np.arange(0, 360, 60)
+        np.arange(-80, 20, 20)
+        lon_localator = 60
+    elif map.upper() == 'HS_EX':
+        xticks = np.arange(0, 360, 60)
+        lon_localator = 60
+    elif map.upper() == 'SA':
+        yticks = np.arange(-60, 15+1, 20)
+        xticks = np.arange(275, 330+1, 20)
+        lon_localator = 20
+    else:
+        print(f"Mapa {map} no seteado")
+        return
+
+    return xticks, yticks, lon_localator
+
+def remove_0_level(levels):
+    try:
+        if isinstance(levels, np.ndarray):
+            levels = levels[levels != 0]
+        else:
+            levels.remove(0)
+    except:
+        pass
+    return levels
+
+def get_xr_values(data):
+    try:
+        var = list(data.data_vars)[0]
+        data = data[var].values
+    except:
+        data = data.values
+
+    return data
+
+def check_data(data):
+    check_no_zero = data.mean().values != 0
+
+    try:
+        check_no_nan = ~np.isnan(data.mean().values)
+    except:
+        var_ctn = list(data.data_vars)[0]
+        check_no_nan = ~np.isnan(data[var_ctn].mean().values)
+
+    if check_no_zero and check_no_nan:
+        check = True
+    else:
+        check = False
+
+    return check
+
+def Plot_ENSO_IOD_SAM_comp(data, levels, cmap, titles, namefig, map,
+                           save, out_dir, data_ctn=None,
+                           levels_ctn=None, color_ctn=None,
+                           plots_titles=None,
+                           high=2, width = 7.08661,
+                           cbar_pos='H', plot_step=3,
+                           pdf=True, ocean_mask=False,
+                           data_ctn_no_ocean_mask=False,
+                           sig_data=None, hatches=None,
+                           num_cols=3, num_rows = 4):
+
+    if save:
+        dpi=300
+    else:
+        dpi=100
+    # num_cols = 3
+    # num_rows = 4
+    high = high
+    plots = data.plots.values
+    crs_latlon = ccrs.PlateCarree()
+
+    xticks, yticks, lon_localator = set_mapa_param(map)
+
+    # plot
+    fig, axes = plt.subplots(
+        num_rows, num_cols, figsize=(width, high * num_rows),
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'wspace': 0.05, 'hspace': 0.01})
+
+    i2 = 0
+    for i, (ax, plot) in enumerate(zip(axes.flatten(), plots)):
+        remove_axes = False
+
+        if i in [2, 5, 8, 11]:
+            ax.yaxis.tick_right()
+            ax.yaxis.set_label_position("right")
+            ax.set_yticks(yticks, crs=crs_latlon)
+            ax.tick_params(width=0.3, pad=1)
+            lat_formatter = LatitudeFormatter()
+            ax.yaxis.set_major_formatter(lat_formatter)
+
+        if i in [9, 10, 11]:
+            ax.set_xticks(xticks, crs=crs_latlon)
+            ax.tick_params(width=0.3, pad=1)
+            lon_formatter = LongitudeFormatter(zero_direction_label=True)
+            ax.xaxis.set_major_formatter(lon_formatter)
+            ax.tick_params(labelsize=3)
+
+        ax.tick_params(width=0.5, pad=1, labelsize=4)
+
+        if plot > 0:
+            ax.text(-0.005, 1.025, f"({string.ascii_lowercase[i2]}) "
+                                   f"$N={titles[plot]}$ - "
+                                   f"{plots_titles[plot]}",
+                    transform=ax.transAxes, size=6)
+
+        # Plot --------------------------------------------------------------- #
+        # Contour ------------------------------------------------------------ #
+        aux_ctn = data_ctn.sel(plots=plot)
+        if check_data(aux_ctn):
+            if data_ctn is not None:
+                if levels_ctn is None:
+                    levels_ctn = levels.copy()
+                    levels_ctn = remove_0_level(levels_ctn)
+
+            if ocean_mask is True and data_ctn_no_ocean_mask is False:
+                mask_ocean = MakeMask(aux_ctn)
+                aux_ctn = aux_ctn * mask_ocean.mask
+
+            aux_ctn_var = get_xr_values(aux_ctn)
+
+            ax.contour(data_ctn.lon.values[::plot_step],
+                       data_ctn.lat.values[::plot_step],
+                       aux_ctn_var[::plot_step, ::plot_step],
+                       linewidths=0.4,
+                       levels=levels_ctn, transform=crs_latlon,
+                       colors=color_ctn)
+
+        # significance ------------------------------------------------------- #
+        if sig_data is not None:
+            aux_sig_points = sig_data.sel(plots=plot)
+            if aux_sig_points.mean().values != 0:
+
+                if ocean_mask is True:
+                    mask_ocean = MakeMask(aux_sig_points)
+                    aux_sig_points = aux_sig_points * mask_ocean.mask
+
+                # hatches = '....'
+                colors_l = ['k', 'k']
+
+                comp_sig_var = get_xr_values(comp_sig_var)
+
+                cs = ax.contourf(aux_sig_points.lon,
+                                 aux_sig_points.lat,
+                                 comp_sig_var,
+                                 transform=crs_latlon, colors='none',
+                                 hatches=[hatches, hatches], extend='lower',
+                                 zorder=5)
+
+                for i3, collection in enumerate(cs.collections):
+                    collection.set_edgecolor(colors_l[i3 % len(colors_l)])
+
+                for collection in cs.collections:
+                    collection.set_linewidth(0.)
+
+        # Contourf ----------------------------------------------------------- #
+        aux = data.sel(plots=plot)
+        aux_var = get_xr_values(aux)
+        if check_data(aux):
+
+            i2 += 1
+            if ocean_mask is True:
+                mask_ocean = MakeMask(aux)
+                aux_var = aux_var * mask_ocean.mask
+
+            im = ax.contourf(aux.lon.values[::plot_step],
+                             aux.lat.values[::plot_step],
+                             aux_var[::plot_step, ::plot_step],
+                             levels=levels,
+                             transform=crs_latlon, cmap=cmap, extend='both', zorder=1)
+
+            ax.add_feature(cartopy.feature.LAND, facecolor='white',
+                           linewidth=0.5)
+            ax.coastlines(color='k', linestyle='-', alpha=1, linewidth=0.2,
+                          resolution='110m')
+            gl = ax.gridlines(draw_labels=False, linewidth=0.1,
+                              linestyle='-', zorder=20)
+            gl.ylocator = plt.MultipleLocator(20)
+            gl.xlocator = plt.MultipleLocator(lon_localator)
+
+        else:
+            remove_axes = True
+
+        if remove_axes:
+            ax.axis('off')
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.5)
+
+    # ax_ref = axes[2, 0]
+    # y_line = ax_ref.get_position().y0
+    # fig.add_artist(plt.Line2D([0, 1], [y_line-0.04, y_line-0.04],
+    #                           color='k', lw=1.5, transform=fig.transFigure))
+
+    # cbar_pos = 'H'
+    if cbar_pos.upper() == 'H':
+        pos = fig.add_axes([0.261, 0, 0.5, 0.02])
+        cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='horizontal')
+        cb.ax.tick_params(labelsize=4, pad=1)
+        fig.subplots_adjust(bottom=0.05, wspace=0, hspace=0.25, left=0, right=1,
+                            top=1)
+
+    elif cbar_pos.upper() == 'V':
+        pos = fig.add_axes([0.95, 0.2, 0.02, 0.5])
+        cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='vertical')
+        cb.ax.tick_params(labelsize=4, pad=1)
+        fig.subplots_adjust(bottom=0, wspace=0.5, hspace=0.25, left=0.02,
+                            right=0.9, top=1)
+    else:
+        print(f"cbar_pos {cbar_pos} no valido")
+
+    if save:
+        if pdf:
+            plt.savefig(f"{out_dir}{namefig}.pdf", dpi=dpi, bbox_inches='tight')
+        else:
+            plt.savefig(f"{out_dir}{namefig}.jpg", dpi=dpi, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+# ---------------------------------------------------------------------------- #
