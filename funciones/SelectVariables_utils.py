@@ -41,6 +41,9 @@ def Aux_SelectVariables(f, var_file, cases_dir, data_dir, out_dir,
     aux_cases = aux_cases.rename({list(aux_cases.data_vars)[0]:'index'})
 
     data_var = xr.open_dataset(f'{data_dir}{var_file}')
+    if 'tref' in var_file:
+        data_var = data_var.sel(lon=slice(275, 330), lat=slice(-60, 15))
+
     case_events = SelectVariables(aux_cases, data_var)
 
     f_name = f.replace(replace_name, "")
