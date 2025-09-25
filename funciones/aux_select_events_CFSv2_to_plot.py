@@ -5,7 +5,8 @@ funcion especifica para CFSv2_6_composite.py
 import os
 
 # ---------------------------------------------------------------------------- #
-def SelectEvents_to_Composite(data_dir, variable, phase='pos'):
+def SelectEvents_to_Composite(data_dir, variable, phase='pos',
+                              plot_vertical=False):
 
     idx1 = 'n34'
     idx2 = 'dmi'
@@ -76,11 +77,19 @@ def SelectEvents_to_Composite(data_dir, variable, phase='pos'):
     neutros = [f for f in files if 'neutros' in f][0]
 
     # orden para plotear
-    orden = [idx3_puro_phase, idx3_puro_op_phase,
-             idx1_puro, idx1_phase_idx3_phase, idx1_phase_idx3_op_phase,
-             idx2_puro, idx2_phase_idx3_phase, idx2_phase_idx3_op_phase,
-             idx1_idx2_same_phase, triple_same_phase, triple_op_phase,
-             neutros]
+    if plot_vertical:
+        orden = [idx1_puro, idx2_puro, idx1_idx2_same_phase,
+                 idx3_puro_phase, idx1_phase_idx3_phase, idx2_phase_idx3_phase,
+                 triple_same_phase,
+                 idx3_puro_op_phase, idx1_phase_idx3_op_phase,
+                 idx2_phase_idx3_op_phase, triple_op_phase,
+                 neutros]
+    else:
+        orden = [idx3_puro_phase, idx3_puro_op_phase,
+                 idx1_puro, idx1_phase_idx3_phase, idx1_phase_idx3_op_phase,
+                 idx2_puro, idx2_phase_idx3_phase, idx2_phase_idx3_op_phase,
+                 idx1_idx2_same_phase, triple_same_phase, triple_op_phase,
+                 neutros]
 
     return orden
 # ---------------------------------------------------------------------------- #
