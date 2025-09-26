@@ -16,3 +16,10 @@ def SameDateAs(data, datadate):
     :return:
     """
     return data.sel(time=datadate.time.values)
+
+def change_name_dim(data, dim_to_check, dim_to_rename):
+    if dim_to_check in list(data.dims):
+        return data.rename({dim_to_check: dim_to_rename})
+
+def change_name_variable(data, new_name_var):
+    return data.rename({list(data.data_vars)[0]:new_name_var})
