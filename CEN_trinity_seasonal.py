@@ -9,36 +9,17 @@ out_dir = ''
 # ---------------------------------------------------------------------------- #
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
-
 import numpy as np
 import xarray as xr
 import pandas as pd
 pd.options.mode.chained_assignment = None
-import warnings
-warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
-from shapely.errors import ShapelyDeprecationWarning
-warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 
 from funciones.indices import Nino34CPC, DMI2
-from cen.cen_funciones import Detrend, Weights
-from funciones.utils import SameDateAs
-# ---------------------------------------------------------------------------- #
-# set data
+from cen.cen_funciones import Detrend, Weights, set_actor_effect_dict, \
+    apply_CEN_effect, identify_lags, SetLag_to_ActorList
+from funciones.utils import change_name_dim, change_name_variable
 
-sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
-hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
-dir_pp = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_no_detrend/'
-
-v = 'ERA5_HGT200_40-20.nc'
-dir_file = hgt_dir + v
-
-def change_name_dim(data, dim_to_check, dim_to_rename):
-    if dim_to_check in list(data.dims):
-        return data.rename({dim_to_check: dim_to_rename})
-
-def change_name_variable(data, new_name_var):
-    return data.rename({list(data.data_vars)[0]:new_name_var})
-
+# aux funciones -------------------------------------------------------------- #
 def set_data_to_cen(dir_file, interp_2x2=True,
                     select_lat=None, select_lon=None,
                     rolling=False, rl_win=3,
@@ -89,76 +70,54 @@ def set_data_to_cen(dir_file, interp_2x2=True,
 
     return data_anom_mon
 
-hgt_anom_mon = set_data_to_cen(dir_file, interp_2x2=True,
-                               rolling=True, rl_win=3)
-
 # ---------------------------------------------------------------------------- #
-# index
+# set data
+sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
+hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
+dir_pp = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_no_detrend/'
+
+hgt_anom_mon = set_data_to_cen(dir_file = f'{hgt_dir}ERA5_HGT200_40-20.nc',
+                               interp_2x2=True, rolling=True, rl_win=3)
+
+# indices -------------------------------------------------------------------- #
 dmi_or = DMI2(filter_bwa=False, start_per='1959', end_per='2020',
               sst_anom_sd=False, opposite_signs_criteria=False)[2]
 
-sst_aux = xr.open_dataset("/pikachu/datos/luciano.andrian/verif_2019_2023/"
-                      "sst.mnmean.nc")
+sst_aux = xr.open_dataset(
+    '/pikachu/datos/luciano.andrian/verif_2019_2023/sst.mnmean.nc')
 sst_aux = sst_aux.sel(time=slice('1920-01-01', '2020-12-01'))
 n34_or = Nino34CPC(sst_aux, start=1920, end=2020)[0]
 
 u50_dir_file = '/pikachu/datos/luciano.andrian/observado/' \
           'ncfiles/ERA5/downloaded/ERA5_U50hpa_40-20.mon.nc'
-
-u50_or = set_data_to_cen(u50_dir_file, interp_2x2=False, select_lat=[50],
+u50_or = set_data_to_cen(u50_dir_file, interp_2x2=False, select_lat=[-60],
                          rolling=True, rl_win=3, purge_extra_dims=True)
-
 u50_or = Detrend(u50_or, 'time')
 u50_or = u50_or.mean('lon')
 u50_or = xr.DataArray(u50_or['var'].drop('lat'))
-# ---------------------------------------------------------------------------- #
-lags = {'SON': [10, 10, 10, 10],
-        'ASO': [9, 9, 9, 9],
-        'ASO--SON': [10, 10, 9, 9],
-        'JAS_ASO--SON': [10, 10, 8, 9],
-        'JAS--SON': [10, 10, 8, 8]}
 
 # CEN ------------------------------------------------------------------------ #
+indices = {'n34':n34_or, 'dmi':dmi_or, 'u50':u50_or}
+
+# lags, lag_variable + lags orden como indices
+lags = {'SON': [10, 10, 10, 10],
+        #'ASO--SON': [10, 9, 9, 9],
+        'ASO': [9, 9, 9, 9],
+        'JAS_ASO--SON': [10, 8, 8, 9],
+        'JAS--SON': [10, 8, 8, 8]}
+
+effects_dict = set_actor_effect_dict(target='u50',
+                                     totales=['n34:n34', 'dmi:dmi+n34'],
+                                     directos=['dmi', 'n34'])
+
+effects_dict_n34_dmi = set_actor_effect_dict(target='dmi',
+                                     totales=['n34:n34'],
+                                     directos=['n34'])
+
+# El periodo de la variable ordena el resto
 hgt_anom_mon = hgt_anom_mon.sel(
     time=hgt_anom_mon.time.dt.year.isin(range(1959, 2021)))
 
-
-def identify_lags(lags):
-    lag_target = lags[0]
-    indices_lags = lags[1:]
-    return lag_target, indices_lags
-
-def Setlag(indice, lag, variable_target, years_to_remove):
-    indice = indice.sel(time=indice.time.dt.month.isin(lag))
-    indice = indice.sel(
-        time=indice.time.dt.year.isin(variable_target.time.dt.year))
-    indice = indice.sel(time=~indice.time.dt.year.isin(years_to_remove))
-    indice = indice / indice.std()
-
-    return indice
-
-def SetLag_to_ActorList(variable_target, month_target, indices, lags,
-                     years_to_remove, verbose=1):
-
-    # Seteo de variable target
-    variable_target = variable_target.sel(
-        time=variable_target.time.dt.month.isin([month_target]))
-    if verbose > 1: print('month_target seteado')
-    variable_target = variable_target / variable_target.std()
-    if verbose > 1: print('normalizado')
-    variable_target = variable_target.sel(
-        time=~variable_target.time.dt.month.isin(years_to_remove))
-    if verbose > 1: print('years_to_remove ok')
-
-    actor_list = {}
-    for (indice_name, indice), lag in zip(indices.items(), lags):
-        if verbose > 0: print(f'indice: {indice_name} - lag: {lag}')
-        actor_list[indice_name] = Setlag(indice, lag, variable_target,
-                                         years_to_remove)
-    return variable_target, actor_list
-
-
-indices = {'n34':n34_or, 'dmi':dmi_or, 'u50':u50_or}
 for l_count, lag_key in enumerate(lags.keys()):
     lag_target, indices_lags = identify_lags(lags[lag_key])
 
@@ -171,6 +130,15 @@ for l_count, lag_key in enumerate(lags.keys()):
         lags=indices_lags,
         years_to_remove=[2002, 2019])
 
-# Seguir compute CEN --------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
+
+    aux_df_n34_dmi = apply_CEN_effect(actor_list,
+                                      effects_dict_n34_dmi,
+                                      sig=True,
+                                      alpha_sig=[0.15, 0.1, 0.05])
+    print(aux_df_n34_dmi)
+
+    aux_df = apply_CEN_effect(actor_list,
+                              effects_dict,
+                              sig=True,
+                              alpha_sig=[0.15, 0.1, 0.05])
+    print(aux_df)

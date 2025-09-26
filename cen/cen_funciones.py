@@ -1,13 +1,8 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-import matplotlib.pyplot as plt
-import cartopy.feature
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-import cartopy.crs as ccrs
-import matplotlib
-import matplotlib.ticker as ticker
 import xarray as xr
+
 def Detrend(xrda, dim):
     aux = xrda.polyfit(dim=dim, deg=1)
     try:
@@ -23,71 +18,230 @@ def Weights(data):
     data_w = data * weights
     return data_w
 
+def identify_lags(lags):
+    lag_target = lags[0]
+    indices_lags = lags[1:]
+    return lag_target, indices_lags
 
-#
-#
-# # def regre(series, intercept, coef=0):
-# #     df = pd.DataFrame(series)
-# #     if intercept:
-# #         X = np.column_stack((np.ones_like(df[df.columns[1]]),
-# #                              df[df.columns[1:]]))
-# #     else:
-# #         X = df[df.columns[1:]].values
-# #     y = df[df.columns[0]]
-# #
-# #     coefs = np.linalg.lstsq(X, y, rcond=None)[0]
-# #
-# #     coefs_results = {}
-# #     for ec, e in enumerate(series.keys()):
-# #         if intercept and ec == 0:
-# #             e = 'constant'
-# #         if e != df.columns[0]:
-# #             if intercept:
-# #                 coefs_results[e] = coefs[ec]
-# #             else:
-# #                 coefs_results[e] = coefs[ec-1]
-# #
-# #     if isinstance(coef, str):
-# #         return coefs_results[coef]
-# #     else:
-# #         return coefs_results
-#
-#
-# import statsmodels.api as sm
-# def regre(series, intercept, coef=0, filter_significance=True, alpha=1):
-#     df = pd.DataFrame(series)
-#     if intercept:
-#         X = sm.add_constant(df[df.columns[1:]])
-#     else:
-#         X = df[df.columns[1:]]
-#     y = df[df.columns[0]]
-#
-#     model = sm.OLS(y, X).fit()
-#     coefs_results = model.params
-#     p_values = model.pvalues
-#     # t_values = model.tvalues
-#
-#     results = {}
-#     # p_val = {}
-#     # t_val = {}
-#     for col in df.columns[1:]:
-#         if filter_significance:
-#             if p_values[col] <= alpha:
-#                 results[col] = coefs_results[col]
-#             else:
-#                 results[col] = None
-#         else:
-#             results[col] = coefs_results[col]
-#
-#         # p_val[col] = p_values[col]
-#         # t_val[col] = t_values[col]
-#
-#     if isinstance(coef, str):
-#         return results.get(coef, 0)
-#     else:
-#         return results
-#
-#
+def Setlag(indice, lag, variable_target, years_to_remove):
+    indice = indice.sel(time=indice.time.dt.month.isin(lag))
+    indice = indice.sel(
+        time=indice.time.dt.year.isin(variable_target.time.dt.year))
+    indice = indice.sel(time=~indice.time.dt.year.isin(years_to_remove))
+    indice = indice / indice.std()
+
+    return indice
+
+def SetLag_to_ActorList(variable_target, month_target, indices, lags,
+                     years_to_remove, verbose=1):
+
+    # Seteo de variable target
+    variable_target = variable_target.sel(
+        time=variable_target.time.dt.month.isin([month_target]))
+    if verbose > 1: print('month_target seteado')
+    variable_target = variable_target / variable_target.std()
+    if verbose > 1: print('normalizado')
+    variable_target = variable_target.sel(
+        time=~variable_target.time.dt.month.isin(years_to_remove))
+    if verbose > 1: print('years_to_remove ok')
+
+    actor_list = {}
+    for (indice_name, indice), lag in zip(indices.items(), lags):
+        if verbose > 0: print(f'indice: {indice_name} - lag: {lag}')
+        actor_list[indice_name] = Setlag(indice, lag, variable_target,
+                                         years_to_remove)
+    return variable_target, actor_list
+
+def regre(series, intercept, coef=0, filter_significance=True, alpha=1):
+    df = pd.DataFrame(series)
+    if intercept:
+        X = sm.add_constant(df[df.columns[1:]])
+    else:
+        X = df[df.columns[1:]]
+    y = df[df.columns[0]]
+
+    model = sm.OLS(y, X).fit()
+    coefs_results = model.params
+    p_values = model.pvalues
+    # t_values = model.tvalues
+
+    results = {}
+    # p_val = {}
+    # t_val = {}
+    for col in df.columns[1:]:
+        if filter_significance:
+            if p_values[col] <= alpha:
+                results[col] = coefs_results[col]
+            else:
+                results[col] = None
+        else:
+            results[col] = coefs_results[col]
+
+        # p_val[col] = p_values[col]
+        # t_val[col] = t_values[col]
+
+    if isinstance(coef, str):
+        return results.get(coef, 0)
+    else:
+        return results
+
+def AUX_select_actors(actor_list, set_series, serie_to_set):
+    serie_to_set2 = serie_to_set.copy()
+    for key in set_series:
+        serie_to_set2[key] = actor_list[key]
+    return serie_to_set2
+
+def CN_Effect(actor_list, set_series_directo, set_series_totales,
+              variables, set_series_directo_particulares = None,
+              sig=False, alpha=0.05):
+
+    """
+    Versión de CN_Effect general
+    :param actor_list: dict con todos las series que se van a utilizar menos
+    la/s serie/s target
+    :param set_series_directo: list con los nombres de las series que se deben
+     incluir en regre para el efecto directo que se usará si
+    set_series_directo_particulares = None.(En muchos casos es igual para todos)
+    :param set_series_totales: dict, indicando nombre de la serie y predictandos
+    de regre incluyendo la misma serie
+    :param set_series_directo_particulares: idem anterior para efectos directos
+    que no puedan ser cuantificados con set_series_directo
+    :param variables: dict con las series target
+    :return: dataframe indicando los efectos totales y directos de cada parent
+    hacia las seires target
+    """
+
+    for k in variables.keys():
+        if k in set_series_directo or k in set_series_totales:
+            if set_series_directo_particulares is not None:
+                if k in set_series_directo_particulares:
+                    print('Error: Variables no puede incluir ser un parent')
+                    return
+            print('Error: Variables no puede incluir ser un parent')
+            return
+
+    result_df = pd.DataFrame(columns=['v_efecto', 'b'])
+
+    for x_name in variables.keys():
+        x = variables[x_name]
+
+        try:
+            pre_serie = {'c': x['var'].values}
+        except:
+            pre_serie = {'c': x.values}
+
+        series_directo = AUX_select_actors(actor_list, set_series_directo,
+                                           pre_serie)
+
+        series_totales = {}
+        actors = []
+        for k in set_series_totales.keys():
+            actors.append(k)
+
+            series_totales[k] = AUX_select_actors(actor_list,
+                                                  set_series_totales[k],
+                                                  pre_serie)
+
+            if set_series_directo_particulares is not None:
+                series_directas_particulares = {}
+                series_directas_particulares[k] = \
+                    AUX_select_actors(actor_list,
+                                      set_series_directo_particulares[k],
+                                      pre_serie)
+
+        if all(actor in series_totales for actor in actors):
+            for i in actors:
+                # Efecto total i --------------------------------------------- #
+                i_total = regre(series_totales[i], True, i, sig, alpha)
+                result_df = result_df.append({'v_efecto': f"{i}_TOTAL_{x_name}",
+                                              'b': i_total}, ignore_index=True)
+
+                # Efecto directo i ------------------------------------------- #
+                try:
+                    i_directo = regre(
+                        series_directas_particulares[i], True, i, sig, alpha)
+                except:
+                    i_directo = regre(series_directo, True, i, sig, alpha)
+
+                result_df = result_df.append(
+                    {'v_efecto': f"{i}_DIRECTO_{x_name}", 'b': i_directo},
+                    ignore_index=True)
+        else:
+            print('Error: faltan actors en las series')
+
+    return result_df
+
+def set_actor_effect_dict(target, totales, directos,
+                          directos_particulares=None):
+
+    # dict ------------------------------------------------------------------- #
+    efectos_totales = {}
+    efectos_directos = []
+    efectos_directos_particulares = None
+    effect_dict = {'variable_target': target,
+                    'efectos_totales': efectos_totales,
+                    'efectos_directos': efectos_directos,
+                    'efectos_directos_particulares':
+                        efectos_directos_particulares}
+    # ------------------------------------------------------------------------ #
+    # totales
+    for e in totales:
+        indice = e.split(':')[0]
+
+        aux = []
+        for p in e.split(':')[1].split('+'):
+            aux.append(p)
+
+        effect_dict['efectos_totales'][indice] = aux
+
+    # directos:
+    effect_dict['efectos_directos'] = directos
+
+    # particulares
+    if directos_particulares is not None:
+        print('Error: directos_particulares, no seteado')
+
+    return effect_dict
+
+def apply_CEN_effect(actor_list, effects_dict, alpha_sig=[None], sig=True):
+
+
+    alpha_sig.insert(0, 1)
+    alpha_sig = [a for a in alpha_sig if a is not None]
+
+    aux_target = effects_dict['variable_target']
+    target = {aux_target : actor_list[aux_target]}
+
+    efectos_directos = effects_dict['efectos_directos']
+    efectos_totales = effects_dict['efectos_totales']
+    efectos_directos_particulares = effects_dict['efectos_directos_particulares']
+
+    for i in alpha_sig:
+        df = CN_Effect(actor_list=actor_list,
+                       set_series_directo=efectos_directos,
+                       set_series_totales=efectos_totales,
+                       variables=target,
+                       alpha=i, sig=sig,
+                       set_series_directo_particulares=
+                       efectos_directos_particulares)
+
+
+        if i == alpha_sig[0]:
+            df['b'] = np.round(df['b'], 3)
+            df_final = df
+        else:
+            df_final[f'alpha_{i}'] = \
+                ['*' if i is not None else '' for i in df['b'].values]
+
+    return df_final
+
+
+# import matplotlib.pyplot as plt
+# import cartopy.feature
+# from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+# import cartopy.crs as ccrs
+# import matplotlib
+# import matplotlib.ticker as ticker
 # def regre_forplot(series, intercept, coef=0, alpha=1):
 #     #, filter_significance=True, alpha=1):
 #     df = pd.DataFrame(series)
@@ -124,90 +278,7 @@ def Weights(data):
 #     for key in set_series:
 #         serie_to_set2[key] = actor_list[key]
 #     return serie_to_set2
-#
-# def CN_Effect_2(actor_list, set_series_directo, set_series_totales,
-#                 variables, set_series_directo_particulares = None,
-#                 sig=False, alpha=0.05):
-#
-#     """
-#     Versión de CN_Effect general
-#     :param actor_list: dict con todos las series que se van a utilizar menos
-#     la/s serie/s target
-#     :param set_series_directo: list con los nombres de las series que se deben
-#      incluir en regre para el efecto directo que se usará si
-#     set_series_directo_particulares = None.(En muchos casos es igual para todos)
-#     :param set_series_totales: dict, indicando nombre de la serie y predictandos
-#     de regre incluyendo la misma serie
-#     :param set_series_directo_particulares: idem anterior para efectos directos
-#     que no puedan ser cuantificados con set_series_directo
-#     :param variables: dict con las series target
-#     :return: dataframe indicando los efectos totales y directos de cada parent
-#     hacia las seires target
-#     """
-#
-#     for k in variables.keys():
-#         if k in set_series_directo or k in set_series_totales:
-#             if set_series_directo_particulares is not None:
-#                 if k in set_series_directo_particulares:
-#                     print('Error: Variables no puede incluir ser un parent')
-#                     return
-#             print('Error: Variables no puede incluir ser un parent')
-#             return
-#
-#     result_df = pd.DataFrame(columns=['v_efecto', 'b'])
-#
-#     for x_name in variables.keys():
-#         x = variables[x_name]
-#
-#         try:
-#             pre_serie = {'c': x['var'].values}
-#         except:
-#             pre_serie = {'c': x.values}
-#
-#         series_directo = AUX_select_actors(actor_list, set_series_directo,
-#                                            pre_serie)
-#
-#         series_totales = {}
-#         actors = []
-#         for k in set_series_totales.keys():
-#             actors.append(k)
-#
-#             series_totales[k] = AUX_select_actors(actor_list,
-#                                                   set_series_totales[k],
-#                                                   pre_serie)
-#
-#             if set_series_directo_particulares is not None:
-#                 series_directas_particulares = {}
-#                 series_directas_particulares[k] = \
-#                     AUX_select_actors(actor_list,
-#                                       set_series_directo_particulares[k],
-#                                       pre_serie)
-#
-#         if all(actor in series_totales for actor in actors):
-#             for i in actors:
-#                 # Efecto total i --------------------------------------------- #
-#                 i_total = regre(series_totales[i], True, i, sig, alpha)
-#                 result_df = result_df.append({'v_efecto': f"{i}_TOTAL_{x_name}",
-#                                               'b': i_total}, ignore_index=True)
-#
-#                 # Efecto directo i ------------------------------------------- #
-#                 try:
-#                     i_directo = regre(
-#                         series_directas_particulares[i], True, i, sig, alpha)
-#                 except:
-#                     i_directo = regre(series_directo, True, i, sig, alpha)
-#
-#                 result_df = result_df.append(
-#                     {'v_efecto': f"{i}_DIRECTO_{x_name}", 'b': i_directo},
-#                     ignore_index=True)
-#         else:
-#             print('Error: faltan actors en las series')
-#
-#
-#     print(result_df)
-#     return result_df
-#
-#
+
 # def Plot(data, cmap, mapa, save, dpi, titulo, name_fig, out_dir,
 #          step=1, data_ctn=None):
 #
@@ -300,165 +371,7 @@ def Weights(data):
 #         return aux
 #
 #
-#
-# def aux2_Setlag(serie_or, serie_lag, serie_set, years_to_remove):
-#     if serie_lag is not None:
-#         serie_f = serie_or.sel(
-#             time=serie_or.time.dt.month.isin([serie_lag]))
-#         serie_f = serie_f.sel(
-#             time=serie_f.time.dt.year.isin(serie_set.time.dt.year))
-#     else:
-#         serie_f = SameDateAs(serie_or, serie_set)
-#
-#     serie_f = serie_f.sel(time=~serie_f.time.dt.year.isin(years_to_remove))
-#
-#     serie_f = serie_f / serie_f.std()
-#
-#     return serie_f
-#
-# def auxSetLags_ActorList(lag_target, lag_dmin34, lag_strato,
-#                          hgt200_anom_or=None, pp_or=None, dmi_or=None,
-#                          n34_or=None, asam_or=None, ssam_or=None,
-#                          sam_or=None, u50_or=None, strato_indice=None,
-#                          years_to_remove=None, asam_lag=None, ssam_lag=None,
-#                          sam_lag=None, auxdmi_lag=None, auxn34_lag=None,
-#                          auxstrato_lag=None, auxsam_lag=None, auxssam_lag=None,
-#                          auxasam_lag=None, auxhgt_lag=None, auxpp_lag=None):
-#
-#     # lag_target
-#     if auxhgt_lag is None:
-#         hgt200_anom = hgt200_anom_or.sel(
-#             time=hgt200_anom_or.time.dt.month.isin([lag_target]))
-#     else:
-#         hgt200_anom = hgt200_anom_or.sel(
-#             time=hgt200_anom_or.time.dt.month.isin([auxhgt_lag]))
-#
-#     if strato_indice is not None:
-#         hgt200_anom = hgt200_anom.sel(
-#             time=hgt200_anom.time.dt.year.isin([strato_indice.time]))
-#
-#     if hgt200_anom is not None:
-#         hgt200_anom = hgt200_anom / hgt200_anom.std()
-#         hgt200_anom = hgt200_anom.sel(
-#             time=~hgt200_anom.time.dt.year.isin(years_to_remove))
-#
-#         if pp_or is not None:
-#             if auxpp_lag is None:
-#                 pp = SameDateAs(pp_or, hgt200_anom)
-#             else:
-#                 pp = pp_or.sel(
-#                     time=pp_or.time.dt.month.isin([auxpp_lag]))
-#             pp = pp / pp.std()
-#             pp = pp.sel(time=~pp.time.dt.year.isin(years_to_remove))
-#             pp2 = pp.values
-#         else:
-#             pp = pp2 = None
-#
-#         if sam_or is not None:
-#             sam = aux2_Setlag(sam_or, sam_lag, hgt200_anom, years_to_remove)
-#             aux_sam = aux2_Setlag(sam_or, auxsam_lag, hgt200_anom,
-#                                   years_to_remove)
-#             sam2 = sam.values
-#             aux_sam2 = aux_sam.values
-#         else:
-#             sam = sam2 = None
-#             aux_sam = aux_sam2 = None
-#
-#         if asam_or is not None:
-#             asam = aux2_Setlag(asam_or, asam_lag, hgt200_anom, years_to_remove)
-#             aux_asam = aux2_Setlag(asam_or, auxasam_lag, hgt200_anom,
-#                                    years_to_remove)
-#             asam2 = asam.values
-#             aux_asam2 = aux_asam.values
-#         else:
-#             asam = asam2 = None
-#             aux_asam = aux_asam2 = None
-#
-#         if ssam_or is not None:
-#             ssam = aux2_Setlag(ssam_or, ssam_lag, hgt200_anom, years_to_remove)
-#             aux_ssam = aux2_Setlag(ssam_or, auxssam_lag, hgt200_anom,
-#                                    years_to_remove)
-#             ssam2 = ssam.values
-#             aux_ssam2 = aux_ssam.values
-#         else:
-#             ssam = ssam2 = None
-#             aux_ssam = aux_ssam2 = None
-#
-#         if dmi_or is not None:
-#             dmi = aux2_Setlag(dmi_or, lag_dmin34, hgt200_anom, years_to_remove)
-#             dmi_aux = aux2_Setlag(dmi_or, auxdmi_lag, hgt200_anom,
-#                                   years_to_remove)
-#             dmi2 = dmi.values
-#             dmi_aux2 = dmi_aux.values
-#         else:
-#             dmi = dmi2 = None
-#             dmi_aux = dmi_aux2 = None
-#
-#         if n34_or is not None:
-#             n34 = aux2_Setlag(n34_or, lag_dmin34, hgt200_anom, years_to_remove)
-#             n34_aux = aux2_Setlag(n34_or, auxn34_lag, hgt200_anom,
-#                                   years_to_remove)
-#             n342 = n34.values
-#             n34_aux2 = n34_aux.values
-#         else:
-#             n34 = n342 = None
-#             n34_aux = n34_aux2 = None
-#
-#         if u50_or is not None:
-#             u50 = aux2_Setlag(u50_or, lag_strato, hgt200_anom, years_to_remove)
-#             u50_aux = aux2_Setlag(u50_or, auxstrato_lag, hgt200_anom,
-#                                   years_to_remove)
-#             u502 = u50.values
-#             u50_aux2 = u50_aux.values
-#         else:
-#             u50 = u502 = None
-#             u50_aux = u50_aux2 = None
-#
-#         if strato_indice is not None:
-#             strato_indice = strato_indice.sel(
-#                 time=~strato_indice.time.isin(years_to_remove))
-#             strato_indice2 = strato_indice['var'].values
-#         else:
-#             strato_indice = strato_indice2 = None
-#
-#         actor_list = {'dmi': dmi2, 'n34': n342, 'ssam': ssam2, 'asam': asam2,
-#                       'strato': strato_indice2, 'sam': sam2, 'u50': u502,
-#                       'dmi_aux': dmi_aux2, 'n34_aux': n34_aux2,
-#                       'u50_aux': u50_aux2,
-#                       'aux_sam': aux_sam2, 'aux_ssam': aux_ssam2,
-#                       'aux_asam': aux_asam2}
-#
-#     else:
-#         print('Error: hgt200_anom es None')
-#         hgt200_anom =  pp = asam = ssam = u50 = strato_indice = dmi = n34 = \
-#         actor_list = dmi_aux = n34_aux = u50_aux = aux_sam = aux_ssam = \
-#         aux_asam = None
-#         actor_list = None
-#
-#     return (hgt200_anom, pp, asam, ssam, u50, strato_indice, dmi, n34,\
-#            actor_list, dmi_aux, n34_aux, u50_aux, aux_sam, aux_ssam,
-#             aux_asam)
-#
-# def aux_alpha_CN_Effect_2(actor_list, set_series_directo, set_series_totales,
-#                           variables, sig, alpha_sig,
-#                           set_series_directo_particulares=None):
-#     for i in alpha_sig:
-#         linea_sig = pd.DataFrame({'v_efecto': ['alpha'], 'b': [str(i)]})
-#
-#         df = CN_Effect_2(actor_list, set_series_directo,
-#                          set_series_totales,
-#                          variables, alpha=i,
-#                          sig=sig,
-#                          set_series_directo_particulares=
-#                          set_series_directo_particulares)
-#
-#         if i == alpha_sig[0]:
-#             df_final = pd.concat([linea_sig, df], ignore_index=True)
-#         else:
-#             df_final = pd.concat([df_final, linea_sig, df], ignore_index=True)
-#
-#     return df_final
-#
+
 # def Plot_vsP(data, cmap, save, dpi, titulo, name_fig, out_dir,
 #              data_ctn=None):
 #
