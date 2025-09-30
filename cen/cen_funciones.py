@@ -42,7 +42,7 @@ def SetLag_to_ActorList(variable_target, month_target, indices, lags,
     variable_target = variable_target / variable_target.std()
     if verbose > 1: print('normalizado')
     variable_target = variable_target.sel(
-        time=~variable_target.time.dt.month.isin(years_to_remove))
+        time=~variable_target.time.dt.year.isin(years_to_remove))
     if verbose > 1: print('years_to_remove ok')
 
     actor_list = {}
@@ -172,7 +172,8 @@ def CN_Effect(actor_list, set_series_directo, set_series_totales,
     return result_df
 
 def set_actor_effect_dict(target, totales, directos,
-                          directos_particulares=None):
+                          directos_particulares=None,
+                          to_parallel_run=False):
 
     # dict ------------------------------------------------------------------- #
     efectos_totales = {}
@@ -184,18 +185,28 @@ def set_actor_effect_dict(target, totales, directos,
                     'efectos_directos_particulares':
                         efectos_directos_particulares}
     # ------------------------------------------------------------------------ #
-    # totales
+
     for e in totales:
-        indice = e.split(':')[0]
+        # totales
+        if to_parallel_run:
+            indice = e.split(':')[0]
+            effect_dict['efectos_totales'][indice] = e.split(':')[1]
 
-        aux = []
-        for p in e.split(':')[1].split('+'):
-            aux.append(p)
+        else:
+            indice = e.split(':')[0]
 
-        effect_dict['efectos_totales'][indice] = aux
+            aux = []
+            for p in e.split(':')[1].split('+'):
+                aux.append(p)
+
+            effect_dict['efectos_totales'][indice] = aux
 
     # directos:
-    effect_dict['efectos_directos'] = directos
+    if to_parallel_run:
+        joined = '+'.join(directos)
+        effect_dict['efectos_directos'] = {k: joined for k in directos}
+    else:
+        effect_dict['efectos_directos'] = directos
 
     # particulares
     if directos_particulares is not None:
@@ -235,6 +246,37 @@ def apply_CEN_effect(actor_list, effects_dict, alpha_sig=[None], sig=True):
 
     return df_final
 
+def regre_forplot(series, intercept, coef=0, alpha=1):
+    #, filter_significance=True, alpha=1):
+    df = pd.DataFrame(series)
+    if intercept:
+        X = sm.add_constant(df[df.columns[1:]])
+    else:
+        X = df[df.columns[1:]]
+    y = df[df.columns[0]]
+
+    model = sm.OLS(y, X).fit()
+    coefs_results = model.params
+    p_values = model.pvalues
+    # t_values = model.tvalues
+
+    results_sig = {}
+    results_all = {}
+    # p_val = {}
+    # t_val = {}
+    for col in df.columns[1:]:
+        if p_values[col] <= alpha:
+            results_sig[col] = coefs_results[col]
+        else:
+            results_sig[col] = None
+
+        results_all[col] = coefs_results[col]
+
+    if isinstance(coef, str):
+        return results_sig.get(coef, 0), results_all.get(coef, 0)
+    else:
+        return results_sig, results_all
+
 
 # import matplotlib.pyplot as plt
 # import cartopy.feature
@@ -242,36 +284,7 @@ def apply_CEN_effect(actor_list, effects_dict, alpha_sig=[None], sig=True):
 # import cartopy.crs as ccrs
 # import matplotlib
 # import matplotlib.ticker as ticker
-# def regre_forplot(series, intercept, coef=0, alpha=1):
-#     #, filter_significance=True, alpha=1):
-#     df = pd.DataFrame(series)
-#     if intercept:
-#         X = sm.add_constant(df[df.columns[1:]])
-#     else:
-#         X = df[df.columns[1:]]
-#     y = df[df.columns[0]]
-#
-#     model = sm.OLS(y, X).fit()
-#     coefs_results = model.params
-#     p_values = model.pvalues
-#     # t_values = model.tvalues
-#
-#     results_sig = {}
-#     results_all = {}
-#     # p_val = {}
-#     # t_val = {}
-#     for col in df.columns[1:]:
-#         if p_values[col] <= alpha:
-#             results_sig[col] = coefs_results[col]
-#         else:
-#             results_sig[col] = None
-#
-#         results_all[col] = coefs_results[col]
-#
-#     if isinstance(coef, str):
-#         return results_sig.get(coef, 0), results_all.get(coef, 0)
-#     else:
-#         return results_sig, results_all
+
 #
 # def AUX_select_actors(actor_list, set_series, serie_to_set):
 #     serie_to_set2 = serie_to_set.copy()

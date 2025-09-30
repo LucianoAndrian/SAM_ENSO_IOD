@@ -3,8 +3,9 @@ CEN
 ENSO-IOD-U 50hPa
 """
 # ---------------------------------------------------------------------------- #
-save = False
-out_dir = ''
+save = True
+out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas_cen/'
+plots = False
 
 # ---------------------------------------------------------------------------- #
 import os
@@ -13,7 +14,6 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 pd.options.mode.chained_assignment = None
-
 from funciones.indices import Nino34CPC, DMI2
 from cen.cen_funciones import Detrend, Weights, set_actor_effect_dict, \
     apply_CEN_effect, identify_lags, SetLag_to_ActorList
@@ -70,6 +70,22 @@ def set_data_to_cen(dir_file, interp_2x2=True,
 
     return data_anom_mon
 
+def df_linea_lag(lag_key):
+    data = {
+        'v_efecto': f'Lag {lag_key}',
+        'b': '',
+        'alpha_0.15': '',
+        'alpha_0.1': '',
+        'alpha_0.05': ''
+    }
+    return pd.DataFrame([data])
+
+def concat_df(df1=None, df2=None):
+    if df1 is None:
+        return df2
+    else:
+        return pd.concat([df1, df2], ignore_index=True)
+
 # ---------------------------------------------------------------------------- #
 # set data
 sam_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/'
@@ -105,9 +121,9 @@ lags = {'SON': [10, 10, 10, 10],
         'ASO': [9, 9, 9, 9],
         'JAS_ASO--SON': [10, 8, 8, 9],
         'JAS--SON': [10, 8, 8, 8]}
-
+lags = {'SON': [10, 10, 10, 10]}
 effects_dict = set_actor_effect_dict(target='u50',
-                                     totales=['n34:n34', 'dmi:dmi+n34'],
+                                     totales=['dmi:dmi+n34','n34:n34',],
                                      directos=['dmi', 'n34'])
 
 effects_dict_n34_dmi = set_actor_effect_dict(target='dmi',
@@ -118,27 +134,58 @@ effects_dict_n34_dmi = set_actor_effect_dict(target='dmi',
 hgt_anom_mon = hgt_anom_mon.sel(
     time=hgt_anom_mon.time.dt.year.isin(range(1959, 2021)))
 
+df_n34_dmi = None
+df = None
 for l_count, lag_key in enumerate(lags.keys()):
     lag_target, indices_lags = identify_lags(lags[lag_key])
 
     print(f'{lag_key}')
+    df_linea = df_linea_lag(lag_key)
 
     hgt_target, actor_list = SetLag_to_ActorList(
         variable_target=hgt_anom_mon,
         month_target=lag_target,
         indices=indices,
         lags=indices_lags,
-        years_to_remove=[2002, 2019])
-
+        years_to_remove=[2002, 2019],
+        verbose=0)
 
     aux_df_n34_dmi = apply_CEN_effect(actor_list,
                                       effects_dict_n34_dmi,
                                       sig=True,
                                       alpha_sig=[0.15, 0.1, 0.05])
-    print(aux_df_n34_dmi)
+    aux_df_n34_dmi = concat_df(df_linea, aux_df_n34_dmi)
+    df_n34_dmi = concat_df(df_n34_dmi, aux_df_n34_dmi)
 
     aux_df = apply_CEN_effect(actor_list,
                               effects_dict,
                               sig=True,
                               alpha_sig=[0.15, 0.1, 0.05])
-    print(aux_df)
+    aux_df = concat_df(df_linea, aux_df)
+    df = concat_df(df, aux_df)
+
+print('Done lags')
+
+if save:
+    df_n34_dmi.to_csv(f'{out_dir}cen_n34-dmi_trinity_son.csv', index=False)
+    df.to_csv(f'{out_dir}cen_trinity_son.csv', index=False)
+    print('Saved')
+    print(f'{out_dir}cen_n34-dmi_trinity_son.csv')
+    print(f'{out_dir}cen_trinity_son.csv')
+
+if plots:
+    from cen.cen import CEN_ufunc
+
+    effects_dict = set_actor_effect_dict(target='u50',
+                                         totales=['dmi:dmi+n34',
+                                                  'n34:n34',
+                                                  'u50:dmi+n34+u50'],
+                                         directos=['dmi', 'n34', 'u50'],
+                                         to_parallel_run=True)
+
+    cen = CEN_ufunc(actor_list)
+
+    regre_efectos_totales, regre_efectos_directos = \
+        cen.run_ufunc_cen(variable_target=hgt_target.sel(lat=slice(20, -80)),
+                          effects=effects_dict)
+
