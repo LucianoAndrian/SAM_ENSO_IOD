@@ -532,3 +532,92 @@ def Plot_ENSO_IOD_SAM_comp(data, levels, cmap, titles, namefig, map,
         plt.show()
 
 # ---------------------------------------------------------------------------- #
+
+def Plot_Contourf_simple(data, levels, cmap, map, title, namefig,
+                         save, out_dir, data_ctn=None,
+                         levels_ctn=None, color_ctn=None,
+                         high=2, width = 7,
+                         cbar_pos='H', plot_step=3,
+                         pdf=True, ocean_mask=False,
+                         data_ctn_no_ocean_mask=False):
+
+    dpi = 300 if save else 100
+    crs_latlon = ccrs.PlateCarree()
+
+    xticks, yticks, lon_localator = set_mapa_param(map)
+
+    # figura + ejes
+    fig, ax = plt.subplots(
+        figsize=(width, high),
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+    )
+
+    # Contour ---------------------------------------------------------------- #
+    if data_ctn is not None:
+        aux_ctn = data_ctn
+        if levels_ctn is None:
+            levels_ctn = levels.copy()
+            levels_ctn = remove_0_level(levels_ctn)
+
+        if ocean_mask is True and data_ctn_no_ocean_mask is False:
+            mask_ocean = MakeMask(aux_ctn)
+            aux_ctn = aux_ctn * mask_ocean.mask
+
+        aux_ctn_var = get_xr_values(aux_ctn)
+
+        ax.contour(data_ctn.lon.values[::plot_step],
+                   data_ctn.lat.values[::plot_step],
+                   aux_ctn_var[::plot_step, ::plot_step],
+                   linewidths=0.4,
+                   levels=levels_ctn, transform=crs_latlon,
+                   colors=color_ctn)
+    # Contourf ----------------------------------------------------------- #
+    aux_var = get_xr_values(data)
+    if ocean_mask:
+        mask_ocean = MakeMask(data)
+        aux_var = aux_var * mask_ocean.mask
+
+    im = ax.contourf(data.lon.values[::plot_step],
+                     data.lat.values[::plot_step],
+                     aux_var[::plot_step, ::plot_step],
+                     levels=levels,
+                     transform=crs_latlon, cmap=cmap,
+                     extend='both', zorder=1)
+
+    ax.add_feature(cartopy.feature.LAND, facecolor='white', linewidth=0.5)
+    ax.coastlines(color='k', linestyle='-', alpha=1, linewidth=0.2,
+                  resolution='110m')
+    gl = ax.gridlines(draw_labels=False, linewidth=0.1, linestyle='-',
+                      zorder=20)
+    gl.ylocator = plt.MultipleLocator(20)
+    gl.xlocator = plt.MultipleLocator(lon_localator)
+
+
+    ax.set_title(title, fontsize=8)
+
+    # cbar_pos = 'H'
+    if cbar_pos.upper() == 'H':
+        pos = fig.add_axes([0.261, 0, 0.5, 0.02])
+        cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='horizontal')
+        cb.ax.tick_params(labelsize=4, pad=1)
+        fig.subplots_adjust(bottom=0.05, wspace=0, hspace=0.25, left=0, right=1,
+                            top=1)
+
+    elif cbar_pos.upper() == 'V':
+        pos = fig.add_axes([0.95, 0.2, 0.02, 0.5])
+        cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='vertical')
+        cb.ax.tick_params(labelsize=4, pad=1)
+        fig.subplots_adjust(bottom=0, wspace=0.5, hspace=0.25, left=0.02,
+                            right=0.9, top=1)
+    else:
+        print(f"cbar_pos {cbar_pos} no valido")
+
+    if save:
+        if pdf:
+            plt.savefig(f"{out_dir}{namefig}.pdf", dpi=dpi, bbox_inches='tight')
+        else:
+            plt.savefig(f"{out_dir}{namefig}.jpg", dpi=dpi, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+# ---------------------------------------------------------------------------- #
