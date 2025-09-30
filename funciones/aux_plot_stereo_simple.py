@@ -43,7 +43,6 @@ def plot_stereo_hgt(dataarray, save=False, name_fig='stereo_plot', out_dir='/'):
     ax.set_boundary(circle_path)
     ax.set_frame_on(False)
 
-    plt.show()
     if save:
         plt.savefig(f'{out_dir}aux_{name_fig}.png')
 # ---------------------------------------------------------------------------- #
