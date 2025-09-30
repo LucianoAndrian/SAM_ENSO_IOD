@@ -5,7 +5,6 @@ ENSO-IOD-U 50hPa
 # ---------------------------------------------------------------------------- #
 save = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas_cen/'
-plots = True
 
 # ---------------------------------------------------------------------------- #
 import os
