@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import xarray as xr
+from funciones.utils import change_name_dim, change_name_variable
 
 def Detrend(xrda, dim):
     aux = xrda.polyfit(dim=dim, deg=1)
@@ -246,6 +247,98 @@ def apply_CEN_effect(actor_list, effects_dict, alpha_sig=[None], sig=True):
 
     return df_final
 
+def set_data_to_cen(dir_file, interp_2x2=True,
+                    select_lat=None, select_lon=None,
+                    rolling=False, rl_win=3,
+                    purge_extra_dims=False):
+    data = xr.open_dataset(dir_file)
+    data = change_name_dim(data, 'latitude', 'lat')
+    data = change_name_dim(data, 'longitude', 'lon')
+    data = change_name_variable(data, 'var')
+
+    if interp_2x2:
+        try:
+            data = data.interp(lon=np.arange(data.lon[0], data.lon[-1],2),
+                               lat=np.arange(data.lat[0], data.lat[-1],2))
+        except:
+            data = data.interp(lon=np.arange(data.lon[0], data.lon[-1],2),
+                               lat=np.arange(data.lat[0], data.lat[-1],-2))
+
+    if select_lon is not None:
+        data = data.sel(lon=slice(select_lon[0], select_lon[-1]))
+
+    if select_lat is not None:
+        if len(select_lat)>1:
+            data = data.sel(lat=slice(select_lat[0], select_lat[-1]))
+        else:
+            data = data.sel(lat=select_lat[0])
+
+    data_clim = data.sel(time=slice('1979-01-01', '2000-12-01'))
+
+    data_anom_mon = data.groupby('time.month') - \
+                    data_clim.groupby('time.month').mean('time')
+
+    if rolling:
+        data_anom_mon = data_anom_mon.rolling(time=rl_win, center=True).mean()
+
+    # pesos de esta forma para normalizar para el analisis
+    #weights = np.sqrt(np.abs(np.cos(np.radians(data_anom_mon.lat))))
+    # data_anom_mon = data_anom_mon * weights
+
+    data_anom_mon = Weights(data_anom_mon)
+
+    if purge_extra_dims:
+        extra_dim = [d for d in data_anom_mon['var'].dims
+                     if d not in ['lon', 'lat', 'time']]
+        for dim in extra_dim:
+            first_val = data_anom_mon[dim].values[0]
+            data_anom_mon = data_anom_mon.sel({dim: first_val}).drop(dim)
+            print(f'drop_dim: {dim}')
+
+    return data_anom_mon
+#
+def df_linea_lag(lag_key):
+    data = {
+        'v_efecto': f'Lag {lag_key}',
+        'b': '',
+        'alpha_0.15': '',
+        'alpha_0.1': '',
+        'alpha_0.05': ''
+    }
+    return pd.DataFrame([data])
+#
+def concat_df(df1=None, df2=None):
+    if df1 is None:
+        return df2
+    else:
+        return pd.concat([df1, df2], ignore_index=True)
+
+def apply_cen_1d(variable_referencia, effects_dict, indices, lags, alpha,
+                 years_to_remove, verbose=0):
+    df = None
+    for l_count, lag_key in enumerate(lags.keys()):
+        lag_target, indices_lags = identify_lags(lags[lag_key])
+
+        if verbose > 0: print(f'{lag_key}')
+        df_linea = df_linea_lag(lag_key)
+
+        variable_target, actor_list = SetLag_to_ActorList(
+            variable_target=variable_referencia,
+            month_target=lag_target,
+            indices=indices,
+            lags=indices_lags,
+            years_to_remove=years_to_remove,
+            verbose=verbose)
+
+        aux_df = apply_CEN_effect(actor_list, effects_dict,
+                                  sig=True, alpha_sig=alpha)
+
+        aux_df = concat_df(df_linea, aux_df)
+        df = concat_df(df, aux_df)
+
+    if verbose > 0: print('Done')
+    return df
+
 def regre_forplot(series, intercept, coef=0, alpha=1):
     #, filter_significance=True, alpha=1):
     df = pd.DataFrame(series)
@@ -276,6 +369,34 @@ def regre_forplot(series, intercept, coef=0, alpha=1):
         return results_sig.get(coef, 0), results_all.get(coef, 0)
     else:
         return results_sig, results_all
+
+def apply_cen_2d(variable_target, effects_dict, indices,
+                 lags, alpha, years_to_remove, log_level, verbose):
+    from cen.cen import CEN_ufunc
+
+    efectos_totales = {}
+    efectos_directos = {}
+    for l_count, lag_key in enumerate(lags.keys()):
+        lag_target, indices_lags = identify_lags(lags[lag_key])
+
+        variable_target_al, actor_list = SetLag_to_ActorList(
+            variable_target=variable_target,
+            month_target=lag_target,
+            indices=indices,
+            lags=indices_lags,
+            years_to_remove=years_to_remove,
+            verbose=verbose)
+
+        cen = CEN_ufunc(actor_list, log_level=log_level)
+
+        regre_efectos_totales, regre_efectos_directos = \
+            cen.run_ufunc_cen(variable_target=variable_target_al,
+                              effects=effects_dict, alpha=alpha)
+
+        efectos_totales[lag_key] = regre_efectos_totales
+        efectos_directos[lag_key] = regre_efectos_directos
+
+    return efectos_totales, efectos_directos
 
 
 # import matplotlib.pyplot as plt
