@@ -306,17 +306,21 @@ def PlotScatter(idx1_name, idx2_name, idx1_sd, idx2_sd, save=False,
 def set_mapa_param(map):
     # mapa
     if map.upper() == 'HS':
+        extent = [0, 359, -80, 20]
         xticks = np.arange(0, 360, 60)
         yticks = np.arange(-80, 20, 20)
         lon_localator = 60
     elif map.upper() == 'TR':
+        extent = [45, 270, -20, 20]
         xticks = np.arange(0, 360, 60)
         np.arange(-80, 20, 20)
         lon_localator = 60
     elif map.upper() == 'HS_EX':
         xticks = np.arange(0, 360, 60)
+        extent = [0, 359, -65, -20]
         lon_localator = 60
     elif map.upper() == 'SA':
+        extent = [275, 330, -60, 20]
         yticks = np.arange(-60, 15+1, 20)
         xticks = np.arange(275, 330+1, 20)
         lon_localator = 20
@@ -324,7 +328,7 @@ def set_mapa_param(map):
         print(f"Mapa {map} no seteado")
         return
 
-    return xticks, yticks, lon_localator
+    return xticks, yticks, lon_localator, extent
 
 def remove_0_level(levels):
     try:
@@ -382,7 +386,7 @@ def Plot_ENSO_IOD_SAM_comp(data, levels, cmap, titles, namefig, map,
     plots = data.plots.values
     crs_latlon = ccrs.PlateCarree()
 
-    xticks, yticks, lon_localator = set_mapa_param(map)
+    xticks, yticks, lon_localator, extent = set_mapa_param(map)
 
     # plot
     fig, axes = plt.subplots(
@@ -544,7 +548,7 @@ def Plot_Contourf_simple(data, levels, cmap, map, title, namefig,
     dpi = 300 if save else 100
     crs_latlon = ccrs.PlateCarree()
 
-    xticks, yticks, lon_localator = set_mapa_param(map)
+    xticks, yticks, lon_localator, extent = set_mapa_param(map)
 
     # figura + ejes
     fig, ax = plt.subplots(
@@ -592,6 +596,31 @@ def Plot_Contourf_simple(data, levels, cmap, map, title, namefig,
     gl.ylocator = plt.MultipleLocator(20)
     gl.xlocator = plt.MultipleLocator(lon_localator)
 
+    # -----------------
+    ax.add_feature(cartopy.feature.LAND, facecolor='white',
+                   linewidth=0.5)
+    ax.coastlines(color='k', linestyle='-', alpha=1,
+                  linewidth=0.2,
+                  resolution='110m')
+    if map.upper() == 'SA':
+        ax.add_feature(cartopy.feature.BORDERS, alpha=1,
+                       linestyle='-', linewidth=0.2, color='k')
+    gl = ax.gridlines(draw_labels=False, linewidth=0.1, linestyle='-',
+                      zorder=20)
+    gl.ylocator = plt.MultipleLocator(20)
+    ax.set_xticks(xticks, crs=crs_latlon)
+    ax.set_yticks(yticks, crs=crs_latlon)
+    ax.tick_params(width=0.5, pad=1)
+    lon_formatter = LongitudeFormatter(zero_direction_label=True)
+    lat_formatter = LatitudeFormatter()
+    ax.xaxis.set_major_formatter(lon_formatter)
+    ax.yaxis.set_major_formatter(lat_formatter)
+    ax.tick_params(labelsize=4)
+    ax.set_extent(extent, crs=crs_latlon)
+
+    ax.set_aspect('equal')
+
+    # ----------------
 
     ax.set_title(title, fontsize=8)
 
@@ -604,7 +633,7 @@ def Plot_Contourf_simple(data, levels, cmap, map, title, namefig,
                             top=1)
 
     elif cbar_pos.upper() == 'V':
-        pos = fig.add_axes([0.95, 0.2, 0.02, 0.5])
+        pos = fig.add_axes([0.92, 0.2, 0.02, 0.5])
         cb = fig.colorbar(im, cax=pos, pad=0.1, orientation='vertical')
         cb.ax.tick_params(labelsize=4, pad=1)
         fig.subplots_adjust(bottom=0, wspace=0.5, hspace=0.25, left=0.02,

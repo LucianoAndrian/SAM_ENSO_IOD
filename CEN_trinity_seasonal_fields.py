@@ -15,6 +15,24 @@ import xarray as xr
 from cen.cen_funciones import set_actor_effect_dict, set_data_to_cen, \
     apply_cen_2d
 
+# aux finciones -------------------------------------------------------------- #
+def aux_save_as_nc(dict_to_save, efecto_name_file, name_variable_file, out_dir):
+    print('Saving..')
+    for k, v in dict_to_save.items():
+        aux_v = v
+
+        sk_list = list(aux_v.keys())
+        v_list = [aux_v[sk] for sk in sk_list]
+
+        da_out = xr.concat(v_list,
+                           dim=xr.DataArray(sk_list, dims="actor",
+                                            name="actor"))
+
+        da_out.to_netcdf(f"{out_dir}cen_{efecto_name_file}_2d_"
+                         f"{name_variable_file}_{k.lower()}_seasonal.nc")
+
+    print('Done')
+
 # ---------------------------------------------------------------------------- #
 # set data
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
@@ -22,6 +40,7 @@ hgt_anom_mon = set_data_to_cen(dir_file = f'{hgt_dir}ERA5_HGT200_40-20.nc',
                                interp_2x2=True, rolling=True, rl_win=3)
 hgt_anom_mon = hgt_anom_mon.sel(
     time=hgt_anom_mon.time.dt.year.isin(range(1959, 2021)))
+
 # indices -------------------------------------------------------------------- #
 from CEN_set_actors import n34_or, dmi_or, u50_or
 
@@ -45,6 +64,7 @@ effects_dict = set_actor_effect_dict(target='u50',
                                      directos=['dmi', 'n34', 'u50'],
                                      to_parallel_run=True)
 
+# hgt200 --------------------------------------------------------------------- #
 efectos_totales, efectos_directos = apply_cen_2d(
     variable_target=hgt_anom_mon.sel(lat=slice(20, -80)),
     effects_dict=effects_dict,
@@ -55,34 +75,18 @@ efectos_totales, efectos_directos = apply_cen_2d(
     log_level='info',
     verbose=0)
 
-# ---------------------------------------------------------------------------- #
 if save:
-    print('Saving..')
-    for k, v in efectos_directos.items():
-        aux_v = v
+    aux_save_as_nc(dict_to_save=efectos_directos,
+                   efecto_name_file='directo',
+                   name_variable_file='hgt200',
+                   out_dir=out_dir)
 
-        # lista de subkeys y valores
-        sk_list = list(aux_v.keys())
-        v_list = [aux_v[sk] for sk in sk_list]
+    aux_save_as_nc(dict_to_save=efectos_totales,
+                   efecto_name_file='totales',
+                   name_variable_file='hgt200',
+                   out_dir=out_dir)
 
-        # concatenar con labels en la nueva dimensión
-        da_out = xr.concat(v_list,
-                           dim=xr.DataArray(sk_list, dims="actor", name="actor"))
-        da_out.to_netcdf(f"{out_dir}cen_directo_2d_hgt200_{k.lower()}_seasonal.nc")
-
-    print('Done directos')
-
-    for k, v in efectos_totales.items():
-        aux_v = v
-
-        # lista de subkeys y valores
-        sk_list = list(aux_v.keys())
-        v_list = [aux_v[sk] for sk in sk_list]
-
-        # concatenar con labels en la nueva dimensión
-        da_out = xr.concat(v_list,
-                           dim=xr.DataArray(sk_list, dims="actor", name="actor"))
-        da_out.to_netcdf(f"{out_dir}cen_totales_2d_hgt200_{k.lower()}_seasonal.nc")
-
-    print('Done totales')
 # ---------------------------------------------------------------------------- #
+
+
+# hgt200 --------------------------------------------------------------------- #
