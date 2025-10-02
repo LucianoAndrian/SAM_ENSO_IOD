@@ -19,7 +19,15 @@ def SameDateAs(data, datadate):
 
 def change_name_dim(data, dim_to_check, dim_to_rename):
     if dim_to_check in list(data.dims):
-        return data.rename({dim_to_check: dim_to_rename})
+        out_put =  data.rename({dim_to_check: dim_to_rename})
+    else:
+        out_put = data
+    return out_put
 
 def change_name_variable(data, new_name_var):
-    return data.rename({list(data.data_vars)[0]:new_name_var})
+    try:
+        out_put = data.rename({list(data.data_vars)[0]: new_name_var})
+    except:
+        out_put = data
+        pass
+    return out_put
