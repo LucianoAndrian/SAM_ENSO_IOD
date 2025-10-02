@@ -21,7 +21,7 @@ indices = {'n34':n34_or, 'dmi':dmi_or, 'u50':u50_or}
 
 # lags, lag_variable + lags orden como indices
 lags = {'SON': [10, 10, 10, 10],
-        #'ASO--SON': [10, 9, 9, 9],
+        'ASO--SON': [10, 9, 9, 10],
         'ASO': [9, 9, 9, 9],
         'JAS_ASO--SON': [10, 8, 8, 9],
         'JAS--SON': [10, 8, 8, 8]}

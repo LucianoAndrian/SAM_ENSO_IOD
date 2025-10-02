@@ -2,7 +2,7 @@
 Plotes de las salidas de CEN_trinity_*_fields.py
 """
 # ---------------------------------------------------------------------------- #
-save = False
+save = True
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas_cen/salidas_fields/'
 efecto_total = True
 
@@ -105,7 +105,7 @@ Plot(data_dir=data_dir, name_variable='hgt200',
      width=4, high=1.5,
      pdf=False, ocean_mask=False,
      data_ctn_no_ocean_mask=False,
-     plot_efecto_totales=False,
+     plot_efecto_totales=efecto_total,
      save=save,
      lags=lags)
 
@@ -117,7 +117,7 @@ Plot(data_dir=data_dir, name_variable='prec',
      width=2.5, high=3.5,
      pdf=False, ocean_mask=True,
      data_ctn_no_ocean_mask=True,
-     plot_efecto_totales=True,
+     plot_efecto_totales=efecto_total,
      save=save,
      lags=lags)
 
