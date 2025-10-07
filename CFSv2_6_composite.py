@@ -34,12 +34,11 @@ def Composite(data_to_anom, data_ref):
 
     return composite, num_events
 
-def Composites_to_plot(variable, phase, data_dir,
-                       plot_vertical=False):
+def Composites_to_plot(variable, phase, data_dir, plot_transpuesta=False):
+
     fix = set_fix(variable)
     events_ordenados = SelectEvents_to_Composite(data_dir, variable, phase,
-                                                 plot_vertical=plot_vertical)
-
+                                                 plot_transpuesta=plot_transpuesta)
     composites = []
     num_events = []
 
@@ -58,7 +57,7 @@ def Composites_to_plot(variable, phase, data_dir,
 
     return composites, num_events
 
-def Set_title(phase, plot_vertical=False):
+def Set_title(phase, plot_transpuesta=False):
     if phase=='pos':
         sign = '+'
         enso_phase = 'El Niño'
@@ -66,7 +65,7 @@ def Set_title(phase, plot_vertical=False):
         sign = '-'
         enso_phase = 'La Niña'
 
-    if plot_vertical:
+    if plot_transpuesta:
         titles = ['', enso_phase, f'IOD{sign}', f'{enso_phase} & IOD{sign}',
                   f'SAM+', f'{enso_phase} & SAM+',  f'IOD{sign} & SAM+',
                   f'{enso_phase} & IOD{sign} & SAM+',
@@ -102,8 +101,8 @@ for phase in ['neg', 'pos']:
                            data_ctn_no_ocean_mask=False,
                            sig_data=None, hatches=None)
 
-    for plot_vertical in [False, True]:
-        if plot_vertical:
+    for plot_transpuesta in [False, True]:
+        if plot_transpuesta:
             end_name = 'h'
             num_cols = 4
             num_rows = 3
@@ -118,17 +117,22 @@ for phase in ['neg', 'pos']:
             width = 5
             cbar_pos = 'H'
 
+        hgt_comp, hgt_num = Composites_to_plot(variable='hgt', phase=phase,
+                                               data_dir=data_dir,
+                                               plot_transpuesta=plot_transpuesta)
+
         prec_comp, prec_num = Composites_to_plot(variable='prec', phase=phase,
                                                  data_dir=data_dir,
-                                                 plot_vertical=plot_vertical)
+                                                 plot_transpuesta=plot_transpuesta)
+
         cbar = get_cbars('pp')
         scale = get_scales('pp_comp_cfsv2')
-        scale_hgt = get_scales('hgt_regre')
+        scale_hgt = get_scales('hgt_comp_cfsv2')
         Plot_ENSO_IOD_SAM_comp(data=prec_comp,
                                levels=scale, cmap=cbar, titles=prec_num,
                                namefig=f'prec_comp_{phase}_{end_name}',
                                map='sa',
-                               plots_titles=Set_title(phase, plot_vertical),
+                               plots_titles=Set_title(phase, plot_transpuesta),
                                save=save, out_dir=out_dir,
                                data_ctn=hgt_comp,
                                levels_ctn=scale_hgt, color_ctn='k',
@@ -141,7 +145,7 @@ for phase in ['neg', 'pos']:
 
         tref_comp, tref_num = Composites_to_plot(variable='tref', phase=phase,
                                                  data_dir=data_dir,
-                                                 plot_vertical=plot_vertical)
+                                                 plot_transpuesta=plot_transpuesta)
         cbar = get_cbars('cbar_rdbu')
         scale = get_scales('t_comp_cfsv2')
         scale_hgt = get_scales('hgt_regre')
@@ -149,7 +153,7 @@ for phase in ['neg', 'pos']:
                                levels=scale, cmap=cbar, titles=tref_num,
                                namefig=f'tref_comp_{phase}_{end_name}',
                                map='sa',
-                               plots_titles=Set_title(phase, plot_vertical),
+                               plots_titles=Set_title(phase, plot_transpuesta),
                                save=save, out_dir=out_dir,
                                data_ctn=hgt_comp,
                                levels_ctn=scale_hgt, color_ctn='k',
