@@ -80,13 +80,17 @@ def SelectEvents_to_Composite(data_dir, variable, phase='pos',
     if plot_transpuesta is True:
         if 'pos' in phase.lower():
             orden = [idx1_puro, idx2_puro, idx1_idx2_same_phase,
-                     idx3_puro_phase, idx1_phase_idx3_phase, idx2_phase_idx3_phase,  triple_same_phase,
-                     idx3_puro_op_phase, idx1_phase_idx3_op_phase,  idx2_phase_idx3_op_phase, triple_op_phase,
+                     idx3_puro_phase, idx1_phase_idx3_phase,
+                     idx2_phase_idx3_phase,  triple_same_phase,
+                     idx3_puro_op_phase, idx1_phase_idx3_op_phase,
+                     idx2_phase_idx3_op_phase, triple_op_phase,
                      neutros]
         else:
             orden = [idx1_puro, idx2_puro, idx1_idx2_same_phase,
-                     idx3_puro_phase, idx1_phase_idx3_op_phase,  idx2_phase_idx3_op_phase, triple_op_phase,
-                     idx3_puro_op_phase, idx1_phase_idx3_phase, idx2_phase_idx3_phase,  triple_same_phase,
+                     idx3_puro_phase, idx1_phase_idx3_op_phase,
+                     idx2_phase_idx3_op_phase, triple_op_phase,
+                     idx3_puro_op_phase, idx1_phase_idx3_phase,
+                     idx2_phase_idx3_phase,  triple_same_phase,
                      neutros]
 
     else:
