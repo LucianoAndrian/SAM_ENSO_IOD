@@ -1,9 +1,14 @@
+"""
+Funciones de CEN (no clase)
+"""
+# ---------------------------------------------------------------------------- #
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import xarray as xr
 from funciones.utils import change_name_dim, change_name_variable
 
+# ---------------------------------------------------------------------------- #
 def Detrend(xrda, dim):
     aux = xrda.polyfit(dim=dim, deg=1)
     try:
@@ -372,6 +377,7 @@ def regre_forplot(series, intercept, coef=0, alpha=1):
 
 def apply_cen_2d(variable_target, effects_dict, indices,
                  lags, alpha, years_to_remove, log_level, verbose):
+
     from cen.cen import CEN_ufunc
 
     efectos_totales = {}
@@ -397,3 +403,4 @@ def apply_cen_2d(variable_target, effects_dict, indices,
         efectos_directos[lag_key] = regre_efectos_directos
 
     return efectos_totales, efectos_directos
+# ---------------------------------------------------------------------------- #

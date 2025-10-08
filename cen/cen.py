@@ -1,7 +1,12 @@
+"""
+Clase para aplciar CEN en paralelo con ufunc
+"""
+# ---------------------------------------------------------------------------- #
 import logging
 from cen.cen_funciones import AUX_select_actors, regre_forplot
 import xarray as xr
 
+# ---------------------------------------------------------------------------- #
 class CEN_ufunc:
 
     def __init__(self, aux_actor_list, log_level="info", logger=None):
@@ -142,3 +147,4 @@ class CEN_ufunc:
         self.logger.info('Finalizado run_ufunc_cen correctamente')
 
         return regre_efectos_totales, regre_efectos_directos
+# ---------------------------------------------------------------------------- #

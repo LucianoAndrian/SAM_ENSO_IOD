@@ -1,6 +1,5 @@
 """
-CEN
-ENSO-IOD-U 50hPa
+CEN en ENSO-IOD-U50hPa: "Mapas causales"
 """
 # ---------------------------------------------------------------------------- #
 save = True
@@ -13,7 +12,7 @@ import pandas as pd
 pd.options.mode.chained_assignment = None
 import xarray as xr
 from cen.cen_funciones import set_actor_effect_dict, set_data_to_cen, \
-    apply_cen_2d#, OpenObsDataSet
+    apply_cen_2d
 
 # aux finciones -------------------------------------------------------------- #
 def aux_save_as_nc(dict_to_save, efecto_name_file, name_variable_file, out_dir):
