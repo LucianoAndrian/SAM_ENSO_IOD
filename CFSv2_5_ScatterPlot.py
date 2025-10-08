@@ -1,12 +1,12 @@
 """
-Scatter plots
+Scatter plots 2D
 ENSO-IOD-SAM CFSv2
 """
 # ---------------------------------------------------------------------------- #
 save = False
 out_dir_plot = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas_plots/'
 
-# -
+# ---------------------------------------------------------------------------- #
 import xarray as xr
 from funciones.plots import PlotScatter
 
