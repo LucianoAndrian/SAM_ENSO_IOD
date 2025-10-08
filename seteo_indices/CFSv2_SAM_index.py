@@ -1,5 +1,5 @@
 """
-Testeo: diferentes formas de calcular el SAM en CFSv2
+Funcion para computar el indice SAM a partir del primer EOF
 """
 # ---------------------------------------------------------------------------- #
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas/eof/'
@@ -15,7 +15,7 @@ def Compute_SAM(hgt, model_stack=True):
     :param hgt: xr.dataarray
     :param model_stack: bool, True, r y time a una misma dim, False, por leads
     :param save: bool
-    :return:
+    :return: eof, sam_index
     """
 
     weights = np.sqrt(np.abs(np.cos(np.radians(hgt.lat))))
@@ -44,6 +44,10 @@ def Compute_SAM(hgt, model_stack=True):
         sam_stack = sam_stack.unstack('time')
 
         return eof_stack, sam_stack
+
+    else:
+        print('Solo model_stack=True diponible')
+        print('model_stack=True: Forma de computo testeada previamente')
 
 
 

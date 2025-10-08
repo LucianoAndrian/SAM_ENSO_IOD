@@ -1,5 +1,5 @@
 """
-Ploteo auxiliar hgt
+Ploteo auxiliar contourf stereo hgt
 """
 # ---------------------------------------------------------------------------- #
 import matplotlib.pyplot as plt

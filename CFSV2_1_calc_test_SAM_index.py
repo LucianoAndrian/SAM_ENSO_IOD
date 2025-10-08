@@ -1,7 +1,8 @@
 """
 Calculo del indice SAM
-El testeo se realizo previamente, decidiendo que el mejor modo era usar
-stack en SON.
+EOF en 200hgt (previamente testeado) en 20ºS-90ºS aplicado sobre
+hindcast + realtime para todos los miembros de ensamble y leads
+Interpolado a 2º x 2º por RAM del servidor
 Se plotea el EOF para verificar.
 """
 # ---------------------------------------------------------------------------- #
@@ -30,4 +31,5 @@ plot_stereo_hgt(eof.sel(mode=0), save=save_plot,
 # ---------------------------------------------------------------------------- #
 if save_index:
     sam.to_netcdf(f'{out_dir}sam_cfsv2_anual_index.nc')
+    print(f'SAM index saved: {out_dir}sam_cfsv2_anual_index.nc')
 # ---------------------------------------------------------------------------- #
