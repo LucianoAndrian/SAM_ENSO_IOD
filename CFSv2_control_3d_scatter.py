@@ -3,7 +3,7 @@ Ploteo de control de seleccion de events
 Scatter 3D
 """
 # ---------------------------------------------------------------------------- #
-save = True
+save = False
 out_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas_plots/'\
           'aux_3dframes/'
 # ---------------------------------------------------------------------------- #
