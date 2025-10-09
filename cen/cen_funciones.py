@@ -24,6 +24,22 @@ def Weights(data):
     data_w = data * weights
     return data_w
 
+def ChangeLons(data, lon_name='lon'):
+    data['_longitude_adjusted'] = xr.where(
+        data[lon_name] < 0,
+        data[lon_name] + 360,
+        data[lon_name])
+
+    data = (
+        data
+            .swap_dims({lon_name: '_longitude_adjusted'})
+            .sel(**{'_longitude_adjusted': sorted(data._longitude_adjusted)})
+            .drop(lon_name))
+
+    data = data.rename({'_longitude_adjusted': 'lon'})
+
+    return data
+
 def identify_lags(lags):
     lag_target = lags[0]
     indices_lags = lags[1:]
@@ -252,14 +268,27 @@ def apply_CEN_effect(actor_list, effects_dict, alpha_sig=[None], sig=True):
 
     return df_final
 
-def set_data_to_cen(dir_file, interp_2x2=True,
+def set_data_to_cen(dir_file, interp_2x2=True, interp_1x1=False,
                     select_lat=None, select_lon=None,
                     rolling=False, rl_win=3,
-                    purge_extra_dims=False):
+                    purge_extra_dims=False,
+                    purge_extra_var=False):
+
+    if interp_2x2 and interp_1x1:
+        raise ValueError('Solo uno de los argumentos puede ser True: '
+                         'interp_2x2 o interp_1x1 (no ambos)')
+
     data = xr.open_dataset(dir_file)
     data = change_name_dim(data, 'latitude', 'lat')
     data = change_name_dim(data, 'longitude', 'lon')
     data = change_name_variable(data, 'var')
+    if min(data.lon.values) < 0:
+        data = ChangeLons(data)
+
+    if len(data.sel(lat=slice(20, -60)).lat) > 0:
+        lat_dec = True
+    else:
+        lat_dec = False
 
     if interp_2x2:
         try:
@@ -269,14 +298,27 @@ def set_data_to_cen(dir_file, interp_2x2=True,
             data = data.interp(lon=np.arange(data.lon[0], data.lon[-1],2),
                                lat=np.arange(data.lat[0], data.lat[-1],-2))
 
+    if interp_1x1:
+        try:
+            data = data.interp(lon=np.arange(data.lon[0], data.lon[-1]),
+                               lat=np.arange(data.lat[0], data.lat[-1]))
+        except:
+            data = data.interp(lon=np.arange(data.lon[0], data.lon[-1]),
+                               lat=np.arange(data.lat[0], data.lat[-1], -1))
+
     if select_lon is not None:
         data = data.sel(lon=slice(select_lon[0], select_lon[-1]))
 
     if select_lat is not None:
         if len(select_lat)>1:
-            data = data.sel(lat=slice(select_lat[0], select_lat[-1]))
+            if lat_dec:
+                data = data.sel(lat=slice(max(select_lat), min(select_lat)))
+            else:
+                data = data.sel(lat=slice(min(select_lat), max(select_lat)))
         else:
             data = data.sel(lat=select_lat[0])
+
+    data = Detrend(data, 'time')
 
     data_clim = data.sel(time=slice('1979-01-01', '2000-12-01'))
 
@@ -299,6 +341,12 @@ def set_data_to_cen(dir_file, interp_2x2=True,
             first_val = data_anom_mon[dim].values[0]
             data_anom_mon = data_anom_mon.sel({dim: first_val}).drop(dim)
             print(f'drop_dim: {dim}')
+
+    if purge_extra_var:
+        extra_var = [v for v in list(data_anom_mon.data_vars) if v != 'var']
+        for var in extra_var:
+            data_anom_mon = data_anom_mon.drop(var)
+        print(f'drop_var: {var}')
 
     return data_anom_mon
 #

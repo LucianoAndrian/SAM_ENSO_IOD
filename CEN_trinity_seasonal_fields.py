@@ -47,6 +47,15 @@ prec_anom_mon = set_data_to_cen(dir_file = f'{pp_dir}pp_pgcc_v2020_1891-2023_1.n
                                 select_lon=[270, 330], select_lat=[15, -60])
 prec_anom_mon = prec_anom_mon.sel(
     time=prec_anom_mon.time.dt.year.isin(range(1959, 2021)))
+
+t_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/data_no_detrend/'
+t_anom_mon = set_data_to_cen(dir_file = f'{t_dir}t_cru0.25.nc',
+                             interp_2x2=False, interp_1x1=True, rolling=True,
+                             rl_win=3, select_lon=[270, 330],
+                             select_lat=[15, -60],
+                             purge_extra_var=True)
+t_anom_mon = t_anom_mon.sel(
+    time=t_anom_mon.time.dt.year.isin(range(1959, 2021)))
 # indices -------------------------------------------------------------------- #
 from CEN_set_actors import n34_or, dmi_or, u50_or
 
@@ -113,6 +122,29 @@ if save:
     aux_save_as_nc(dict_to_save=efectos_totales,
                    efecto_name_file='totales',
                    name_variable_file='prec',
+                   out_dir=out_dir)
+# ---------------------------------------------------------------------------- #
+# tref ----------------------------------------------------------------------- #
+print('tref')
+efectos_totales, efectos_directos = apply_cen_2d(
+    variable_target=t_anom_mon,
+    effects_dict=effects_dict,
+    indices=indices,
+    lags=lags,
+    alpha=0.05,
+    years_to_remove=[2002, 2019],
+    log_level='info',
+    verbose=0)
+
+if save:
+    aux_save_as_nc(dict_to_save=efectos_directos,
+                   efecto_name_file='directo',
+                   name_variable_file='tref',
+                   out_dir=out_dir)
+
+    aux_save_as_nc(dict_to_save=efectos_totales,
+                   efecto_name_file='totales',
+                   name_variable_file='tref',
                    out_dir=out_dir)
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #

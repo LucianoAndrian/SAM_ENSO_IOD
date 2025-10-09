@@ -10,7 +10,7 @@ efecto_total = True
 import os
 import xarray as xr
 
-from funciones.scales_and_cbars import get_scales, get_cbars
+from funciones.scales_and_cbars import get_cbars
 from funciones.plots import Plot_Contourf_simple
 
 data_dir = '/pikachu/datos/luciano.andrian/SAM_ENSO_IOD/salidas_cen/'
@@ -121,5 +121,16 @@ Plot(data_dir=data_dir, name_variable='prec',
      save=save,
      lags=lags)
 
+#tref
+Plot(data_dir=data_dir, name_variable='tref',
+     cbar=get_cbars('cbar_rdbu'),
+     scale= [-1, -0.8, -0.6, -0.5, -0.25, -0.1, 0, 0.1, 0.25, 0.5, 0.6, 0.8, 1],
+     map='sa', cbar_position='V',
+     width=2.5, high=3.5,
+     pdf=False, ocean_mask=True,
+     data_ctn_no_ocean_mask=True,
+     plot_efecto_totales=efecto_total,
+     save=save,
+     lags=lags)
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
