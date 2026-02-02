@@ -13,6 +13,10 @@ pd.options.mode.chained_assignment = None
 import xarray as xr
 from cen.cen_funciones import set_actor_effect_dict, set_data_to_cen, \
     apply_cen_2d
+from funciones.utils import init_logger
+
+# ---------------------------------------------------------------------------- #
+logger = init_logger('CEN_trinity_seasonal_fields.log')
 
 # aux finciones -------------------------------------------------------------- #
 def aux_save_as_nc(dict_to_save, efecto_name_file, name_variable_file, out_dir):
@@ -34,6 +38,7 @@ def aux_save_as_nc(dict_to_save, efecto_name_file, name_variable_file, out_dir):
 
 # ---------------------------------------------------------------------------- #
 # set data
+logger.debug('set data')
 hgt_dir = '/pikachu/datos/luciano.andrian/observado/ncfiles/ERA5/downloaded/'
 hgt_anom_mon = set_data_to_cen(dir_file = f'{hgt_dir}ERA5_HGT200_40-20.nc',
                                interp_2x2=True, rolling=True, rl_win=3,
@@ -57,6 +62,7 @@ t_anom_mon = set_data_to_cen(dir_file = f'{t_dir}t_cru0.25.nc',
 t_anom_mon = t_anom_mon.sel(
     time=t_anom_mon.time.dt.year.isin(range(1959, 2021)))
 # indices -------------------------------------------------------------------- #
+logger.debug('importando actores setados')
 from CEN_set_actors import n34_or, dmi_or, u50_or
 
 # CEN set -------------------------------------------------------------------- #
@@ -71,6 +77,7 @@ lags = {'SON': [10, 10, 10, 10],
 
 # CEN ------------------------------------------------------------------------ #
 # El periodo de la variable ordena el resto
+logger.info('Computing CEN...')
 effects_dict = set_actor_effect_dict(target='u50',
                                      totales=['dmi:dmi+n34', 'n34:n34',
                                               'u50:dmi+n34+u50'],
@@ -78,7 +85,7 @@ effects_dict = set_actor_effect_dict(target='u50',
                                      to_parallel_run=True)
 
 # hgt200 --------------------------------------------------------------------- #
-print('hgt200')
+logger.info('hgt200')
 efectos_totales, efectos_directos = apply_cen_2d(
     variable_target=hgt_anom_mon,
     effects_dict=effects_dict,
@@ -90,6 +97,7 @@ efectos_totales, efectos_directos = apply_cen_2d(
     verbose=0)
 
 if save:
+    logger.info('Saving...')
     aux_save_as_nc(dict_to_save=efectos_directos,
                    efecto_name_file='directo',
                    name_variable_file='hgt200',
@@ -99,10 +107,11 @@ if save:
                    efecto_name_file='totales',
                    name_variable_file='hgt200',
                    out_dir=out_dir)
+    logger.info('Done')
 
 # ---------------------------------------------------------------------------- #
 # prec ----------------------------------------------------------------------- #
-print('prec')
+logger.info('prec')
 efectos_totales, efectos_directos = apply_cen_2d(
     variable_target=prec_anom_mon,
     effects_dict=effects_dict,
@@ -114,6 +123,7 @@ efectos_totales, efectos_directos = apply_cen_2d(
     verbose=0)
 
 if save:
+    logger.info('Saving...')
     aux_save_as_nc(dict_to_save=efectos_directos,
                    efecto_name_file='directo',
                    name_variable_file='prec',
@@ -123,9 +133,11 @@ if save:
                    efecto_name_file='totales',
                    name_variable_file='prec',
                    out_dir=out_dir)
+    logger.info('Done')
+
 # ---------------------------------------------------------------------------- #
 # tref ----------------------------------------------------------------------- #
-print('tref')
+logger.info('tref')
 efectos_totales, efectos_directos = apply_cen_2d(
     variable_target=t_anom_mon,
     effects_dict=effects_dict,
@@ -137,6 +149,7 @@ efectos_totales, efectos_directos = apply_cen_2d(
     verbose=0)
 
 if save:
+    logger.info('Saving...')
     aux_save_as_nc(dict_to_save=efectos_directos,
                    efecto_name_file='directo',
                    name_variable_file='tref',
@@ -146,5 +159,8 @@ if save:
                    efecto_name_file='totales',
                    name_variable_file='tref',
                    out_dir=out_dir)
+    logger.info('Done')
+
+
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #

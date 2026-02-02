@@ -12,8 +12,13 @@ os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 import pandas as pd
 pd.options.mode.chained_assignment = None
 from cen.cen_funciones import set_actor_effect_dict, apply_cen_1d
+from funciones.utils import init_logger
+
+# ---------------------------------------------------------------------------- #
+logger = init_logger('CEN_trinity_seasonal.log')
 
 # indices -------------------------------------------------------------------- #
+logger.debug('Importando actores seteados')
 from CEN_set_actors import n34_or, dmi_or, u50_or
 
 # CEN set -------------------------------------------------------------------- #
@@ -27,9 +32,12 @@ lags = {'SON': [10, 10, 10, 10],
         'JAS--SON': [10, 8, 8, 8]}
 
 # CEN ------------------------------------------------------------------------ #
+logger.info('Computing CEN')
+logger.debug('set_ctor_effect_dict n34-dmi')
 effects_dict_n34_dmi = set_actor_effect_dict(target='dmi',
                                      totales=['n34:n34'],
                                      directos=['n34'])
+logger.debug('apply_cen_1d')
 df_n34_dmi = apply_cen_1d(variable_referencia=dmi_or,
                           effects_dict=effects_dict_n34_dmi,
                           indices=indices,
@@ -38,9 +46,11 @@ df_n34_dmi = apply_cen_1d(variable_referencia=dmi_or,
                           years_to_remove=[2002, 2019],
                           verbose=0)
 
+logger.debug('set_ctor_effect_dict n34-dmi-u50')
 effects_dict = set_actor_effect_dict(target='u50',
                                      totales=['dmi:dmi+n34','n34:n34',],
                                      directos=['dmi', 'n34'])
+logger.debug('apply_cen_1d')
 df = apply_cen_1d(variable_referencia=dmi_or,
                   effects_dict=effects_dict,
                   indices=indices,
@@ -51,10 +61,10 @@ df = apply_cen_1d(variable_referencia=dmi_or,
 
 # ---------------------------------------------------------------------------- #
 if save:
+    logger.info('saving')
     df_n34_dmi.to_csv(f'{out_dir}cen_n34-dmi_trinity_son.csv', index=False)
     df.to_csv(f'{out_dir}cen_trinity_son.csv', index=False)
-    print('Saved')
-    print(f'{out_dir}cen_n34-dmi_trinity_son.csv')
-    print(f'{out_dir}cen_trinity_son.csv')
+    logger.info(f'{out_dir}cen_n34-dmi_trinity_son.csv')
+    logger.info(f'{out_dir}cen_trinity_son.csv')
 
 # ---------------------------------------------------------------------------- #
