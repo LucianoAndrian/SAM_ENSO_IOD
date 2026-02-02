@@ -7,30 +7,36 @@ from multiprocessing import Process
 
 # ---------------------------------------------------------------------------- #
 def SelectVariables(dates, data):
+    data_select = []
 
-    t_count=0
-    t_count_aux = 0
     for t in dates.index:
+
         try:
             r_t = t.r.values
         except:
-            r_t = dates.r[t_count_aux].values
+            r_t = dates.r[0].values
         L_t = t.L.values
         t_t = t.values
-        try: #q elegancia la de francia...
-            t_t*1
+
+        try:
+            t_t * 1
             t_t = t.time.values
         except:
             pass
 
-        if t_count == 0:
-            aux = data.where(data.L == L_t).sel(r=r_t, time=t_t)
-            t_count += 1
-        else:
-            aux = xr.concat([aux,
-                             data.where(data.L == L_t).sel(r=r_t, time=t_t)],
-                            dim='time')
-    return aux
+        mask = ((data.L == L_t) &
+                (data.r == r_t) &
+                (data.time == t_t))
+
+        selected = data.where(mask, drop=True)
+        data_select.append(selected.isel(r=0))
+
+    try:
+        out_put = xr.concat(data_select, dim='time')
+    except:
+        out_put = None
+
+    return out_put
 
 def Aux_SelectVariables(f, var_file, cases_dir, data_dir, out_dir,
                      replace_name):
